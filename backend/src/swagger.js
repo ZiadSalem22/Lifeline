@@ -1,7 +1,12 @@
 const swaggerUi = require('swagger-ui-express');
 const baseSpec = require('../swagger.json');
+const path = require('path');
+const express = require('express');
 
 module.exports = function (app) {
+  // Serve the local SwaggerDark stylesheet from /swagger-ui
+  app.use('/swagger-ui', express.static(path.join(__dirname, '..', 'public', 'swagger-ui')));
+
   // Serve a dynamic swagger.json that uses the current request host/protocol as server URL.
   app.get('/api-docs/swagger.json', (req, res) => {
     try {
@@ -18,13 +23,9 @@ module.exports = function (app) {
   });
 
   // Serve Swagger UI at /api-docs and instruct it to fetch the spec from /api-docs/swagger.json
-  // Use a popular Swagger UI dark theme served from a CDN via `customCssUrl`.
-  // This is the widely used 'swagger-ui-themes' dark stylesheet for Swagger UI v3.
-  // Apply the SwaggerDark theme from the Amoenus/SwaggerDark repo via jsDelivr CDN
-  // Using @import inside customCss is generally reliable across hosting setups.
-  const importDarkCss = `@import url('https://cdn.jsdelivr.net/gh/Amoenus/SwaggerDark@master/dist/swagger-dark.css');`;
+  // Use the local SwaggerDark stylesheet via `customCssUrl` so the UI is dark-themed.
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
     swaggerUrl: '/api-docs/swagger.json',
-    customCss: importDarkCss
+    customCssUrl: '/swagger-ui/SwaggerDark.css'
   }));
 };
