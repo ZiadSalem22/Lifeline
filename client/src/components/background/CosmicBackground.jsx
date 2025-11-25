@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import './cosmic-background.css';
+import '../../styles/cosmic-background.css';
 
 export default function CosmicBackground() {
     const starFieldRef = useRef(null);

@@ -30,13 +30,13 @@
    - Dependencies: sqlite3
 
 ### Frontend (2 files)
-4. **`frontend/src/RecurrenceSelector.jsx`** (172 lines)
+4. **`client/src/components/calendar/RecurrenceSelector.jsx`** (172 lines)
    - Purpose: Modal component for recurrence pattern selection
    - Features: Type selector, interval input, end date picker, Apply/Clear/Cancel buttons
    - Styling: Theme integrated with CSS variables
    - Props: isOpen, onClose, onApply, onClear
 
-5. **`frontend/src/ExportImport.jsx`** (220 lines)
+5. **`client/src/components/settings/ExportImport.jsx`** (220 lines)
    - Purpose: Modal component for export/import functionality
    - Features: Format selector, mode selector, file picker, status messages
    - Export: JSON and CSV formats
@@ -107,7 +107,7 @@
 
 ### Frontend (3 files)
 
-4. **`frontend/src/App.jsx`**
+4. **`client/src/app/App.jsx`**
    - **Changes**: Comprehensive integration of all features
    - **Imports Added**: ExportImport, RecurrenceSelector
    - **State Added**:
@@ -127,7 +127,7 @@
      - TopBar updates for export button
    - **Lines Changed**: ~200 lines
 
-5. **`frontend/src/api.js`**
+5. **`client/src/utils/api.js`**
    - **Changes**: Added 8 new API functions
    - **Added Functions**:
      - exportTodos(format)
@@ -142,7 +142,7 @@
      - createTodo() - Now accepts recurrence parameter
    - **Lines Changed**: ~50 lines
 
-6. **`frontend/src/TopBar.jsx`**
+6. **`client/src/components/layout/TopBar.jsx`**
    - **Changes**: Added export/import button
    - **Added**: onOpenExportImport prop
    - **UI**: ⬇️ emoji button before settings
@@ -334,7 +334,7 @@ cd backend
 npm run dev  # Should start without errors
 
 # Frontend (New Terminal)
-cd frontend
+cd client
 npm run dev  # Should start without errors
 
 # Test API

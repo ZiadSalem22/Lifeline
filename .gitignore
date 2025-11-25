@@ -3,7 +3,7 @@ node_modules/
 
 # Vite / build
 /dist
-/frontend/dist
+/client/dist
 /backend/dist
 
 # Logs
@@ -54,7 +54,7 @@ Thumbs.db
 *~
 
 # Ensure build artifacts are ignored
-frontend/dist/
+client/dist/
 
 # Ignore environment-specific sqlite files in backend
 backend/*.db

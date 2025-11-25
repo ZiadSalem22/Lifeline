@@ -32,10 +32,10 @@ Reproduction steps
 
 Files changed
 
-- `frontend/src/Sidebar.jsx` — render overlay + drawer via portal and toggle root class when open.
-- `frontend/src/responsive.css` — set `.sidebar` to `top:0` and `height:100vh`; make overlay cover full viewport and set z-index values.
+- `client/src/components/layout/Sidebar.jsx` — render overlay + drawer via portal and toggle root class when open.
+- `client/src/styles/base.css` — ensure the `.sidebar` styles set `top:0`/`height:100vh`, overlay covers the viewport, and z-index values keep the drawer above the header.
 
 Notes
 
 - Do not modify backend or Azure resources.
-- Verified changes locally in the codebase; next step is to run `npm run dev` in `frontend` and test on mobile viewport.
+- Verified changes locally in the codebase; next step is to run `npm run dev` in `client` and test on mobile viewport.

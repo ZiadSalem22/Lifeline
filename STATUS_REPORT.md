@@ -61,14 +61,14 @@ Status: ✅ **COMPLETE** - All three features fully implemented with enterprise-
 ✅ `backend/src/application/RecurrenceService.js` - 111 lines  
 ✅ `backend/src/application/CompleteRecurringTodo.js` - 45 lines  
 ✅ `backend/src/application/NotificationService.js` - 125 lines  
-✅ `frontend/src/RecurrenceSelector.jsx` - 172 lines  
-✅ `frontend/src/ExportImport.jsx` - 220 lines  
+✅ `client/src/components/calendar/RecurrenceSelector.jsx` - 172 lines  
+✅ `client/src/components/settings/ExportImport.jsx` - 220 lines  
 ✅ `backend/src/domain/Todo.js` - Updated  
 ✅ `backend/src/infrastructure/SQLiteTodoRepository.js` - Updated  
 ✅ `backend/src/index.js` - Updated (major: +150 lines)  
-✅ `frontend/src/App.jsx` - Updated (major: +200 lines)  
-✅ `frontend/src/api.js` - Updated (+50 lines)  
-✅ `frontend/src/TopBar.jsx` - Updated  
+✅ `client/src/app/App.jsx` - Updated (major: +200 lines)  
+✅ `client/src/utils/api.js` - Updated (+50 lines)  
+✅ `client/src/components/layout/TopBar.jsx` - Updated  
 ✅ `backend/package.json` - Added date-fns  
 
 ### Documentation Files (6 files)

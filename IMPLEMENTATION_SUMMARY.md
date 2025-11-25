@@ -72,7 +72,7 @@ ALTER TABLE todos ADD COLUMN original_id TEXT;
 
 ### Frontend Components
 
-#### 1. **RecurrenceSelector Component** (`frontend/src/RecurrenceSelector.jsx`)
+#### 1. **RecurrenceSelector Component** (`client/src/components/calendar/RecurrenceSelector.jsx`)
 **Features**:
 - Modal dialog for setting recurrence patterns
 - Type selector (Daily/Weekly/Monthly/Custom)
@@ -86,11 +86,11 @@ ALTER TABLE todos ADD COLUMN original_id TEXT;
 - `isOpen`: Modal visibility
 - `onClose`: Modal close handler
 
-#### 2. **API Integration** (`frontend/src/api.js`)
+#### 2. **API Integration** (`client/src/utils/api.js`)
 - Updated `createTodo()` to accept recurrence parameter
 - Already supports recurrence through existing update mechanisms
 
-#### 3. **UI Integration** (To be added to `frontend/src/App.jsx`)
+#### 3. **UI Integration** (To be added to `client/src/app/App.jsx`)
 - Add "Set Recurrence" button to task form
 - Display recurrence badge on task cards
 - Show recurrence details on task details view
@@ -202,7 +202,7 @@ if ('Notification' in window) {
 
 ### Frontend Components
 
-#### 1. **ExportImport Component** (`frontend/src/ExportImport.jsx`)
+#### 1. **ExportImport Component** (`client/src/components/settings/ExportImport.jsx`)
 **Features**:
 - Modal interface for export/import
 - Format selection (JSON/CSV)
@@ -220,7 +220,7 @@ if ('Notification' in window) {
 - Success/error feedback
 - Auto-reload on completion
 
-#### 2. **API Integration** (`frontend/src/api.js`)
+#### 2. **API Integration** (`client/src/utils/api.js`)
 - `downloadExport(format)`: Download export file
 - `importTodos(data, mode)`: Upload and process import
 
@@ -263,11 +263,11 @@ Export/Import:
 
 ### Frontend File Structure
 ```
-frontend/src/
-├── App.jsx (main component - needs integration)
-├── api.js (API functions - ✅ complete)
-├── ExportImport.jsx (✅ complete)
-├── RecurrenceSelector.jsx (✅ complete)
+client/src/
+├── app/App.jsx (main component - needs integration)
+├── utils/api.js (API functions - ✅ complete)
+├── components/settings/ExportImport.jsx (✅ complete)
+├── components/calendar/RecurrenceSelector.jsx (✅ complete)
 └── (other existing components)
 ```
 

@@ -19,7 +19,7 @@ npm run dev
 
 #### 2. Frontend Setup (New Terminal)
 ```bash
-cd frontend
+cd client
 npm install
 npm run dev
 ```
@@ -98,13 +98,13 @@ testground/
 │   │   └── ...
 │   └── package.json
 │
-├── frontend/
+├── client/
 │   ├── src/
-│   │   ├── App.jsx (Updated - integrates all features)
-│   │   ├── api.js (Updated - new API functions)
-│   │   ├── RecurrenceSelector.jsx (NEW)
-│   │   ├── ExportImport.jsx (NEW)
-│   │   ├── TopBar.jsx (Updated - export button)
+│   │   ├── app/App.jsx (Updated - integrates all features)
+│   │   ├── utils/api.js (Updated - new API functions)
+│   │   ├── components/calendar/RecurrenceSelector.jsx (NEW)
+│   │   ├── components/settings/ExportImport.jsx (NEW)
+│   │   ├── components/layout/TopBar.jsx (Updated - export button)
 │   │   └── ...
 │   └── package.json
 │
@@ -202,8 +202,9 @@ npm start          # Production
 npm test           # Run tests
 ```
 
-### Frontend
+### Frontend (client folder)
 ```bash
+cd client
 npm run dev        # Development server
 npm run build      # Production build
 npm run preview    # Preview production build
@@ -225,7 +226,7 @@ npm run lint       # Check code style
 
 1. **User Testing**: See `TESTING_CHECKLIST.md` for test scenarios
 2. **Customization**: Modify recurrence patterns, notification timing, etc.
-3. **Deployment**: Build frontend with `npm run build` and deploy
+3. **Deployment**: Build frontend with `cd client && npm run build` and deploy
 4. **Monitoring**: Check backend logs for errors
 5. **Scaling**: Consider adding authentication and multi-user support
 

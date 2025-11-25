@@ -40,7 +40,7 @@ npm run dev
 
 ### Step 2: Start Frontend (New Terminal)
 ```bash
-cd frontend
+cd client
 npm install  # First time only
 npm run dev
 ```
@@ -363,13 +363,13 @@ backend/src/
 ├── middleware/       # Express middleware
 └── index.js          # Server setup
 
-frontend/src/
-├── api.js            # API client functions
-├── App.jsx           # Main component with state
-├── RecurrenceSelector.jsx  # Modal for recurrence
-├── ExportImport.jsx        # Modal for export/import
-├── TopBar.jsx              # Updated with export button
-└── ...other components
+client/src/
+├── app/App.jsx                # Main component with state
+├── utils/api.js               # API client functions
+├── components/calendar/RecurrenceSelector.jsx  # Modal for recurrence
+├── components/settings/ExportImport.jsx        # Modal for export/import
+├── components/layout/TopBar.jsx                # Updated with export button
+└── styles/base.css             # Consolidated global styles
 ```
 
 ### Design Patterns Used

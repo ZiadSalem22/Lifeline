@@ -138,7 +138,7 @@ QUICK COMMAND REFERENCE
 cd backend && npm run dev
 
 # Start Frontend (New Terminal)
-cd frontend && npm run dev
+cd client && npm run dev
 
 # Test API
 curl http://localhost:3000/api/todos
@@ -231,7 +231,7 @@ NEXT STEPS
 
 2️⃣  Run the app locally (5 minutes)
     cd backend && npm run dev
-    cd frontend && npm run dev
+    cd client && npm run dev
 
 3️⃣  Try each feature (10 minutes)
     Create recurring task, enable notifications, export data

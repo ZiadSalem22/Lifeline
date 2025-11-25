@@ -86,7 +86,7 @@ npm install
 npm run dev
 
 # Frontend (new terminal)
-cd frontend
+cd client
 npm install
 npm run dev
 ```
@@ -257,21 +257,21 @@ See [INTEGRATION_COMPLETE.md](INTEGRATION_COMPLETE.md) → Security Consideratio
 
 ### Main Directories
 - Backend: `./backend/src/`
-- Frontend: `./frontend/src/`
+- Frontend (client app): `./client/src/`
 - Docs: `./` (root directory)
 
 ### Key Files
 - Backend server: `backend/src/index.js`
-- Frontend app: `frontend/src/App.jsx`
-- API client: `frontend/src/api.js`
+- Frontend app: `client/src/app/App.jsx`
+- API client: `client/src/utils/api.js`
 - Database: `backend/todos_v4.db`
 
 ### New Files (Features)
 - `backend/src/application/RecurrenceService.js`
 - `backend/src/application/CompleteRecurringTodo.js`
 - `backend/src/application/NotificationService.js`
-- `frontend/src/RecurrenceSelector.jsx`
-- `frontend/src/ExportImport.jsx`
+- `client/src/components/calendar/RecurrenceSelector.jsx`
+- `client/src/components/settings/ExportImport.jsx`
 
 ---
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth } from './api';
-import { FlagIcon, EditIcon } from './Icons';
+import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth } from '../../utils/api';
+import { FlagIcon, EditIcon } from '../../icons/Icons';
 
 const formatDuration = (totalMinutes) => {
   if (!totalMinutes) return '';

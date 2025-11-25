@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { fetchStats } from './api';
-import { CloseIcon, StatsIcon } from './Icons';
+import { fetchStats } from '../../utils/api';
+import { CloseIcon, StatsIcon } from '../../icons/Icons';
 
 const Metric = ({ label, value }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', minWidth: '140px' }}>

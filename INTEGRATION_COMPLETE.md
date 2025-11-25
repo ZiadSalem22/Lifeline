@@ -138,7 +138,7 @@ All three major features have been successfully integrated into the Lifeline tod
   - Button in TopBar (⬇️ emoji)
   - Modal integration with callbacks
   - Auto-refresh todos after import
-- **API Functions** (frontend/src/api.js):
+- **API Functions** (client/src/utils/api.js):
   - `exportTodos(format)` - Returns exported data
   - `downloadExport(format)` - Downloads file
   - `importTodos(data, mode)` - Uploads and imports
@@ -173,8 +173,8 @@ All three major features have been successfully integrated into the Lifeline tod
 1. `backend/src/application/RecurrenceService.js` - 111 lines
 2. `backend/src/application/CompleteRecurringTodo.js` - 45 lines
 3. `backend/src/application/NotificationService.js` - 125 lines
-4. `frontend/src/RecurrenceSelector.jsx` - 172 lines
-5. `frontend/src/ExportImport.jsx` - 220 lines
+4. `client/src/components/calendar/RecurrenceSelector.jsx` - 172 lines
+5. `client/src/components/settings/ExportImport.jsx` - 220 lines
 6. `TESTING_CHECKLIST.md` - Comprehensive test scenarios
 7. `INTEGRATION_COMPLETE.md` - This file
 
@@ -189,7 +189,7 @@ All three major features have been successfully integrated into the Lifeline tod
 - `backend/package.json` - Added date-fns dependency
 
 #### Frontend
-- `frontend/src/App.jsx` - Major integration of all features:
+- `client/src/app/App.jsx` - Major integration of all features:
   - Imports for new components
   - State management for recurrence and export/import
   - RecurrenceSelector integration in task form
@@ -198,8 +198,8 @@ All three major features have been successfully integrated into the Lifeline tod
   - TopBar updates for export button
   - Recurrence badges on task cards
   - Modal rendering
-- `frontend/src/api.js` - 8 new API functions
-- `frontend/src/TopBar.jsx` - Export button added
+- `client/src/utils/api.js` - 8 new API functions
+- `client/src/components/layout/TopBar.jsx` - Export button added
 
 ## Architecture Patterns Used
 
@@ -281,7 +281,7 @@ npm install
 npm start  # or npm run dev for development
 
 # Frontend
-cd frontend
+cd client
 npm install
 npm run dev  # or npm run build for production
 ```

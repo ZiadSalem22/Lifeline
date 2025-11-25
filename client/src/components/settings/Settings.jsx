@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createTag, deleteTag, updateTag } from './api';
-import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from './Icons';
+import { createTag, deleteTag, updateTag } from '../../utils/api';
+import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
 
 const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, font, fonts, setFont }) => {
     const [newTagName, setNewTagName] = useState('');

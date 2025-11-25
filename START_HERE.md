@@ -22,7 +22,7 @@ npm run dev
 
 ### 2. Start Frontend (New Terminal/Tab)
 ```bash
-cd frontend
+cd client
 npm run dev
 ```
 ✅ Should show a URL like "http://localhost:5174" (might be 5173)
@@ -226,7 +226,7 @@ See `QUICK_START.md` → Troubleshooting section for more help
 **👉 Run it now**
 ```bash
 cd backend && npm run dev  # Terminal 1
-cd frontend && npm run dev # Terminal 2
+cd client && npm run dev # Terminal 2
 ```
 
 **👉 Learn about it first**
@@ -285,7 +285,7 @@ Everything you need to know is in the docs. Happy coding! 🚀
 
 **Suggested Next Step**: 
 1. Run `cd backend && npm run dev`
-2. Run `cd frontend && npm run dev` (new terminal)
+2. Run `cd client && npm run dev` (new terminal)
 3. Visit http://localhost:5174
 4. Try creating a recurring task
 5. Read README_INTEGRATION.md to learn more

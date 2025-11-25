@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { downloadExport, importTodos } from './api';
+import { downloadExport, importTodos } from '../../utils/api';
 
+// Settings-adjacent dialog responsible for exporting and importing workspace data safely.
 const ExportImport = ({ onImportComplete, isOpen, onClose }) => {
   const [exportFormat, setExportFormat] = useState('json');
   const [importMode, setImportMode] = useState('merge');

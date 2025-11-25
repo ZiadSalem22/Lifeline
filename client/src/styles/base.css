@@ -200,21 +200,22 @@ body {
 
 /* Smooth scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--color-surface);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 4px;
+  background: rgba(120, 125, 130, 0.35);
+  border-radius: 999px;
+  border: 1px solid rgba(120, 125, 130, 0.25);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-border-hover);
+  background: rgba(120, 125, 130, 0.55);
 }
 
 /* Animations */
@@ -670,4 +671,456 @@ body {
 .task-card-hover-actions.visible {
   opacity: 1;
   transform: translateX(0);
+}
+/* --- Consolidated from index.css --- */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 125, 130, 0.35);
+  border-radius: 999px;
+  border: 1px solid rgba(120, 125, 130, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 125, 130, 0.55);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(120, 125, 130, 0.25);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 125, 130, 0.45);
+}
+
+/* Animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility animations */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* Select dropdown styling */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px !important;
+}
+
+select option {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* For webkit browsers (Chrome, Safari, Edge) */
+select::-webkit-scrollbar {
+  width: 8px;
+}
+
+select::-webkit-scrollbar-track {
+  background: var(--color-surface-light);
+  border-radius: 8px;
+}
+
+select::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 8px;
+  opacity: 0.5;
+}
+
+select::-webkit-scrollbar-thumb:hover {
+  opacity: 0.7;
+}
+
+/* Firefox dropdown styling */
+@-moz-document url-prefix() {
+  select {
+    background-image: none;
+    padding-right: 12px !important;
+  }
+  
+  select option {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+  }
+}
+
+/* Custom Checkbox Styling */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-light);
+  transform: scale(1.05);
+}
+
+input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--color-bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: checkmark 0.2s ease;
+}
+
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0);
+  }
+  50% {
+    transform: rotate(45deg) scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 16, 185, 129), 0.2);
+}
+
+/* Smaller checkboxes for collapsed subtasks */
+.subtask-checkbox-small {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.subtask-checkbox-small:checked::after {
+  left: 3px !important;
+  top: 1px !important;
+  width: 4px !important;
+  height: 8px !important;
+}
+
+/* --- Consolidated from responsive.css --- */
+
+/* Layout & Responsive Design Tokens */
+:root {
+  --sidebar-width: 220px;
+  --sidebar-width-large: 260px;
+  --layout-max-width: 1280px;
+  --gap-page: 48px;
+  --gap-page-mobile: 24px;
+}
+
+@media (min-width: 1400px) {
+  :root { --sidebar-width: var(--sidebar-width-large); }
+}
+
+/* Responsive Typography */
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+    :root {
+        --font-size-heading: 1.5rem;
+        --font-size-subheading: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --font-size-heading: 1.25rem;
+        --font-size-subheading: 0.9rem;
+        --font-size-base: 0.8rem;
+    }
+}
+
+/* Main Layout */
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: var(--gap-page);
+  max-width: var(--layout-max-width);
+  padding-top: 136px; /* top bar offset */
+  transition: margin-left 0.3s ease, padding 0.3s ease;
+}
+
+.mobile-menu-button {
+  display: none; /* Hidden by default */
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding: 90px 16px 72px;
+  }
+
+  .header-content {
+    margin-top: 24px;
+  }
+
+  .header-title {
+    font-size: 2rem;
+  }
+
+  .mobile-menu-button {
+    display: flex;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 100;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-close-button {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    display: none; /* Hidden on desktop by default */
+  }
+
+  .mobile-close-button {
+    display: flex;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 101;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--color-bg);
+  backdrop-filter: saturate(160%) blur(12px);
+  padding: 32px 32px 40px; /* refined spacing */
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  /* Desktop: keep the sidebar under the top bar */
+  height: calc(100vh - 69px);
+  left: 0;
+  top: 69px; /* below the fixed top bar */
+  z-index: 10; /* beneath the top bar (top bar z-index ~60) */
+  transition: left 0.3s ease, width 0.3s ease, background 0.3s ease, transform 0.3s ease;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.search-input:focus {
+  /* Disable inner input focus styling so the pill container
+     (handled by .top-bar-search:focus-within) provides the visual focus. */
+  transform: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.menu-item-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-muted);
+  transition: all 0.1s ease-out;
+  animation: menuItemFadeIn 0.3s ease-out forwards;
+}
+
+.menu-item-button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.menu-item-button.selected {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  box-shadow: 0 10px 15px -3px var(--shadow-primary);
+}
+
+.sidebar-footer-button {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease-out;
+}
+
+.sidebar-footer-button:hover {
+  transform: scale(1.1);
+}
+
+.sidebar-footer-button:active {
+  transform: scale(0.9);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    left: -100%;
+    width: clamp(240px, 80vw, 300px);
+    /* Mobile: ensure drawer spans full viewport from the very top */
+    top: 0;
+    height: 100vh;
+    z-index: 10001; /* ensure sidebar sits above the overlay on mobile */
+    box-shadow: 0 8px 32px -4px rgba(0,0,0,0.5);
+    pointer-events: auto;
+  }
+
+  .sidebar.open {
+    left: 0;
+    /* ensure open state keeps high stacking and receives pointer events */
+    z-index: 10001;
+    pointer-events: auto;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000; /* just below the sidebar */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out;
+  }
+
+  .sidebar-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* When sidebar is open, optionally push the page content to the right
+     to mimic an iOS-style full-height drawer that moves content aside. */
+  .has-open-sidebar .main-content {
+    transform: translateX(clamp(240px, 80vw, 300px));
+    transition: transform 0.3s ease;
+  }
+
+  .has-open-sidebar .top-bar {
+    transform: translateX(clamp(240px, 80vw, 300px));
+    transition: transform 0.3s ease;
+  }
 }

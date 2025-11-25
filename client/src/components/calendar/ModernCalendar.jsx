@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns';
-import { ChevronLeftIcon, ChevronRightIcon } from './Icons';
+import { ChevronLeftIcon, ChevronRightIcon } from '../../icons/Icons';
 
 const ModernCalendar = ({ selectedDate, onSelectDate }) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());

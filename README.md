@@ -66,7 +66,7 @@ Prerequisites: Node.js 18+, npm
 cd backend
 npm install
 
-cd ..\frontend
+cd ..\client
 npm install
 ```
 
@@ -81,12 +81,12 @@ npm run dev
 3. Run frontend (separate terminal)
 
 ```powershell
-cd frontend
+cd client
 npm run dev
 # Open http://localhost:5173 (Vite default)
 ```
 
-4. Shared state: the frontend expects the API at `http://localhost:3000/api` by default. If you run the backend on a different port, update `frontend/src/api.js` or set the environment variable used by the frontend.
+4. Shared state: the frontend expects the API at `http://localhost:3000/api` by default. If you run the backend on a different port, update `client/src/utils/api.js` or set the environment variable used by the frontend.
 
 —
 
@@ -105,7 +105,7 @@ There's a small unit test suite focused on domain logic and the SQLite repositor
 
 ## Continuous Integration
 
-This repository uses GitHub Actions. The included workflow `ci.yml` runs backend tests and builds the frontend on pushes/PRs against `main`.
+This repository uses GitHub Actions. The included workflow `ci.yml` runs backend tests and builds the frontend (the `client/` app) on pushes/PRs against `main`.
 
 —
 
@@ -121,7 +121,7 @@ This repository includes GitHub Actions workflows to deploy the frontend and bac
 - `BACKEND_WEBAPP_NAME` — the name of the Azure Web App to receive the backend.
 
 Workflow behavior:
-- `azure-deploy-frontend.yml` builds `frontend/` (`npm ci` + `npm run build`) and deploys the `frontend/dist` folder to the `FRONTEND_WEBAPP_NAME` web app.
+- `azure-deploy-frontend.yml` builds `client/` (`npm ci` + `npm run build`) and deploys the `client/dist` folder to the `FRONTEND_WEBAPP_NAME` web app.
 - `azure-deploy-backend.yml` installs backend dependencies, runs tests (best-effort), zips the `backend/` folder and deploys the zip package to the `BACKEND_WEBAPP_NAME` web app.
 
 Both workflows use `azure/login@v2` and `azure/webapps-deploy@v2` under the provided `AZURE_CREDENTIALS` secret.
@@ -172,7 +172,7 @@ Copy the returned JSON and add it as the `AZURE_CREDENTIALS` secret in GitHub (R
 7. Push to `main` (or re-run Actions): the workflows will run and deploy to Azure.
 
 Notes about environment variables and API URL:
-- After the backend is live at `https://<BACKEND_WEBAPP_NAME>.azurewebsites.net`, update `frontend/src/api.js` (or set a frontend env var) to point API calls at that URL.
+- After the backend is live at `https://<BACKEND_WEBAPP_NAME>.azurewebsites.net`, update `client/src/utils/api.js` (or set a frontend env var) to point API calls at that URL.
 - If you need persistent storage for SQLite you must mount storage or use a hosted DB for production. App Service local storage may not persist through instance restarts in all situations; for a demo it often works but is not guaranteed.
 
 
@@ -180,7 +180,7 @@ Notes about environment variables and API URL:
 
 ## Automatic Frontend Deployment (GitHub Pages)
 
-The repository includes `.github/workflows/deploy-frontend.yml` (if you keep the default `main` branch and the workflow, it will automatically build the frontend and publish to GitHub Pages). If you prefer Vercel, connect the repo to Vercel and configure the build command `npm run build` with `frontend` as the project root.
+The repository includes `.github/workflows/deploy-frontend.yml` (if you keep the default `main` branch and the workflow, it will automatically build the frontend and publish to GitHub Pages). If you prefer Vercel, connect the repo to Vercel and configure the build command `npm run build` with `client` as the project root.
 
 —
 

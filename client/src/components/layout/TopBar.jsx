@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchIcon, SettingsIcon, MenuIcon } from './Icons';
+import { SearchIcon, SettingsIcon, MenuIcon } from '../../icons/Icons';
 import './TopBar.css';
 
 const TopBar = (props) => {

@@ -1,19 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
-import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo } from './api';
-import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from './Icons';
-import AdvancedSearch from './AdvancedSearch';
-import Statistics from './Statistics';
-import Sidebar from './Sidebar';
-import Settings from './Settings';
-import CosmicBackground from './CosmicBackground';
-import TopBar from './TopBar';
-import ExportImport from './ExportImport';
-import RecurrenceSelector from './RecurrenceSelector';
 import { format, addDays } from 'date-fns';
-import './theme.css';
-import './responsive.css';
-import useTheme from './useTheme';
+import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo, getPendingNotifications } from '../utils/api';
+import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
+import AdvancedSearch from '../components/search/AdvancedSearch';
+import Statistics from '../components/statistics/Statistics';
+import { Settings, ExportImport } from '../components/settings';
+import RecurrenceSelector from '../components/calendar/RecurrenceSelector';
+import DashboardPage from '../pages/DashboardPage';
+import AuthPage from '../pages/AuthPage';
 
 function App() {
   const [todos, setTodos] = useState([]);
@@ -68,13 +63,68 @@ function App() {
   const [currentRecurrence, setCurrentRecurrence] = useState(null);
   const [showExportImport, setShowExportImport] = useState(false);
 
+  const handleThemeChange = useCallback((newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  }, []);
+
+  const handleFontChange = useCallback((newFont) => {
+    setFont(newFont);
+    localStorage.setItem('font', newFont);
+    document.documentElement.style.setProperty('--font-family-base', newFont);
+  }, []);
+
+  const loadTodos = useCallback(async () => {
+    try {
+      const data = await fetchTodos();
+      setTodos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load todos', error);
+    }
+  }, []);
+
+  const loadTags = useCallback(async () => {
+    try {
+      const data = await fetchTags();
+      setTags(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load tags', error);
+    }
+  }, []);
+
+  const pollNotifications = useCallback(async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return;
+    }
+    if (window.Notification.permission !== 'granted') {
+      return;
+    }
+    try {
+      const payload = await getPendingNotifications();
+      const notifications = Array.isArray(payload?.notifications)
+        ? payload.notifications
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      notifications.forEach((notification) => {
+        const title = notification?.title || 'Lifeline Reminder';
+        const body = notification?.body || notification?.message || 'You have a pending task.';
+        new Notification(title, { body });
+      });
+    } catch (error) {
+      console.error('Failed to poll notifications', error);
+    }
+  }, []);
+
   // Helper to refresh todos when picking a date from the calendar
   const handleSelectDate = useCallback((date) => {
     setSelectedDate(date);
     setTimeout(() => {
       loadTodos();
     }, 0);
-  }, []);
+  }, [loadTodos]);
 
   const inputRef = useRef(null);
 
@@ -83,209 +133,118 @@ function App() {
   }, [showRecurrenceSelector]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([loadTodos(), loadTags()]);
-      setIsLoading(false);
+      try {
+        await Promise.all([loadTodos(), loadTags()]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
+
     loadData();
 
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.setAttribute('data-theme', savedTheme);
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
 
-    const savedFont = localStorage.getItem('font') || '"DM Sans", sans-serif';
-    setFont(savedFont);
-    document.documentElement.style.setProperty('--font-family-base', savedFont);
+      const savedFont = localStorage.getItem('font') || '"DM Sans", sans-serif';
+      setFont(savedFont);
+      document.documentElement.style.setProperty('--font-family-base', savedFont);
+    }
 
-    // Request notification permission and setup polling
-    if ('Notification' in window) {
+    let pollingInterval;
+    const startPolling = () => {
+      if (typeof window === 'undefined') return;
+      pollNotifications();
+      pollingInterval = window.setInterval(pollNotifications, 30000);
+    };
+
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
-        // Permission already granted, start polling
-        startNotificationPolling();
+        startPolling();
       } else if (Notification.permission !== 'denied') {
-        // Ask for permission
         Notification.requestPermission().then(permission => {
           if (permission === 'granted') {
-            startNotificationPolling();
+            startPolling();
           }
         });
       }
     }
 
-    const handleKeyPress = (e) => {
-      if (e.key === 'n' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
+      isMounted = false;
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
     };
-  }, []);
-
-  useEffect(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-    if (selectedDate === 'today') setScheduleDate(today);
-    else if (selectedDate === 'tomorrow') setScheduleDate(tomorrow);
-    else setScheduleDate(selectedDate);
-  }, [selectedDate]);
-
-  const toggleTheme = () => {
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    const newTheme = themes[nextIndex];
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
-
-  const loadTodos = async () => {
-    try {
-      const data = await fetchTodos();
-      setTodos(data);
-    } catch (error) {
-      console.error("Failed to load todos", error);
-    }
-  };
-
-  const loadTags = async () => {
-    try {
-      const data = await fetchTags();
-      setTags(data);
-    } catch (error) {
-      console.error("Failed to load tags", error);
-    }
-  };
-
-  const startNotificationPolling = () => {
-    // Poll for pending notifications every 30 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/notifications/pending');
-        if (!response.ok) throw new Error('Failed to fetch notifications');
-        const notifications = await response.json();
-        
-        // Show each pending notification
-        notifications.forEach(notification => {
-          // Create and show browser notification
-          const browserNotif = new Notification(notification.title || 'Task Reminder', {
-            body: notification.message || `Reminder for: ${notification.todoTitle || 'Your task'}`,
-            icon: '/favicon.ico',
-            tag: `notification-${notification.id}`, // Prevent duplicates
-            badge: '/favicon.ico'
-          });
-          
-          // Mark as sent when shown
-          browserNotif.onshow = async () => {
-            try {
-              await fetch(`http://localhost:3000/api/notifications/${notification.id}/sent`, {
-                method: 'PATCH'
-              });
-            } catch (error) {
-              console.error('Failed to mark notification as sent', error);
-            }
-          };
-          
-          // Handle notification click
-          browserNotif.onclick = () => {
-            window.focus();
-            browserNotif.close();
-          };
-        });
-      } catch (error) {
-        console.error('Error polling notifications:', error);
-      }
-    }, 30000); // Poll every 30 seconds
-
-    // Initial poll
-    (async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/notifications/pending');
-        if (response.ok) {
-          const notifications = await response.json();
-          notifications.forEach(notification => {
-            const browserNotif = new Notification(notification.title || 'Task Reminder', {
-              body: notification.message || `Reminder for: ${notification.todoTitle || 'Your task'}`,
-              icon: '/favicon.ico',
-              tag: `notification-${notification.id}`,
-              badge: '/favicon.ico'
-            });
-
-            browserNotif.onshow = async () => {
-              try {
-                await fetch(`http://localhost:3000/api/notifications/${notification.id}/sent`, {
-                  method: 'PATCH'
-                });
-              } catch (error) {
-                console.error('Failed to mark notification as sent', error);
-              }
-            };
-
-            browserNotif.onclick = () => {
-              window.focus();
-              browserNotif.close();
-            };
-          });
-        }
-      } catch (error) {
-        console.error('Error during initial notification poll:', error);
-      }
-    })();
-
-    return () => clearInterval(pollInterval);
-  };
+  }, [loadTodos, loadTags, pollNotifications]);
 
   const filteredTodos = useMemo(() => {
     let filtered = [...todos];
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+
+    filtered = filtered.filter((todo) => {
+      if (!selectedDate) return true;
+      const dueDate = todo.dueDate;
+
+      if (selectedDate === 'today') {
+        if (!dueDate) return true;
+        return dueDate === today;
+      }
+
+      if (selectedDate === 'tomorrow') {
+        return dueDate === tomorrow;
+      }
+
+      if (selectedDate instanceof Date) {
+        return dueDate === format(selectedDate, 'yyyy-MM-dd');
+      }
+
+      if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
+        return dueDate === selectedDate;
+      }
+
+      return true;
+    });
 
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter(todo => {
+      filtered = filtered.filter((todo) => {
         const inTitle = todo.title?.toLowerCase().includes(query);
         const inDescription = todo.description?.toLowerCase().includes(query);
-        const inTags = todo.tags?.some(tag => tag.name?.toLowerCase().includes(query));
-        return inTitle || inDescription || inTags;
+        const inTags = Array.isArray(todo.tags) && todo.tags.some(tag => (tag.name || '').toLowerCase().includes(query));
+        const inSubtasks = Array.isArray(todo.subtasks) && todo.subtasks.some(subtask => subtask.title?.toLowerCase().includes(query));
+        return inTitle || inDescription || inTags || inSubtasks;
       });
     }
 
-    // Filter by date
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-    filtered = filtered.filter(todo => {
-      if (selectedDate === 'tomorrow') {
-        return todo.dueDate === tomorrow;
-      }
-      if (!todo.dueDate) return selectedDate === 'today';
-      if (selectedDate === 'today') return todo.dueDate === today;
-      return todo.dueDate === selectedDate;
-    });
-
-    // Filter by tags
     if (selectedFilterTags.length > 0) {
       filtered = filtered.filter(todo =>
-        todo.tags && todo.tags.some(tag => selectedFilterTags.includes(tag.id))
+        Array.isArray(todo.tags) && todo.tags.some(tag => selectedFilterTags.includes(tag.id))
       );
     }
 
-    // Sort todos
-    filtered.sort((a, b) => {
-      // First sort by order if available
+    filtered = [...filtered].sort((a, b) => {
       if (a.order !== b.order) {
         return (a.order || 0) - (b.order || 0);
       }
-      
+
       switch (sortOption) {
-        case 'priority':
+        case 'priority': {
           const priorityOrder = { high: 3, medium: 2, low: 1 };
           return (priorityOrder[b.priority] || 2) - (priorityOrder[a.priority] || 2);
+        }
         case 'duration':
           return (b.duration || 0) - (a.duration || 0);
         case 'name':
-          return a.title.localeCompare(b.title);
+          return (a.title || '').localeCompare(b.title || '');
         case 'date':
         default:
           if (!a.dueDate && !b.dueDate) return 0;
@@ -295,14 +254,13 @@ function App() {
       }
     });
 
-    // Ensure incomplete tasks appear before completed ones (stable w.r.t previous sort)
-    filtered.sort((a, b) => {
+    filtered = filtered.sort((a, b) => {
       if ((a.isCompleted || false) === (b.isCompleted || false)) return 0;
       return (a.isCompleted || false) ? 1 : -1;
     });
 
     return filtered;
-  }, [todos, searchQuery, selectedDate, selectedFilterTags, sortOption]);
+  }, [todos, selectedDate, searchQuery, selectedFilterTags, sortOption]);
 
   const handleAdd = useCallback(async (e) => {
     e.preventDefault();
@@ -474,6 +432,75 @@ function App() {
   const durationString = useMemo(() => formatDuration(totalDurationMinutes), [totalDurationMinutes]);
   const progress = useMemo(() => filteredTodos.length > 0 ? (completedCount / filteredTodos.length) * 100 : 0, [filteredTodos.length, completedCount]);
 
+  const sidebarProps = {
+    selectedDate,
+    onSelectDate: handleSelectDate,
+    isOpen: isMobileSidebarOpen,
+    onClose: () => setIsMobileSidebarOpen(false),
+    searchQuery,
+    setSearchQuery,
+    onOpenSettings: () => setShowSettings(true),
+    onOpenLogin: () => setCurrentPage('auth'),
+    onNavigate: setCurrentPage,
+    theme,
+    setTheme: handleThemeChange,
+  };
+
+  const topBarProps = {
+    onOpenSettings: () => setShowSettings(true),
+    onOpenExportImport: () => setShowExportImport(true),
+    searchQuery,
+    setSearchQuery,
+    onOpenSidebar: () => setIsMobileSidebarOpen(true),
+    isMobileSidebarOpen,
+    onLoginClick: () => setCurrentPage('auth'),
+  };
+
+  const settingsProps = {
+    isOpen: showSettings,
+    onClose: () => setShowSettings(false),
+    tags,
+    setTags,
+    theme,
+    themes,
+    setTheme: handleThemeChange,
+    font,
+    fonts,
+    setFont: handleFontChange,
+  };
+
+  const recurrenceProps = {
+    recurrence: currentRecurrence,
+    baseDate: scheduleDate,
+    isOpen: showRecurrenceSelector,
+    onClose: () => setShowRecurrenceSelector(false),
+    onApply: (recurrence) => {
+      setCurrentRecurrence(recurrence);
+      setShowRecurrenceSelector(false);
+    },
+    onClear: () => {
+      setCurrentRecurrence(null);
+      setShowRecurrenceSelector(false);
+    },
+  };
+
+  const exportImportProps = {
+    isOpen: showExportImport,
+    onClose: () => setShowExportImport(false),
+    onImportComplete: () => {
+      loadTodos();
+      setShowExportImport(false);
+    },
+  };
+
+  const commonOverlays = (
+    <>
+      <Settings {...settingsProps} />
+      <RecurrenceSelector {...recurrenceProps} />
+      <ExportImport {...exportImportProps} />
+    </>
+  );
+
   if (isLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
@@ -499,38 +526,8 @@ function App() {
   // If user navigates to advanced search, render a focused search page
   if (currentPage === 'search') {
     return (
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
-        <Sidebar
-          selectedDate={selectedDate}
-          onSelectDate={handleSelectDate}
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenLogin={() => setShowAuth(true)}
-          onNavigate={setCurrentPage}
-          theme={theme}
-          setTheme={(newTheme) => {
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.documentElement.setAttribute('data-theme', newTheme);
-          }}
-        />
-
-        <TopBar
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenExportImport={() => setShowExportImport(true)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-          isMobileSidebarOpen={isMobileSidebarOpen}
-          onLoginClick={() => {
-            setShowAuth(true);
-          }}
-        />
-
-        <main className="main-content" style={{ paddingTop: '120px' }}>
+      <>
+        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
           <AdvancedSearch
             onBack={() => setCurrentPage('home')}
             onOpenTodo={(todo) => {
@@ -538,186 +535,38 @@ function App() {
               setCurrentPage('home');
             }}
           />
-        </main>
-
-        <Settings
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          tags={tags}
-          setTags={setTags}
-          theme={theme}
-          themes={themes}
-          setTheme={(newTheme) => {
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.documentElement.setAttribute('data-theme', newTheme);
-          }}
-          font={font}
-          fonts={fonts}
-          setFont={(newFont) => {
-            setFont(newFont);
-            localStorage.setItem('font', newFont);
-            document.documentElement.style.setProperty('--font-family-base', newFont);
-          }}
-        />
-
-        <RecurrenceSelector
-          recurrence={currentRecurrence}
-          baseDate={scheduleDate}
-          isOpen={showRecurrenceSelector}
-          onClose={() => setShowRecurrenceSelector(false)}
-          onApply={(recurrence) => {
-            setCurrentRecurrence(recurrence);
-            setShowRecurrenceSelector(false);
-          }}
-          onClear={() => {
-            setCurrentRecurrence(null);
-            setShowRecurrenceSelector(false);
-          }}
-        />
-
-        <ExportImport
-          isOpen={showExportImport}
-          onClose={() => setShowExportImport(false)}
-          onImportComplete={() => {
-            loadTodos();
-            setShowExportImport(false);
-          }}
-        />
-      </div>
+        </DashboardPage>
+        {commonOverlays}
+      </>
     );
   }
 
   // Statistics full-page view
   if (currentPage === 'stats') {
     return (
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
-        <Sidebar
-          selectedDate={selectedDate}
-          onSelectDate={handleSelectDate}
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onOpenSettings={() => setShowSettings(true)}
-          onNavigate={setCurrentPage}
-          theme={theme}
-          setTheme={(newTheme) => {
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.documentElement.setAttribute('data-theme', newTheme);
-          }}
-        />
-
-        <TopBar
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenExportImport={() => setShowExportImport(true)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-          isMobileSidebarOpen={isMobileSidebarOpen}
-          onLoginClick={() => {
-            setShowAuth(true);
-          }}
-        />
-
-        <main className="main-content" style={{ paddingTop: '120px' }}>
+      <>
+        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
           <Statistics onBack={() => setCurrentPage('home')} />
-        </main>
+        </DashboardPage>
+        {commonOverlays}
+      </>
+    );
+  }
 
-        <Settings
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          tags={tags}
-          setTags={setTags}
-          theme={theme}
-          themes={themes}
-          setTheme={(newTheme) => {
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.documentElement.setAttribute('data-theme', newTheme);
-          }}
-          font={font}
-          fonts={fonts}
-          setFont={(newFont) => {
-            setFont(newFont);
-            localStorage.setItem('font', newFont);
-            document.documentElement.style.setProperty('--font-family-base', newFont);
-          }}
-        />
-      </div>
+  if (currentPage === 'auth') {
+    return (
+      <>
+        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+          <AuthPage onBack={() => setCurrentPage('home')} />
+        </DashboardPage>
+        {commonOverlays}
+      </>
     );
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
-      {/* <CosmicBackground /> */}
-        <Sidebar
-          selectedDate={selectedDate}
-          onSelectDate={handleSelectDate}
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onOpenSettings={() => setShowSettings(true)}
-          onNavigate={setCurrentPage}
-          theme={theme}
-          setTheme={(newTheme) => {
-            setTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.documentElement.setAttribute('data-theme', newTheme);
-          }}
-      />
-
-      <TopBar
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenExportImport={() => setShowExportImport(true)}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-        isMobileSidebarOpen={isMobileSidebarOpen}
-        onLoginClick={() => {
-          setShowAuth(true);
-        }}
-      />
-
-      <Settings
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        tags={tags}
-        setTags={setTags}
-        theme={theme}
-        themes={themes}
-        setTheme={(newTheme) => {
-          setTheme(newTheme);
-          localStorage.setItem('theme', newTheme);
-          document.documentElement.setAttribute('data-theme', newTheme);
-        }}
-        font={font}
-        fonts={fonts}
-        setFont={(newFont) => {
-          setFont(newFont);
-          localStorage.setItem('font', newFont);
-          document.documentElement.style.setProperty('--font-family-base', newFont);
-        }}
-      />
-      {/* Recurrence modal mounted for main view */}
-      <RecurrenceSelector
-        recurrence={currentRecurrence}
-        baseDate={scheduleDate}
-        isOpen={showRecurrenceSelector}
-        onClose={() => setShowRecurrenceSelector(false)}
-        onApply={(recurrence) => {
-          setCurrentRecurrence(recurrence);
-          setShowRecurrenceSelector(false);
-        }}
-        onClear={() => {
-          setCurrentRecurrence(null);
-          setShowRecurrenceSelector(false);
-        }}
-      />
-
-      <main className="main-content" style={{ paddingTop: '120px' }}>
+    <>
+      <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
         {/* Saved toast */}
         {savedMessage && (
           <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
@@ -1360,8 +1209,9 @@ function App() {
               />
             ))}
           </div>
-      </main>
-    </div>
+      </DashboardPage>
+      {commonOverlays}
+    </>
   );
 }
 

@@ -1,8 +1,8 @@
-import { useMediaQuery } from './useMediaQuery';
 import { useEffect } from 'react';
-import { SunIcon, MoonIcon, SearchIcon, CloseIcon, StatsIcon, HomeIcon, SettingsIcon } from './Icons';
 import { createPortal } from 'react-dom';
-import ModernCalendar from './ModernCalendar';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { SunIcon, MoonIcon, SearchIcon, CloseIcon, StatsIcon, HomeIcon, SettingsIcon } from '../../icons/Icons';
+import ModernCalendar from '../calendar/ModernCalendar';
 import { format, addDays } from 'date-fns';
 
 const SlimButton = ({ active, onClick, children, title }) => (
