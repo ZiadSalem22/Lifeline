@@ -22,6 +22,13 @@ const port = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
+// Swagger UI (auto-served at /api-docs)
+try {
+    require('./swagger')(app);
+} catch (e) {
+    console.warn('Swagger UI not available:', e.message);
+}
+
 // Database Setup
 const dbPath = path.resolve(__dirname, '../todos_v4.db');
 const db = new sqlite3.Database(dbPath);

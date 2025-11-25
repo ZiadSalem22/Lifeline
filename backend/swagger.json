@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Lifeline API",
+    "version": "1.0.0",
+    "description": "Minimal OpenAPI spec for Lifeline backend (auto-served at /api-docs)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/api/todos": {
+      "get": {
+        "summary": "List todos",
+        "responses": {
+          "200": {
+            "description": "A list of todos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Todo" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a todo",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TodoInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created" }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": { "summary": "List tags", "responses": { "200": { "description": "OK" } } },
+      "post": { "summary": "Create tag", "responses": { "201": { "description": "Created" } } }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Todo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "isCompleted": { "type": "boolean" },
+          "isFlagged": { "type": "boolean" },
+          "dueDate": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TodoInput": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}
