@@ -12,7 +12,9 @@ module.exports = function (app) {
       const host = req.get('host');
       const protocol = req.protocol;
       spec.servers = [{ url: `${protocol}://${host}`, description: 'Auto-detected server' }];
-      res.json(spec);
+      // Ensure we send clean JSON with proper content-type to avoid YAML parser issues in some clients
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.send(JSON.stringify(spec));
     } catch (e) {
       res.status(500).json({ error: 'Unable to load swagger spec' });
     }
