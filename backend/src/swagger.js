@@ -20,8 +20,9 @@ module.exports = function (app) {
   // Serve Swagger UI at /api-docs and instruct it to fetch the spec from /api-docs/swagger.json
   // Use a popular Swagger UI dark theme served from a CDN via `customCssUrl`.
   // This is the widely used 'swagger-ui-themes' dark stylesheet for Swagger UI v3.
-  // Attempt to apply the theme by importing the remote CSS via `customCss` (more reliable across hosting setups)
-  const importDarkCss = `@import url('https://cdn.jsdelivr.net/npm/swagger-ui-themes@3.0.0/themes/3.x/dark.css');`;
+  // Apply the SwaggerDark theme from the Amoenus/SwaggerDark repo via jsDelivr CDN
+  // Using @import inside customCss is generally reliable across hosting setups.
+  const importDarkCss = `@import url('https://cdn.jsdelivr.net/gh/Amoenus/SwaggerDark@master/dist/swagger-dark.css');`;
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
     swaggerUrl: '/api-docs/swagger.json',
     customCss: importDarkCss
