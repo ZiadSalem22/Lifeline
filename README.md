@@ -1,5 +1,7 @@
 # Lifeline
 
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue?logo=github)](https://ZiadSalem22.github.io/Lifeline/)
+
 Lifeline is a modern, full‑stack task manager built with a Vite + React frontend and a Node.js + Express backend (SQLite for local persistence). This repository contains both frontend and backend code, CI workflows, and a simple deployment pipeline.
 
 This README is written to be CV-friendly: it highlights features, architecture, technical decisions, and step-by-step deployment instructions so recruiters and interviewers can quickly understand the project and run a live demo.
