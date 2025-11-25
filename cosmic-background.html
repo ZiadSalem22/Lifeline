@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Nebula Background - 4K</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+        }
+
+        .cosmic-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+
+        /* Star Field - Generated via JS */
+        .star-field {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+
+        .star.small {
+            width: 1px;
+            height: 1px;
+            box-shadow: 0 0 2px #fff;
+        }
+
+        .star.medium {
+            width: 2px;
+            height: 2px;
+            box-shadow: 0 0 3px #fff, 0 0 6px rgba(255, 255, 255, 0.5);
+        }
+
+        .star.large {
+            width: 3px;
+            height: 3px;
+            box-shadow: 0 0 4px #fff, 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+
+        .star.blue {
+            background: #aaccff;
+            box-shadow: 0 0 2px #aaccff, 0 0 4px rgba(170, 204, 255, 0.5);
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Main Nebula - Primary Swirling Mass */
+        .nebula {
+            position: absolute;
+            width: 180%;
+            height: 180%;
+            top: -40%;
+            right: -40%;
+            background: 
+                radial-gradient(ellipse 65% 45% at 35% 30%, 
+                    rgba(0, 255, 100, 0.5) 0%,
+                    rgba(50, 255, 130, 0.4) 15%,
+                    rgba(0, 255, 150, 0.3) 25%,
+                    rgba(0, 220, 120, 0.25) 35%,
+                    rgba(0, 200, 110, 0.2) 45%,
+                    rgba(0, 180, 100, 0.15) 55%,
+                    rgba(0, 150, 85, 0.1) 65%,
+                    rgba(0, 120, 70, 0.05) 75%,
+                    transparent 85%),
+                radial-gradient(ellipse 55% 40% at 50% 40%, 
+                    rgba(0, 255, 120, 0.4) 0%,
+                    rgba(0, 240, 130, 0.3) 20%,
+                    rgba(0, 220, 115, 0.25) 35%,
+                    rgba(0, 200, 105, 0.2) 50%,
+                    rgba(0, 180, 95, 0.15) 65%,
+                    transparent 80%),
+                radial-gradient(ellipse 50% 35% at 60% 50%, 
+                    rgba(0, 250, 135, 0.35) 0%,
+                    rgba(0, 230, 125, 0.28) 25%,
+                    rgba(0, 210, 115, 0.22) 45%,
+                    rgba(0, 190, 105, 0.18) 60%,
+                    transparent 80%);
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: nebulaRotate 50s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            transform-origin: 40% 40%;
+            mix-blend-mode: screen;
+        }
+
+        /* Secondary Nebula Layer - Depth */
+        .nebula-layer-2 {
+            position: absolute;
+            width: 160%;
+            height: 160%;
+            top: -30%;
+            left: -30%;
+            background: 
+                radial-gradient(ellipse 60% 50% at 55% 35%, 
+                    rgba(0, 255, 140, 0.3) 0%,
+                    rgba(0, 240, 130, 0.25) 20%,
+                    rgba(0, 230, 125, 0.2) 35%,
+                    rgba(0, 210, 115, 0.15) 50%,
+                    rgba(0, 190, 105, 0.12) 65%,
+                    transparent 80%),
+                radial-gradient(ellipse 45% 40% at 40% 50%, 
+                    rgba(0, 250, 135, 0.25) 0%,
+                    rgba(0, 230, 125, 0.2) 25%,
+                    rgba(0, 210, 115, 0.16) 45%,
+                    rgba(0, 190, 105, 0.12) 60%,
+                    transparent 75%);
+            border-radius: 50%;
+            filter: blur(120px);
+            animation: nebulaRotate 65s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+            transform-origin: 50% 50%;
+            mix-blend-mode: screen;
+        }
+
+        /* Accent Nebula - Bottom Right */
+        .nebula-accent {
+            position: absolute;
+            width: 140%;
+            height: 140%;
+            bottom: -20%;
+            right: -20%;
+            background: 
+                radial-gradient(ellipse 55% 45% at 45% 45%, 
+                    rgba(0, 255, 110, 0.35) 0%,
+                    rgba(0, 240, 120, 0.28) 20%,
+                    rgba(0, 220, 110, 0.22) 40%,
+                    rgba(0, 200, 100, 0.18) 55%,
+                    rgba(0, 180, 90, 0.14) 70%,
+                    transparent 85%);
+            border-radius: 50%;
+            filter: blur(110px);
+            animation: nebulaPulse 42s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            transform-origin: 45% 45%;
+            mix-blend-mode: screen;
+        }
+
+        /* Bright Luminous Core */
+        .nebula-core {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            top: 25%;
+            right: 25%;
+            background: 
+                radial-gradient(circle at center, 
+                    rgba(220, 255, 220, 0.7) 0%,
+                    rgba(180, 255, 200, 0.55) 15%,
+                    rgba(150, 255, 180, 0.45) 25%,
+                    rgba(120, 255, 160, 0.35) 35%,
+                    rgba(100, 255, 150, 0.28) 45%,
+                    rgba(80, 255, 140, 0.22) 55%,
+                    rgba(60, 255, 130, 0.18) 65%,
+                    rgba(40, 255, 120, 0.12) 75%,
+                    transparent 85%);
+            border-radius: 50%;
+            filter: blur(70px);
+            animation: corePulse 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            transform-origin: center center;
+            mix-blend-mode: screen;
+        }
+
+        /* Swirling Spiral Arms */
+        .nebula-arm {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .nebula-arm::before,
+        .nebula-arm::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+        }
+
+        .nebula-arm::before {
+            width: 90%;
+            height: 90%;
+            top: 5%;
+            left: 5%;
+            background: 
+                radial-gradient(ellipse 25% 65% at 25% 45%, 
+                    rgba(0, 255, 130, 0.25) 0%,
+                    rgba(0, 240, 125, 0.2) 30%,
+                    rgba(0, 220, 115, 0.16) 50%,
+                    rgba(0, 200, 105, 0.12) 65%,
+                    transparent 80%);
+            filter: blur(85px);
+            animation: armRotate1 55s linear infinite;
+            transform-origin: 30% 40%;
+            mix-blend-mode: screen;
+        }
+
+        .nebula-arm::after {
+            width: 85%;
+            height: 85%;
+            bottom: 7%;
+            right: 7%;
+            background: 
+                radial-gradient(ellipse 30% 60% at 75% 55%, 
+                    rgba(0, 245, 125, 0.22) 0%,
+                    rgba(0, 230, 120, 0.18) 30%,
+                    rgba(0, 210, 110, 0.15) 50%,
+                    rgba(0, 190, 100, 0.12) 65%,
+                    transparent 80%);
+            filter: blur(90px);
+            animation: armRotate2 70s linear infinite;
+            transform-origin: 70% 60%;
+            mix-blend-mode: screen;
+        }
+
+        /* Additional Depth Layer */
+        .nebula-depth {
+            position: absolute;
+            width: 130%;
+            height: 130%;
+            top: -15%;
+            left: -15%;
+            background: 
+                radial-gradient(ellipse 50% 45% at 50% 50%, 
+                    rgba(0, 240, 120, 0.2) 0%,
+                    rgba(0, 220, 115, 0.15) 30%,
+                    rgba(0, 200, 110, 0.12) 50%,
+                    transparent 75%);
+            border-radius: 50%;
+            filter: blur(130px);
+            animation: depthFloat 60s ease-in-out infinite;
+            transform-origin: center center;
+            mix-blend-mode: screen;
+        }
+
+        /* Advanced Animations */
+        @keyframes nebulaRotate {
+            0% { 
+                transform: rotate(0deg) scale(1) translate(0, 0);
+            }
+            25% { 
+                transform: rotate(90deg) scale(1.08) translate(2%, -1%);
+            }
+            50% { 
+                transform: rotate(180deg) scale(1) translate(0, 0);
+            }
+            75% { 
+                transform: rotate(270deg) scale(1.08) translate(-2%, 1%);
+            }
+            100% { 
+                transform: rotate(360deg) scale(1) translate(0, 0);
+            }
+        }
+
+        @keyframes nebulaPulse {
+            0%, 100% { 
+                transform: scale(1) rotate(0deg) translate(0, 0);
+                opacity: 0.85;
+            }
+            25% { 
+                transform: scale(1.06) rotate(45deg) translate(1%, 1%);
+                opacity: 0.95;
+            }
+            50% { 
+                transform: scale(1.12) rotate(90deg) translate(0, 0);
+                opacity: 1;
+            }
+            75% { 
+                transform: scale(1.06) rotate(135deg) translate(-1%, -1%);
+                opacity: 0.95;
+            }
+        }
+
+        @keyframes corePulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.75;
+                filter: blur(70px) brightness(1);
+            }
+            25% { 
+                transform: scale(1.1);
+                opacity: 0.85;
+                filter: blur(65px) brightness(1.1);
+            }
+            50% { 
+                transform: scale(1.25);
+                opacity: 1;
+                filter: blur(60px) brightness(1.2);
+            }
+            75% { 
+                transform: scale(1.1);
+                opacity: 0.85;
+                filter: blur(65px) brightness(1.1);
+            }
+        }
+
+        @keyframes armRotate1 {
+            0% { 
+                transform: rotate(0deg) scale(1) translate(0, 0);
+            }
+            50% { 
+                transform: rotate(180deg) scale(1.15) translate(2%, -2%);
+            }
+            100% { 
+                transform: rotate(360deg) scale(1) translate(0, 0);
+            }
+        }
+
+        @keyframes armRotate2 {
+            0% { 
+                transform: rotate(0deg) scale(1) translate(0, 0);
+            }
+            50% { 
+                transform: rotate(-180deg) scale(1.12) translate(-2%, 2%);
+            }
+            100% { 
+                transform: rotate(-360deg) scale(1) translate(0, 0);
+            }
+        }
+
+        @keyframes depthFloat {
+            0%, 100% { 
+                transform: translate(0, 0) scale(1);
+                opacity: 0.6;
+            }
+            33% { 
+                transform: translate(2%, -1%) scale(1.05);
+                opacity: 0.75;
+            }
+            66% { 
+                transform: translate(-1%, 2%) scale(1.05);
+                opacity: 0.75;
+            }
+        }
+
+        /* Performance Optimizations */
+        .cosmic-container,
+        .nebula,
+        .nebula-layer-2,
+        .nebula-accent,
+        .nebula-core,
+        .nebula-arm,
+        .nebula-depth {
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            isolation: isolate;
+        }
+
+        .star {
+            will-change: opacity, transform;
+            backface-visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="cosmic-container">
+        <div class="star-field" id="starField"></div>
+        <div class="nebula"></div>
+        <div class="nebula-layer-2"></div>
+        <div class="nebula-depth"></div>
+        <div class="nebula-accent"></div>
+        <div class="nebula-core"></div>
+        <div class="nebula-arm"></div>
+    </div>
+
+    <script>
+        // Generate high-density star field for 4K quality
+        function createStarField() {
+            const starField = document.getElementById('starField');
+            const starCount = Math.floor(window.innerWidth * window.innerHeight / 8000); // Adaptive density
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                // Random size distribution
+                const sizeRand = Math.random();
+                if (sizeRand < 0.7) {
+                    star.classList.add('small');
+                } else if (sizeRand < 0.9) {
+                    star.classList.add('medium');
+                } else {
+                    star.classList.add('large');
+                }
+                
+                // Occasional blue stars
+                if (Math.random() < 0.15) {
+                    star.classList.add('blue');
+                }
+                
+                // Random position
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                
+                // Random animation delay for natural twinkling
+                star.style.animationDelay = Math.random() * 3 + 's';
+                star.style.animationDuration = (2 + Math.random() * 4) + 's';
+                
+                starField.appendChild(star);
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', createStarField);
+        
+        // Regenerate on resize for optimal quality
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const starField = document.getElementById('starField');
+                starField.innerHTML = '';
+                createStarField();
+            }, 250);
+        });
+    </script>
+</body>
+</html>

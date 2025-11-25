@@ -1,0 +1,673 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+[data-theme='white'] {
+    /* Light theme - Refined */
+    --color-primary: rgb(48, 199, 99);
+    --color-primary-dark: rgb(40, 160, 80);
+    --color-primary-light: rgb(60, 220, 110);
+    --color-accent: #007AFF; /* Apple Blue for accents */
+    --color-bg: #FFFFFF;
+    --color-surface: #F7F7F7;
+    --color-surface-light: #EFEFEF;
+    --color-surface-hover: #E9E9E9;
+    --color-text: #1d1d1f;
+    --color-text-muted: #86868b;
+    --color-border: #DCDCDC;
+    --color-border-hover: #C8C8C8;
+    --color-danger: #ef4444;
+    --shadow-primary: rgba(48, 199, 99, 0.3);
+    --shadow-dark: rgba(0, 0, 0, 0.1);
+
+    /* Font variables */
+    --font-family-base: "DM Sans", sans-serif;
+    --font-family-heading: "Space Grotesk", sans-serif;
+    --font-size-base: 0.875rem;
+    --font-size-heading: 1.875rem;
+    --font-size-subheading: 1.125rem;
+
+    /* Transitions */
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Border Radius */
+    --border-radius-small: 8px;
+    --border-radius-medium: 12px;
+    --border-radius-large: 16px;
+
+    --color-top-bar-bg: rgba(255, 255, 255, 0.7);
+    --search-focus: rgba(48, 199, 99, 0.18);
+}
+
+[data-theme='dark'] {
+    --color-primary: #00ff41;
+    /* Neon green */
+    --color-primary-dark: #00cc33;
+    --color-primary-light: #33ff66;
+    --color-accent: #00ff88;
+    --color-bg: #000000;
+    /* Pure black */
+    --color-surface: #0d0d0d;
+    --color-surface-light: #1a1a1a;
+    --color-surface-hover: #262626;
+    --color-text: #ffffff;
+    --color-text-muted: #999999;
+    --color-border: #333333;
+    --color-border-hover: #4d4d4d;
+    --color-danger: #ef4444;
+    --shadow-primary: rgba(0, 255, 65, 0.6);
+    --shadow-dark: rgba(0, 0, 0, 0.9);
+
+    --color-top-bar-bg: rgba(0, 0, 0, 0.7);
+    --search-focus: rgba(0, 255, 65, 0.18);
+}
+
+/* New Color Themes */
+
+/* Pink Theme */
+[data-theme='pink'] {
+    --color-primary: #FF69B4;
+    --color-primary-dark: #FF1493;
+    --color-primary-light: #FFB6C1;
+    --color-accent: #FF69B4;
+    --color-bg: #FFF0F5;
+    --color-surface: #FFE4E1;
+    --color-surface-light: #FFF5EE;
+    --color-surface-hover: #FFDAB9;
+    --color-text: #6A0D45;
+    --color-text-muted: #8B4513;
+    --color-border: #FFC0CB;
+    --color-border-hover: #FFB6C1;
+    --color-danger: #DC143C;
+    --shadow-primary: rgba(255, 105, 180, 0.4);
+    --shadow-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Red Theme */
+[data-theme='red'] {
+    --color-primary: #DC143C;
+    --color-primary-dark: #8B0000;
+    --color-primary-light: #FF4500;
+    --color-accent: #DC143C;
+    --color-bg: #FFF5EE;
+    --color-surface: #FA8072;
+    --color-surface-light: #FFA07A;
+    --color-surface-hover: #FF7F50;
+    --color-text: #8B0000;
+    --color-text-muted: #A52A2A;
+    --color-border: #FF6347;
+    --color-border-hover: #FF4500;
+    --color-danger: #FF0000;
+    --shadow-primary: rgba(220, 20, 60, 0.4);
+    --shadow-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Blue Theme */
+[data-theme='blue'] {
+    --color-primary: #1E90FF;
+    --color-primary-dark: #0000CD;
+    --color-primary-light: #87CEFA;
+    --color-accent: #1E90FF;
+    --color-bg: #F0F8FF;
+    --color-surface: #ADD8E6;
+    --color-surface-light: #B0E0E6;
+    --color-surface-hover: #87CEEB;
+    --color-text: #00008B;
+    --color-text-muted: #4682B4;
+    --color-border: #87CEFA;
+    --color-border-hover: #00BFFF;
+    --color-danger: #FF0000;
+    --shadow-primary: rgba(30, 144, 255, 0.4);
+    --shadow-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Midnight Theme */
+[data-theme='midnight'] {
+    --color-primary: #8A2BE2; /* Blue-Violet */
+    --color-primary-dark: #4B0082; /* Indigo */
+    --color-primary-light: #9370DB; /* Medium Purple */
+    --color-accent: #8A2BE2;
+    --color-bg: #191970; /* Midnight Blue */
+    --color-surface: #2c2c84;
+    --color-surface-light: #3e3e96;
+    --color-surface-hover: #4f4fa8;
+    --color-text: #E6E6FA; /* Lavender */
+    --color-text-muted: #B0C4DE; /* Light Steel Blue */
+    --color-border: #483D8B; /* Dark Slate Blue */
+    --color-border-hover: #6A5ACD; /* Slate Blue */
+    --color-danger: #FF6347; /* Tomato */
+    --shadow-primary: rgba(138, 43, 226, 0.4);
+    --shadow-dark: rgba(0, 0, 0, 0.5);
+}
+
+/* Sunset Theme */
+[data-theme='sunset'] {
+    --color-primary: #FF8C00; /* Dark Orange */
+    --color-primary-dark: #FF4500; /* Orange-Red */
+    --color-primary-light: #FFA500; /* Orange */
+    --color-accent: #FF8C00;
+    --color-bg: #FFFAF0; /* Floral White */
+    --color-surface: #FFE4B5; /* Moccasin */
+    --color-surface-light: #FFDAB9; /* Peach Puff */
+    --color-surface-hover: #F0E68C; /* Khaki */
+    --color-text: #8B4513; /* Saddle Brown */
+    --color-text-muted: #A0522D; /* Sienna */
+    --color-border: #DEB887; /* Burly Wood */
+    --color-border-hover: #D2B48C; /* Tan */
+    --color-danger: #DC143C; /* Crimson */
+    --shadow-primary: rgba(255, 140, 0, 0.4);
+    --shadow-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Reset & Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    transition: background-color var(--transition-base),
+        color var(--transition-base),
+        border-color var(--transition-base);
+}
+
+body {
+    font-family: var(--font-family-base);
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-family-heading);
+}
+
+/* Disable transitions on theme change for instant switch */
+[data-theme] * {
+    transition: none !important;
+}
+
+/* Re-enable after theme change */
+body {
+    transition: background-color var(--transition-base);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+}
+
+/* Animations */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInHeightAuto {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px; /* Adjust as needed */
+  }
+}
+
+@keyframes rotateScaleInfinite {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(10deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(10deg) scale(1);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+/* Utility Classes */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+    animation: slideUp 0.4s ease-out;
+}
+
+.fade-in-scale-up {
+  animation: fadeInScaleUp 0.3s ease-out forwards;
+}
+
+.fade-in-slide-down {
+  animation: fadeInSlideDown 0.3s ease-out forwards;
+}
+
+.scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+.fade-in-height-auto {
+  animation: fadeInHeightAuto 0.3s ease-out forwards;
+  overflow: hidden;
+}
+
+.rotate-scale-infinite {
+  animation: rotateScaleInfinite 2s linear infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/* HD 8K GALAXY BACKGROUND SYSTEM                                             */
+/* -------------------------------------------------------------------------- */
+
+.galaxy-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: #000000;
+    overflow: hidden;
+    perspective: 1000px;
+}
+
+/* Layer 1: Distant Stars (Sharp, High Density) */
+.galaxy-stars-1 {
+    position: absolute;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image:
+        radial-gradient(1px 1px at 10% 10%, rgba(255, 255, 255, 0.8) 100%, transparent),
+        radial-gradient(1px 1px at 20% 20%, rgba(255, 255, 255, 0.6) 100%, transparent),
+        radial-gradient(1.5px 1.5px at 30% 30%, rgba(255, 255, 255, 0.7) 100%, transparent),
+        radial-gradient(1px 1px at 40% 40%, rgba(255, 255, 255, 0.9) 100%, transparent),
+        radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.5) 100%, transparent),
+        radial-gradient(1px 1px at 60% 60%, rgba(255, 255, 255, 0.8) 100%, transparent),
+        radial-gradient(1.5px 1.5px at 70% 70%, rgba(255, 255, 255, 0.6) 100%, transparent),
+        radial-gradient(1px 1px at 80% 80%, rgba(255, 255, 255, 0.7) 100%, transparent),
+        radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.9) 100%, transparent);
+    background-size: 500px 500px;
+    opacity: 0.6;
+    animation: drift 200s linear infinite;
+}
+
+/* Layer 2: Foreground Stars (Brighter, Twinkling) */
+.galaxy-stars-2 {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(2px 2px at 15% 15%, #ffffff 100%, transparent),
+        radial-gradient(2px 2px at 35% 65%, #ffffff 100%, transparent),
+        radial-gradient(3px 3px at 75% 25%, #ccffdd 100%, transparent),
+        radial-gradient(2px 2px at 85% 85%, #ffffff 100%, transparent);
+    background-size: 800px 800px;
+    opacity: 0.8;
+    animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+/* Layer 3: The Nebula (The "Green Galaxy" Spiral) */
+.galaxy-nebula {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 180vmax;
+    height: 180vmax;
+    transform: translate(-50%, -50%);
+    background:
+        /* Deep Green Gas */
+        conic-gradient(from 0deg at 50% 50%,
+            transparent 0deg,
+            rgba(0, 50, 0, 0.3) 20deg,
+            rgba(0, 255, 65, 0.1) 45deg,
+            transparent 70deg,
+            rgba(0, 50, 0, 0.3) 140deg,
+            rgba(0, 255, 65, 0.1) 165deg,
+            transparent 190deg,
+            rgba(0, 50, 0, 0.3) 260deg,
+            rgba(0, 255, 65, 0.1) 285deg,
+            transparent 310deg),
+        /* Bright Neon Arms */
+        radial-gradient(circle at 50% 50%,
+            rgba(0, 255, 65, 0.05) 20%,
+            transparent 60%);
+    filter: blur(60px) contrast(1.2);
+    opacity: 0.8;
+    animation: galaxySpin 160s linear infinite;
+    mix-blend-mode: screen;
+}
+
+/* Layer 4: The Core (Intense Bright Center) */
+.galaxy-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60vmax;
+    height: 40vmax;
+    transform: translate(-50%, -50%);
+    background:
+        radial-gradient(ellipse at center,
+            rgba(200, 255, 220, 1) 0%,
+            rgba(0, 255, 65, 0.8) 15%,
+            rgba(0, 180, 40, 0.4) 40%,
+            transparent 70%);
+    filter: blur(30px);
+    opacity: 0.9;
+    animation: corePulse 8s ease-in-out infinite alternate;
+    mix-blend-mode: screen;
+}
+
+/* Animations */
+@keyframes drift {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes galaxySpin {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes twinkle {
+    0% {
+        opacity: 0.6;
+        transform: scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+@keyframes corePulse {
+    0% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+        filter: blur(30px) brightness(1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+        filter: blur(35px) brightness(1.2);
+    }
+}
+
+/* TaskCard Button Hover Effects */
+.task-card-button {
+  transition: all var(--transition-fast);
+}
+
+.task-card-button:hover {
+  filter: brightness(1.2); /* Example subtle hover effect */
+}
+
+.task-card-button.delete-button:hover {
+  color: var(--color-danger);
+}
+
+.task-card-button.flag-button:not(.flagged):hover {
+  color: var(--color-danger);
+}
+
+.task-card-toggle-button:hover {
+  border-color: var(--color-primary) !important;
+}
+
+.task-card-wrapper:hover {
+  transform: scale(1.01); /* Softer pop */
+  border-color: var(--color-border-hover);
+  box-shadow: 0 10px 20px -5px var(--shadow-dark); /* Softer shadow */
+}
+
+/* Add Task Form Hover Effects */
+.add-task-form {
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border-radius: var(--border-radius-large);
+  border: 1px solid var(--color-border);
+}
+
+.add-task-form:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(0, 255, 65, 0.1);
+}
+
+/* Progress Bar Fill Animation */
+.progress-bar-fill {
+  transition: width 0.5s ease-out;
+}
+
+/* Button Hover Scale Animation */
+.button-hover-scale {
+  transition: transform 0.1s ease-out, background 0.1s ease-out, border-color 0.1s ease-out, color 0.1s ease-out;
+}
+
+.button-hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.button-hover-scale:active {
+  transform: scale(0.95);
+}
+
+/* Button Hover Scale with Background Animation */
+.button-hover-scale-bg {
+  transition: transform 0.1s ease-out, background 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+
+.button-hover-scale-bg:hover {
+  transform: scale(1.02);
+  background: var(--color-primary-dark);
+  box-shadow: 0 10px 15px -3px var(--shadow-primary);
+}
+
+.button-hover-scale-bg:active {
+  transform: scale(0.98);
+}
+
+/* Tag Button Fade In and Scale Animation */
+.tag-button-fade-in-scale {
+  animation: fadeInScale 0.2s ease-out forwards;
+  transition: transform 0.1s ease-out, background 0.1s ease-out, border-color 0.1s ease-out, color 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+
+.tag-button-fade-in-scale:hover {
+  transform: scale(1.05);
+}
+
+.tag-button-fade-in-scale:active {
+  transform: scale(0.95);
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tag Fade In and Slide Right Animation */
+@keyframes tagFadeInSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tag-fade-in-slide-right {
+  animation: tagFadeInSlideRight 0.2s ease-out forwards;
+}
+
+/* Add Task Form Animation */
+@keyframes addTaskFormEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.add-task-form-animation {
+  animation: addTaskFormEnter 0.3s ease-out forwards;
+}
+
+/* TaskCard Enter/Exit Animations */
+.task-card-enter-exit {
+  transition: opacity 0.1s ease-out, transform 0.15s ease-out;
+}
+
+.task-card-enter-exit.entering {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.task-card-enter-exit.entered {
+  opacity: 1;
+  transform: translateY(0px);
+}
+
+.task-card-enter-exit.exiting {
+  opacity: 0;
+  transform: translateX(-100px);
+  height: 0;
+}
+
+/* CheckIcon Enter/Exit Animations */
+.check-icon-enter-exit {
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.check-icon-enter-exit.entering {
+  transform: scale(0) rotate(-180deg);
+  opacity: 0;
+}
+
+.check-icon-enter-exit.entered {
+  transform: scale(1) rotate(0deg);
+  opacity: 1;
+}
+
+.check-icon-enter-exit.exiting {
+  transform: scale(0) rotate(180deg);
+  opacity: 0;
+}
+
+/* TaskCard Hover Actions Animation */
+.task-card-hover-actions {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.task-card-hover-actions.visible {
+  opacity: 1;
+  transform: translateX(0);
+}

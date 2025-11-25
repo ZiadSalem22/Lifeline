@@ -1,0 +1,70 @@
+# Node
+node_modules/
+
+# Vite / build
+/dist
+/frontend/dist
+/backend/dist
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# dotenv
+.env
+.env.*
+
+# SQLite DB
+*.db
+todos_v4.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+*.local
+
+# Temporary
+.cache/
+
+# Lockfiles (if you prefer not to include)
+# package-lock.json
+yarn.lock
+.pnpm-debug.log
+
+# Mac specific
+*.DS_Store
+
+# Windows specific
+Thumbs.db
+
+# Editor temp files
+*~
+
+# Ensure build artifacts are ignored
+frontend/dist/
+
+# Ignore environment-specific sqlite files in backend
+backend/*.db
+backend/**/*.db
+
+# Ignore generated assets
+dist/
+
+# JetBrains
+*.iml
+
+# End of file
+\n# Ensure node_modules and DBs are ignored\nnode_modules/\n**/node_modules/\n*.db\nbackend/*.db\n
