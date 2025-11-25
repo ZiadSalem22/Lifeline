@@ -107,11 +107,12 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  height: calc(100vh - 69px); /* below top bar */
+  /* Desktop: keep the sidebar under the top bar */
+  height: calc(100vh - 69px);
   left: 0;
-  top: 69px;
-  z-index: 10;
-  transition: left 0.3s ease, width 0.3s ease, background 0.3s ease;
+  top: 69px; /* below the fixed top bar */
+  z-index: 10; /* beneath the top bar (top bar z-index ~60) */
+  transition: left 0.3s ease, width 0.3s ease, background 0.3s ease, transform 0.3s ease;
   overflow-y: auto;
   border-right: 1px solid var(--color-border);
 }
@@ -182,12 +183,19 @@
   .sidebar {
     left: -100%;
     width: clamp(240px, 80vw, 300px);
-    z-index: 100;
+    /* Mobile: ensure drawer spans full viewport from the very top */
+    top: 0;
+    height: 100vh;
+    z-index: 10001; /* ensure sidebar sits above the overlay on mobile */
     box-shadow: 0 8px 32px -4px rgba(0,0,0,0.5);
+    pointer-events: auto;
   }
 
   .sidebar.open {
     left: 0;
+    /* ensure open state keeps high stacking and receives pointer events */
+    z-index: 10001;
+    pointer-events: auto;
   }
 
   .sidebar-overlay {
@@ -195,7 +203,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 99;
+    z-index: 10000; /* just below the sidebar */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease-out;
@@ -204,5 +212,17 @@
   .sidebar-overlay.open {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  /* When sidebar is open, optionally push the page content to the right
+     to mimic an iOS-style full-height drawer that moves content aside. */
+  .has-open-sidebar .main-content {
+    transform: translateX(clamp(240px, 80vw, 300px));
+    transition: transform 0.3s ease;
+  }
+
+  .has-open-sidebar .top-bar {
+    transform: translateX(clamp(240px, 80vw, 300px));
+    transition: transform 0.3s ease;
   }
 }

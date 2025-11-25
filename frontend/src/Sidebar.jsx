@@ -1,5 +1,7 @@
 import { useMediaQuery } from './useMediaQuery';
+import { useEffect } from 'react';
 import { SunIcon, MoonIcon, SearchIcon, CloseIcon, StatsIcon, HomeIcon, SettingsIcon } from './Icons';
+import { createPortal } from 'react-dom';
 import ModernCalendar from './ModernCalendar';
 import { format, addDays } from 'date-fns';
 
@@ -47,7 +49,15 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
         else onSelectDate(dayStr);
     };
 
-    return (
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const root = document.documentElement;
+        if (isOpen) root.classList.add('has-open-sidebar');
+        else root.classList.remove('has-open-sidebar');
+        return () => root.classList.remove('has-open-sidebar');
+    }, [isOpen]);
+
+    const portal = (
         <>
             <div
                 className={`sidebar-overlay ${isOpen ? 'open' : ''}`}
@@ -205,6 +215,14 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
             </aside>
         </>
     );
+
+    // Mount the overlay and sidebar at the document body so it is outside
+    // any layout containers and can cover the full viewport (top:0).
+    if (typeof document !== 'undefined') {
+        return createPortal(portal, document.body);
+    }
+
+    return portal;
 };
 
 export default Sidebar;
