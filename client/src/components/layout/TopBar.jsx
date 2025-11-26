@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { SearchIcon, SettingsIcon, MenuIcon } from '../../icons/Icons';
 import './TopBar.css';
 
@@ -11,6 +12,7 @@ const TopBar = (props) => {
         onOpenSidebar,
         isMobileSidebarOpen
     } = props;
+    const { loginWithRedirect, logout, isAuthenticated } = useAuth();
     return (
         <header className="top-bar">
             <div className="top-bar-main">
@@ -47,14 +49,25 @@ const TopBar = (props) => {
                     <button type="button" className="top-bar-button top-bar-settings" onClick={onOpenSettings} title="Settings">
                         <SettingsIcon />
                     </button>
-                    <button
-                        type="button"
-                        className="top-bar-button top-bar-login"
-                        onClick={onLoginClick}
-                        title="Login"
-                    >
-                        Login
-                    </button>
+                    {!isAuthenticated ? (
+                        <button
+                            type="button"
+                            className="top-bar-button top-bar-login"
+                            onClick={() => loginWithRedirect()}
+                            title="Login"
+                        >
+                            Login
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="top-bar-button top-bar-login"
+                            onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                            title="Logout"
+                        >
+                            Logout
+                        </button>
+                    )}
                 </div>
             </div>
         </header>

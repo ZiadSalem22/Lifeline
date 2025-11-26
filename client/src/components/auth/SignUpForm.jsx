@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const SignUpForm = ({ onSwitchToSignIn, onBack }) => {
+const SignUpForm = ({ onSwitchToSignIn, onBack, onAuth }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -8,12 +8,9 @@ const SignUpForm = ({ onSwitchToSignIn, onBack }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (password !== confirm) {
-      alert('Passwords do not match');
-      return;
+    if (typeof onAuth === 'function') {
+      onAuth();
     }
-    // mock submit
-    alert(`Mock sign up: ${name} <${email}>`);
   };
 
   return (

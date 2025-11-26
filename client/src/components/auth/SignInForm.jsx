@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 
-const SignInForm = ({ onSwitchToSignUp, onBack }) => {
+const SignInForm = ({ onSwitchToSignUp, onBack, onAuth }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // mock submit - will integrate with backend later
-    alert(`Mock sign in: ${email}`);
+    if (typeof onAuth === 'function') {
+      onAuth();
+    }
   };
 
   return (
