@@ -18,6 +18,8 @@ createRoot(document.getElementById('root')).render(
         audience,
         redirect_uri: window.location.origin
       }}
+      cacheLocation="localstorage"
+      useRefreshTokens={true}
     >
       <BrowserRouter basename={import.meta.env.BASE_URL || '/'}>
         <App />
