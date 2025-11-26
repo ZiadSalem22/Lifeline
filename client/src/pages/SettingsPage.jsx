@@ -1,9 +1,13 @@
+import React from 'react';
+import AppLayout from '../components/layout/AppLayout';
 import { Settings } from '../components/settings';
 
-const SettingsPage = (props) => (
-  <section style={{ padding: '32px 0' }}>
-    <Settings {...props} />
-  </section>
-);
+const SettingsPage = ({ sidebarProps = {}, topBarProps = {}, settingsProps = {} }) => {
+  return (
+    <AppLayout sidebarProps={sidebarProps} topBarProps={topBarProps}>
+      <Settings {...settingsProps} />
+    </AppLayout>
+  );
+};
 
 export default SettingsPage;

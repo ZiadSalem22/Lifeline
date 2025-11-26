@@ -1,17 +1,24 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
 import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo, getPendingNotifications } from '../utils/api';
 import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
 import AdvancedSearch from '../components/search/AdvancedSearch';
-import Statistics from '../components/statistics/Statistics';
+import AdvancedSearchPage from '../pages/AdvancedSearchPage';
+import StatisticsPage from '../pages/StatisticsPage';
+import SettingsPage from '../pages/SettingsPage';
 import { Settings, ExportImport } from '../components/settings';
 import RecurrenceSelector from '../components/calendar/RecurrenceSelector';
 import DashboardPage from '../pages/DashboardPage';
 import AuthPage from '../pages/AuthPage';
 
 function App() {
+    // Modal state for new tag creation
+    const [showNewTagModal, setShowNewTagModal] = useState(false);
+    const [newTagName, setNewTagName] = useState('');
+    const [newTagColor, setNewTagColor] = useState('#6C63FF');
   const [todos, setTodos] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [inputDescription, setInputDescription] = useState('');
@@ -530,22 +537,35 @@ function App() {
     <>
       <Routes>
         <Route path="/search" element={
-          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-            <AdvancedSearch
-              onBack={() => navigate('/')}
-              onOpenTodo={(todo) => {
-                try { handleStartEdit(todo); } catch (e) {}
-                navigate('/');
-              }}
-            />
-          </DashboardPage>
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              onBack: () => navigate('/'),
+              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+            }}
+          />
+        } />
+
+        <Route path="/advanced-search" element={
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              onBack: () => navigate('/'),
+              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+            }}
+          />
+        } />
+
+        <Route path="/statistics" element={
+          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
         } />
 
         <Route path="/stats" element={
-          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-            <Statistics onBack={() => navigate('/')} />
-          </DashboardPage>
+          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
         } />
+
 
         <Route path="/auth" element={
           <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
@@ -1057,46 +1077,189 @@ function App() {
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '8px'
+                      gap: '8px',
+                      alignItems: 'center'
                     }}
                   >
-                      {tags.map((tag, i) => (
+                    {/* Plus icon button for new tag */}
+                    <button
+                      type="button"
+                      aria-label="Add new tag"
+                      onClick={() => setShowNewTagModal(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        border: '1.5px solid var(--color-border)',
+                        background: 'var(--color-surface-light)',
+                        color: 'var(--color-primary)',
+                        fontSize: 20,
+                        cursor: 'pointer',
+                        marginRight: 2,
+                        boxShadow: '0 2px 8px 0 var(--shadow-light)'
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="10" y1="4" x2="10" y2="16" />
+                        <line x1="4" y1="10" x2="16" y2="10" />
+                      </svg>
+                    </button>
+                    {/* Tag buttons */}
+                    {tags.map((tag, i) => (
+                      <button
+                        key={tag.id}
+                        className="tag-button-fade-in-scale"
+                        type="button"
+                        onClick={() => toggleTagSelection(tag)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: `1px solid ${tag.color}`,
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          transition: 'all 0.1s ease-out',
+                          background: selectedTags.find(t => t.id === tag.id) ? 'var(--color-surface-hover)' : 'transparent',
+                          color: selectedTags.find(t => t.id === tag.id) ? tag.color : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          boxShadow: selectedTags.find(t => t.id === tag.id) ? '0 10px 15px -3px var(--shadow-dark)' : 'none'
+                        }}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                    {tags.length === 0 && (
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: 'var(--color-text-muted)',
+                        margin: 0
+                      }}>
+                        No tags yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+                  {/* Render New Tag Modal at the end of App for full overlay */}
+                  {showNewTagModal && (
+                    <div
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 1200,
+                        background: 'rgba(0,0,0,0.32)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background 0.2s',
+                      }}
+                      onClick={() => setShowNewTagModal(false)}
+                    >
+                      <div
+                        style={{
+                          background: 'var(--color-surface)',
+                          borderRadius: 18,
+                          boxShadow: '0 8px 32px 0 var(--shadow-dark)',
+                          padding: '32px 28px 24px 28px',
+                          minWidth: 340,
+                          maxWidth: 400,
+                          width: '90vw',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 18,
+                          position: 'relative',
+                          animation: 'fadeInScale 0.18s cubic-bezier(.4,1.3,.6,1)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                      >
                         <button
-                          key={tag.id}
-                          className="tag-button-fade-in-scale"
                           type="button"
-                          onClick={() => toggleTagSelection(tag)}
+                          aria-label="Close"
+                          onClick={() => setShowNewTagModal(false)}
                           style={{
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            border: `1px solid ${tag.color}`,
-                            fontSize: '0.875rem',
-                            fontWeight: '500',
-                            transition: 'all 0.1s ease-out',
-                            background: selectedTags.find(t => t.id === tag.id) ? 'var(--color-surface-hover)' : 'transparent',
-                            color: selectedTags.find(t => t.id === tag.id) ? tag.color : 'var(--color-text-muted)',
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            fontSize: 22,
                             cursor: 'pointer',
-                            boxShadow: selectedTags.find(t => t.id === tag.id) ? '0 10px 15px -3px var(--shadow-dark)' : 'none'
+                            zIndex: 2
                           }}
                         >
-                          {tag.name}
+                          ×
                         </button>
-                      ))}
-                      {tags.length === 0 && (
-                        <p style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--color-text-muted)',
-                          margin: 0
-                        }}>
-                          No tags yet. <button type="button" onClick={() => setShowSettings(true)} style={{
-                            color: 'var(--color-primary)',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            textDecoration: 'underline'
-                          }}>Create one</button>
-                        </p>
-                      )}
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)' }}>Create New Tag</h3>
+                        <input
+                          type="text"
+                          placeholder="Tag name"
+                          value={newTagName}
+                          onChange={e => setNewTagName(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: '1px solid var(--color-border)',
+                            fontSize: '1rem',
+                            marginBottom: 8,
+                          }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <label style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>Color:</label>
+                          <input
+                            type="color"
+                            value={newTagColor}
+                            onChange={e => setNewTagColor(e.target.value)}
+                            style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.95rem', color: newTagColor }}>{newTagColor}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowNewTagModal(false)}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-surface-light)',
+                              color: 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!newTagName.trim()) return;
+                              try {
+                                const newTag = await createTag(newTagName.trim(), newTagColor);
+                                setTags(prev => [...prev, newTag]);
+                                setShowNewTagModal(false);
+                                setNewTagName('');
+                                setNewTagColor('#6C63FF');
+                              } catch (err) {
+                                alert('Failed to create tag.');
+                              }
+                            }}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-primary)',
+                              color: 'var(--color-bg)',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                            disabled={!newTagName.trim()}
+                          >
+                            Create
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
               </div>

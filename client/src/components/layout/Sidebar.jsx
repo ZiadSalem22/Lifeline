@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { NavLink } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { SunIcon, MoonIcon, SearchIcon, CloseIcon, StatsIcon, HomeIcon, SettingsIcon } from '../../icons/Icons';
 import ModernCalendar from '../calendar/ModernCalendar';
@@ -99,29 +100,61 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'stretch', width: '100%' }}>
                     {/* Quick actions row (no settings) - moved above calendar */}
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <SlimButton onClick={() => onNavigate && onNavigate('home')} title="Home">
-                            <HomeIcon />
-                        </SlimButton>
-                        <SlimButton onClick={() => onNavigate && onNavigate('search')} title="Advanced Search">
-                            <SearchIcon />
-                        </SlimButton>
-                        <SlimButton onClick={() => onNavigate && onNavigate('stats')} title="Statistics">
-                            <StatsIcon width={16} height={16} />
-                        </SlimButton>
+                        <NavLink to="/" style={({ isActive }) => ({ textDecoration: 'none' })} end>
+                            {({ isActive }) => (
+                                <SlimButton title="Home" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
+                                    <HomeIcon />
+                                </SlimButton>
+                            )}
+                        </NavLink>
+
+                        <NavLink to="/search" style={({ isActive }) => ({ textDecoration: 'none' })}>
+                            {({ isActive }) => (
+                                <SlimButton title="Advanced Search" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
+                                    <SearchIcon />
+                                </SlimButton>
+                            )}
+                        </NavLink>
+
+                        <NavLink to="/statistics" style={({ isActive }) => ({ textDecoration: 'none' })}>
+                            {({ isActive }) => (
+                                <SlimButton title="Statistics" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
+                                    <StatsIcon width={16} height={16} />
+                                </SlimButton>
+                            )}
+                        </NavLink>
+
                                                 {isMobile ? (
                                                     // Show appearance and settings toggle inside sidebar on mobile (settings rightmost)
                                                     <>
                                                         <SlimButton onClick={toggleTheme} title="Toggle Light/Dark Mode">
                                                             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
                                                         </SlimButton>
-                                                        <SlimButton onClick={() => onOpenSettings && onOpenSettings()} title="Settings">
+                                                        <SlimButton
+                                                            title="Settings"
+                                                            onClick={() => {
+                                                                onOpenSettings && onOpenSettings();
+                                                                if (isMobile && onClose) onClose();
+                                                            }}
+                                                        >
                                                             <SettingsIcon />
                                                         </SlimButton>
                                                     </>
                                                 ) : (
-                                                    <SlimButton onClick={toggleTheme} title="Toggle Light/Dark Mode">
-                                                        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-                                                    </SlimButton>
+                                                    <>
+                                                        <SlimButton onClick={toggleTheme} title="Toggle Light/Dark Mode">
+                                                            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                                                        </SlimButton>
+                                                        <SlimButton
+                                                            title="Settings"
+                                                            onClick={() => {
+                                                                onOpenSettings && onOpenSettings();
+                                                                if (!isMobile && onClose) onClose();
+                                                            }}
+                                                        >
+                                                            <SettingsIcon />
+                                                        </SlimButton>
+                                                    </>
                                                 )}
                     </div>
 
