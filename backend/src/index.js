@@ -1,8 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const { checkJwt } = require('./middleware/auth0');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const SQLiteTodoRepository = require('./infrastructure/SQLiteTodoRepository');
 const SQLiteTagRepository = require('./infrastructure/SQLiteTagRepository');
@@ -21,6 +24,7 @@ const port = 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use('/api', checkJwt);
 
 // Swagger UI (auto-served at /api-docs)
 try {
@@ -97,6 +101,16 @@ const createTag = new CreateTag(tagRepository);
 const listTags = new ListTags(tagRepository);
 const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
+
+// Auth probe
+app.get('/api/me', (req, res) => {
+    const payload = req.auth?.payload || {};
+    res.json({
+        sub: payload.sub,
+        email: payload.email,
+        claims: payload
+    });
+});
 
 // Todo Routes
 app.get('/api/todos', async (req, res) => {
@@ -462,6 +476,10 @@ app.delete('/api/notifications/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// Fallback handlers
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Start Server
 app.listen(port, () => {

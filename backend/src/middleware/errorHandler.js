@@ -10,6 +10,20 @@
 const logger = require('../config/logger');
 const { AppError } = require('../utils/errors');
 
+const mapOAuthError = (err) => {
+    if (!err) return null;
+
+    if (err.name === 'InvalidRequestError') {
+        return new AppError('Missing or invalid Authorization header. Provide a valid Bearer token.', 401);
+    }
+
+    if (err.code === 'invalid_token' || err.name === 'UnauthorizedError') {
+        return new AppError('Invalid or expired access token.', 401);
+    }
+
+    return null;
+};
+
 /**
  * Global error handling middleware
  * 
@@ -19,7 +33,7 @@ const { AppError } = require('../utils/errors');
  * @param {Express.NextFunction} next - Express next function
  */
 const errorHandler = (err, req, res, next) => {
-    let error = err;
+    let error = mapOAuthError(err) || err;
 
     // Convert non-AppError errors to AppError
     if (!(error instanceof AppError)) {
