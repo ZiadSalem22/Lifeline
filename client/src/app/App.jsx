@@ -13,6 +13,7 @@ import { Settings, ExportImport } from '../components/settings';
 import RecurrenceSelector from '../components/calendar/RecurrenceSelector';
 import DashboardPage from '../pages/DashboardPage';
 import AuthPage from '../pages/AuthPage';
+import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 function App() {
     // Modal state for new tag creation
@@ -537,33 +538,41 @@ function App() {
     <>
       <Routes>
         <Route path="/search" element={
-          <AdvancedSearchPage
-            sidebarProps={sidebarProps}
-            topBarProps={topBarProps}
-            searchProps={{
-              onBack: () => navigate('/'),
-              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
-            }}
-          />
+          <ProtectedRoute>
+            <AdvancedSearchPage
+              sidebarProps={sidebarProps}
+              topBarProps={topBarProps}
+              searchProps={{
+                onBack: () => navigate('/'),
+                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+              }}
+            />
+          </ProtectedRoute>
         } />
 
         <Route path="/advanced-search" element={
-          <AdvancedSearchPage
-            sidebarProps={sidebarProps}
-            topBarProps={topBarProps}
-            searchProps={{
-              onBack: () => navigate('/'),
-              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
-            }}
-          />
+          <ProtectedRoute>
+            <AdvancedSearchPage
+              sidebarProps={sidebarProps}
+              topBarProps={topBarProps}
+              searchProps={{
+                onBack: () => navigate('/'),
+                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+              }}
+            />
+          </ProtectedRoute>
         } />
 
         <Route path="/statistics" element={
-          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+          <ProtectedRoute>
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+          </ProtectedRoute>
         } />
 
         <Route path="/stats" element={
-          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+          <ProtectedRoute>
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+          </ProtectedRoute>
         } />
 
 
@@ -574,7 +583,8 @@ function App() {
         } />
 
         <Route path="/" element={
-          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+          <ProtectedRoute>
+            <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
             {/* Saved toast */}
             {savedMessage && (
               <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
@@ -1342,6 +1352,7 @@ function App() {
 
               </div>
             </DashboardPage>
+          </ProtectedRoute>
           } />
 
       </Routes>

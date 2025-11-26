@@ -3,7 +3,7 @@ import SignInForm from './SignInForm';
 import SignUpForm from './SignUpForm';
 import '../../styles/auth.css';
 
-const Auth = ({ onBack }) => {
+const Auth = ({ onBack, onAuthAction }) => {
   const [mode, setMode] = useState('signup');
 
   return (
@@ -19,9 +19,9 @@ const Auth = ({ onBack }) => {
 
         <div className="auth-body">
           {mode === 'signin' ? (
-            <SignInForm onSwitchToSignUp={() => setMode('signup')} onBack={onBack} />
+            <SignInForm onSwitchToSignUp={() => setMode('signup')} onBack={onBack} onAuth={onAuthAction} />
           ) : (
-            <SignUpForm onSwitchToSignIn={() => setMode('signin')} onBack={onBack} />
+            <SignUpForm onSwitchToSignIn={() => setMode('signin')} onBack={onBack} onAuth={onAuthAction} />
           )}
         </div>
       </div>
