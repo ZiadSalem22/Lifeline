@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
 import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo, getPendingNotifications } from '../utils/api';
@@ -43,6 +44,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
+  const navigate = useNavigate();
   
   // New feature states
   const [selectedFilterTags, setSelectedFilterTags] = useState([]);
@@ -440,7 +442,7 @@ function App() {
     searchQuery,
     setSearchQuery,
     onOpenSettings: () => setShowSettings(true),
-    onOpenLogin: () => setCurrentPage('auth'),
+    onOpenLogin: () => navigate('/auth'),
     onNavigate: setCurrentPage,
     theme,
     setTheme: handleThemeChange,
@@ -453,7 +455,7 @@ function App() {
     setSearchQuery,
     onOpenSidebar: () => setIsMobileSidebarOpen(true),
     isMobileSidebarOpen,
-    onLoginClick: () => setCurrentPage('auth'),
+    onLoginClick: () => navigate('/auth'),
   };
 
   const settingsProps = {

@@ -1,8 +1,8 @@
 import Auth from '../components/auth/Auth';
 
-const AuthPage = ({ onBack }) => (
+const AuthPage = () => (
   <section style={{ padding: '32px 0' }}>
-    <Auth onBack={onBack} />
+    <Auth onBack={() => window.history.back()} />
   </section>
 );
 

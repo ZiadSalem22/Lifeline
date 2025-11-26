@@ -1,58 +1,32 @@
-const Auth = ({ onBack }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-    <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center', padding: '48px 24px', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.06)' }}>
-      <h1 style={{ fontFamily: 'var(--font-family-heading)', color: 'var(--color-text)', marginBottom: '8px' }}>Sign Up</h1>
-      <p style={{ color: 'var(--color-text-muted)', marginBottom: '20px' }}>Create an account to sync your tasks across devices. (Mock page)</p>
+import React, { useState } from 'react';
+import SignInForm from './SignInForm';
+import SignUpForm from './SignUpForm';
+import '../../styles/auth.css';
 
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '16px' }}>
-        <button
-          type="button"
-          onClick={() => alert('Mock Sign Up clicked')}
-          style={{
-            padding: '10px 18px',
-            borderRadius: '10px',
-            border: 'none',
-            background: 'var(--color-primary)',
-            color: 'var(--color-bg)',
-            cursor: 'pointer',
-            fontWeight: 600
-          }}
-        >
-          Sign Up
-        </button>
+const Auth = ({ onBack }) => {
+  const [mode, setMode] = useState('signup');
 
-        <button
-          type="button"
-          onClick={() => alert('Mock Sign In clicked')}
-          style={{
-            padding: '10px 18px',
-            borderRadius: '10px',
-            border: '1px solid var(--color-border)',
-            background: 'transparent',
-            color: 'var(--color-text)',
-            cursor: 'pointer'
-          }}
-        >
-          Sign In
-        </button>
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-tabs">
+            <button className={mode === 'signin' ? 'auth-tab active' : 'auth-tab'} onClick={() => setMode('signin')}>Sign In</button>
+            <button className={mode === 'signup' ? 'auth-tab active' : 'auth-tab'} onClick={() => setMode('signup')}>Sign Up</button>
+          </div>
+          <p className="auth-sub">{mode === 'signin' ? 'Welcome back — please sign in to continue.' : 'Create an account to sync your tasks across devices.'}</p>
+        </div>
+
+        <div className="auth-body">
+          {mode === 'signin' ? (
+            <SignInForm onSwitchToSignUp={() => setMode('signup')} onBack={onBack} />
+          ) : (
+            <SignUpForm onSwitchToSignIn={() => setMode('signin')} onBack={onBack} />
+          )}
+        </div>
       </div>
-
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          padding: '8px 12px',
-          borderRadius: '8px',
-          border: '1px solid var(--color-border)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-text)',
-          cursor: 'pointer'
-        }}
-      >
-        Back to dashboard
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 export default Auth;
