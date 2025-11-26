@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useNavigate, Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
 import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo, getPendingNotifications } from '../utils/api';
@@ -43,6 +44,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
+  const navigate = useNavigate();
   
   // New feature states
   const [selectedFilterTags, setSelectedFilterTags] = useState([]);
@@ -440,7 +442,7 @@ function App() {
     searchQuery,
     setSearchQuery,
     onOpenSettings: () => setShowSettings(true),
-    onOpenLogin: () => setCurrentPage('auth'),
+    onOpenLogin: () => navigate('/auth'),
     onNavigate: setCurrentPage,
     theme,
     setTheme: handleThemeChange,
@@ -453,7 +455,7 @@ function App() {
     setSearchQuery,
     onOpenSidebar: () => setIsMobileSidebarOpen(true),
     isMobileSidebarOpen,
-    onLoginClick: () => setCurrentPage('auth'),
+    onLoginClick: () => navigate('/auth'),
   };
 
   const settingsProps = {
@@ -523,694 +525,666 @@ function App() {
     );
   }
 
-  // If user navigates to advanced search, render a focused search page
-  if (currentPage === 'search') {
-    return (
-      <>
-        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-          <AdvancedSearch
-            onBack={() => setCurrentPage('home')}
-            onOpenTodo={(todo) => {
-              try { handleStartEdit(todo); } catch (e) {}
-              setCurrentPage('home');
-            }}
-          />
-        </DashboardPage>
-        {commonOverlays}
-      </>
-    );
-  }
-
-  // Statistics full-page view
-  if (currentPage === 'stats') {
-    return (
-      <>
-        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-          <Statistics onBack={() => setCurrentPage('home')} />
-        </DashboardPage>
-        {commonOverlays}
-      </>
-    );
-  }
-
-  if (currentPage === 'auth') {
-    return (
-      <>
-        <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-          <AuthPage onBack={() => setCurrentPage('home')} />
-        </DashboardPage>
-        {commonOverlays}
-      </>
-    );
-  }
-
+  // Use react-router routes so the URL controls the view
   return (
     <>
-      <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-        {/* Saved toast */}
-        {savedMessage && (
-          <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
-            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', color: 'var(--color-text)', fontWeight: 600 }}>
-              {savedMessage}
-            </div>
-          </div>
-        )}
-        {/* menu button relocated into TopBar */}
-        {/* Header with Progress */}
-        <div
-          className="fade-in-slide-down"
-          style={{ marginBottom: '48px' }}
-        >
-          <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <h1 className="header-title" style={{
-              fontFamily: 'var(--font-family-heading)',
-              fontWeight: 'bold',
-              color: 'var(--color-text)',
-              margin: 0
-            }}>
-              {title}
-            </h1>
-            {durationString && (
-              <span
-                className="scale-in"
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-primary)',
-                  border: '1px solid var(--color-border)'
-                }}
-              >
-                {durationString}
-              </span>
-            )}
-          </div>
+      <Routes>
+        <Route path="/search" element={
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            <AdvancedSearch
+              onBack={() => navigate('/')}
+              onOpenTodo={(todo) => {
+                try { handleStartEdit(todo); } catch (e) {}
+                navigate('/');
+              }}
+            />
+          </DashboardPage>
+        } />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-base)', margin: 0 }}>
-              {completedCount} of {filteredTodos.length} completed
-            </p>
-            {filteredTodos.length > 0 && (
-              <div style={{ flex: 1, maxWidth: '300px' }}>
-                <div style={{
-                  height: '6px',
-                  background: 'var(--color-surface)',
-                  borderRadius: '9999px',
-                  overflow: 'hidden'
-                }}>
-                  <div
-                    className="progress-bar-fill"
-                    style={{
-                      height: '100%',
-                      background: 'var(--color-primary)',
-                      borderRadius: '9999px',
-                      width: `${progress}%`
-                    }}
-                  />
+        <Route path="/stats" element={
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            <Statistics onBack={() => navigate('/')} />
+          </DashboardPage>
+        } />
+
+        <Route path="/auth" element={
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            <AuthPage onBack={() => navigate('/')} />
+          </DashboardPage>
+        } />
+
+        <Route path="/" element={
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            {/* Saved toast */}
+            {savedMessage && (
+              <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', color: 'var(--color-text)', fontWeight: 600 }}>
+                  {savedMessage}
                 </div>
               </div>
-            )}
-          </div>
-          
-          {/* Filter and Sort Controls */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Tag Filter */}
-            {tags.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
-                {tags.map(tag => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedFilterTags(prev =>
-                        prev.includes(tag.id)
-                          ? prev.filter(id => id !== tag.id)
-                          : [...prev, tag.id]
-                      );
-                    }}
+                )}
+              <div
+                className="fade-in-slide-down"
+                style={{ marginBottom: '48px' }}
+              >
+              <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <h1 className="header-title" style={{
+                  fontFamily: 'var(--font-family-heading)',
+                  fontWeight: 'bold',
+                  color: 'var(--color-text)',
+                  margin: 0
+                }}>
+                  {title}
+                </h1>
+                {durationString && (
+                  <span
+                    className="scale-in"
                     style={{
                       padding: '4px 12px',
-                      borderRadius: '8px',
-                      fontSize: '0.75rem',
-                      border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
-                      background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
-                      color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border)'
                     }}
                   >
-                    {tag.name}
-                  </button>
-                ))}
-                {selectedFilterTags.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFilterTags([])}
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '0.75rem',
-                      color: 'var(--color-text-muted)',
-                      background: 'transparent',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Clear
-                  </button>
+                    {durationString}
+                  </span>
                 )}
               </div>
-            )}
-            
-            {/* Sort Dropdown */}
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-              style={{
-                padding: '6px 12px',
-                paddingRight: '32px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
-              <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
-              <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
-              <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
-            </select>
-            
-          </div>
-        </div>        {/* Add Task Form */}
-        <form
-          className="add-task-form add-task-form-animation"
-          onSubmit={handleAdd}
-          style={{
-            marginBottom: '40px',
-            background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
-            backdropFilter: 'blur(12px) saturate(160%)',
-            borderRadius: '20px',
-            padding: '28px 28px 24px',
-            border: '1px solid var(--color-border)',
-            boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-            transition: 'box-shadow 0.3s ease',
-          }}
-        >
-          {/* Title on top, then description, then centered controls */}
-          <div style={{ marginBottom: '12px' }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Title — What do you want to accomplish?"
-              style={{
-                width: '100%',
-                background: 'var(--color-surface-light)',
-                color: 'var(--color-text)',
-                fontSize: '1.125rem',
-                fontFamily: 'var(--font-family-base)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '12px',
-                padding: '12px 14px',
-                outline: 'none',
-                boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
-                fontWeight: 600
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-            />
-          </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <textarea
-              value={inputDescription}
-              onChange={e => setInputDescription(e.target.value)}
-              placeholder="Add notes or description (optional)"
-              style={{
-                width: '100%',
-                minHeight: '64px',
-                background: 'var(--color-surface-light)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                padding: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.95rem',
-                outline: 'none',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-            <select
-              value={hours}
-              onChange={e => setHours(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                paddingRight: '32px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                fontFamily: 'var(--font-family-base)',
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'border-color 0.1s ease-out'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-            >
-              {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
-            </select>
-
-            <select
-              value={minutes}
-              onChange={e => setMinutes(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                paddingRight: '32px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                fontFamily: 'var(--font-family-base)',
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'border-color 0.1s ease-out'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-            >
-              {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
-            </select>
-
-            <button
-              type="button"
-              className="button-hover-scale"
-              onClick={() => setIsFlagged(!isFlagged)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                transition: 'all 0.1s ease-out',
-                border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
-                background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
-                color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                cursor: 'pointer'
-              }}
-            >
-              <FlagIcon filled={isFlagged} />
-            </button>
-
-            <button
-              type="button"
-              className="button-hover-scale"
-              onClick={() => setShowTagInput(!showTagInput)}
-              style={{
-                padding: '8px 12px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.875rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.1s ease-out'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-text)';
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-muted)';
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-              }}
-            >
-              #
-            </button>
-
-            <input
-              type="date"
-              value={scheduleDate}
-              onChange={(e) => setScheduleDate(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'border-color 0.1s ease-out'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-            />
-
-            <input
-              type="time"
-              value={dueTime}
-              onChange={(e) => setDueTime(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'border-color 0.1s ease-out'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              placeholder="Time"
-            />
-
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                paddingRight: '32px',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'border-color 0.1s ease-out'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-            >
-              <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
-              <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
-              <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
-            </select>
-
-            <button
-              type="button"
-              onClick={() => setShowRecurrenceSelector(true)}
-              title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
-              style={{
-                padding: '8px 16px',
-                background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
-                border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                borderRadius: '8px',
-                color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
-                fontWeight: currentRecurrence ? '600' : '500',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                transition: 'all 0.1s ease-out'
-              }}
-              onMouseEnter={(e) => {
-                if (!currentRecurrence) {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!currentRecurrence) {
-                  e.currentTarget.style.borderColor = 'var(--color-border)';
-                }
-              }}
-            >
-              {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
-            </button>
-
-            <button
-              type="submit"
-              className="button-hover-scale-bg"
-              style={{
-                padding: '10px 28px',
-                background: 'var(--color-primary)',
-                borderRadius: '14px',
-                color: 'var(--color-bg)',
-                fontWeight: '600',
-                fontSize: '0.9rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background 0.25s ease, transform 0.2s ease',
-                boxShadow: '0 6px 18px -6px var(--shadow-primary)',
-                margin: '12px auto 0'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--color-primary-dark)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--color-primary)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Add Task
-            </button>
-          </div>
-
-          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
-            {/* Subtasks */}
-            <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <input
-                  type="text"
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newSubtask.trim()) {
-                      e.preventDefault();
-                      setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
-                      setNewSubtask('');
-                    }
-                  }}
-                  placeholder="Add subtask..."
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-base)', margin: 0 }}>
+                  {completedCount} of {filteredTodos.length} completed
+                </p>
+                {filteredTodos.length > 0 && (
+                  <div style={{ flex: 1, maxWidth: '300px' }}>
+                    <div style={{
+                      height: '6px',
+                      background: 'var(--color-surface)',
+                      borderRadius: '9999px',
+                      overflow: 'hidden'
+                    }}>
+                      <div
+                        className="progress-bar-fill"
+                        style={{
+                          height: '100%',
+                          background: 'var(--color-primary)',
+                          borderRadius: '9999px',
+                          width: `${progress}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Filter and Sort Controls */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Tag Filter */}
+                {tags.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
+                    {tags.map(tag => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFilterTags(prev =>
+                            prev.includes(tag.id)
+                              ? prev.filter(id => id !== tag.id)
+                              : [...prev, tag.id]
+                          );
+                        }}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
+                          background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
+                          color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                    {selectedFilterTags.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFilterTags([])}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-muted)',
+                          background: 'transparent',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Sort Dropdown */}
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
                   style={{
-                    flex: 1,
+                    padding: '6px 12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
+                  <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
+                  <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
+                  <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
+                </select>
+                
+              </div>
+            </div>        {/* Add Task Form */}
+            <form
+              className="add-task-form add-task-form-animation"
+              onSubmit={handleAdd}
+              style={{
+                marginBottom: '40px',
+                background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
+                backdropFilter: 'blur(12px) saturate(160%)',
+                borderRadius: '20px',
+                padding: '28px 28px 24px',
+                border: '1px solid var(--color-border)',
+                boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
+                transition: 'box-shadow 0.3s ease',
+              }}
+            >
+              {/* Title on top, then description, then centered controls */}
+              <div style={{ marginBottom: '12px' }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Title — What do you want to accomplish?"
+                  style={{
+                    width: '100%',
+                    background: 'var(--color-surface-light)',
+                    color: 'var(--color-text)',
+                    fontSize: '1.125rem',
+                    fontFamily: 'var(--font-family-base)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    outline: 'none',
+                    boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
+                    fontWeight: 600
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <textarea
+                  value={inputDescription}
+                  onChange={e => setInputDescription(e.target.value)}
+                  placeholder="Add notes or description (optional)"
+                  style={{
+                    width: '100%',
+                    minHeight: '64px',
                     background: 'var(--color-surface-light)',
                     border: '1px solid var(--color-border)',
                     borderRadius: '8px',
-                    padding: '6px 12px',
+                    padding: '8px',
                     color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    outline: 'none'
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    resize: 'vertical'
                   }}
                 />
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                <select
+                  value={hours}
+                  onChange={e => setHours(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'var(--font-family-base)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'border-color 0.1s ease-out'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                >
+                  {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
+                </select>
+
+                <select
+                  value={minutes}
+                  onChange={e => setMinutes(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'var(--font-family-base',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'border-color 0.1s ease-out'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                >
+                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
+                </select>
+
                 <button
                   type="button"
-                  onClick={() => {
-                    if (newSubtask.trim()) {
-                      setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
-                      setNewSubtask('');
-                    }
-                  }}
+                  className="button-hover-scale"
+                  onClick={() => setIsFlagged(!isFlagged)}
                   style={{
-                    padding: '6px 12px',
-                    background: 'var(--color-primary)',
-                    border: 'none',
+                    padding: '8px 12px',
                     borderRadius: '8px',
-                    color: 'var(--color-bg)',
                     fontSize: '0.875rem',
+                    transition: 'all 0.1s ease-out',
+                    border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                    background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
+                    color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
                     cursor: 'pointer'
                   }}
                 >
-                  Add
+                  <FlagIcon filled={isFlagged} />
+                </button>
+
+                <button
+                  type="button"
+                  className="button-hover-scale"
+                  onClick={() => setShowTagInput(!showTagInput)}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s ease-out'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--color-text)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--color-text-muted)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }}
+                >
+                  #
+                </button>
+
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'border-color 0.1s ease-out'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                />
+
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'border-color 0.1s ease-out'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  placeholder="Time"
+                />
+
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'border-color 0.1s ease-out'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                >
+                  <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
+                  <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
+                  <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowRecurrenceSelector(true)}
+                  title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
+                  style={{
+                    padding: '8px 16px',
+                    background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
+                    border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    borderRadius: '8px',
+                    color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
+                    fontWeight: currentRecurrence ? '600' : '500',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s ease-out'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!currentRecurrence) {
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!currentRecurrence) {
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }
+                  }}
+                >
+                  {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
+                </button>
+
+                <button
+                  type="submit"
+                  className="button-hover-scale-bg"
+                  style={{
+                    padding: '10px 28px',
+                    background: 'var(--color-primary)',
+                    borderRadius: '14px',
+                    color: 'var(--color-bg)',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.25s ease, transform 0.2s ease',
+                    boxShadow: '0 6px 18px -6px var(--shadow-primary)',
+                    margin: '12px auto 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-primary-dark)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--color-primary)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Add Task
                 </button>
               </div>
-              {subtasks.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {subtasks.map((subtask, idx) => (
-                    <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
-                      <input
-                        type="checkbox"
-                        checked={subtask.isCompleted}
-                        onChange={() => {
-                          const updated = [...subtasks];
-                          updated[idx].isCompleted = !updated[idx].isCompleted;
-                          setSubtasks(updated);
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
-                        {subtask.title}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
-                        style={{
-                          padding: '4px 8px',
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--color-danger)',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem'
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Tags */}
-            {showTagInput && (
-              <div
-                className="fade-in-height-auto"
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '8px'
-                }}
-              >
-                  {tags.map((tag, i) => (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                {/* Subtasks */}
+                <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      value={newSubtask}
+                      onChange={(e) => setNewSubtask(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newSubtask.trim()) {
+                          e.preventDefault();
+                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                          setNewSubtask('');
+                        }
+                      }}
+                      placeholder="Add subtask..."
+                      style={{
+                        flex: 1,
+                        background: 'var(--color-surface-light)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        color: 'var(--color-text)',
+                        fontSize: '0.875rem',
+                        outline: 'none'
+                      }}
+                    />
                     <button
-                      key={tag.id}
-                      className="tag-button-fade-in-scale"
                       type="button"
-                      onClick={() => toggleTagSelection(tag)}
+                      onClick={() => {
+                        if (newSubtask.trim()) {
+                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                          setNewSubtask('');
+                        }
+                      }}
                       style={{
                         padding: '6px 12px',
+                        background: 'var(--color-primary)',
+                        border: 'none',
                         borderRadius: '8px',
-                        border: `1px solid ${tag.color}`,
+                        color: 'var(--color-bg)',
                         fontSize: '0.875rem',
-                        fontWeight: '500',
-                        transition: 'all 0.1s ease-out',
-                        background: selectedTags.find(t => t.id === tag.id) ? 'var(--color-surface-hover)' : 'transparent',
-                        color: selectedTags.find(t => t.id === tag.id) ? tag.color : 'var(--color-text-muted)',
-                        cursor: 'pointer',
-                        boxShadow: selectedTags.find(t => t.id === tag.id) ? '0 10px 15px -3px var(--shadow-dark)' : 'none'
+                        cursor: 'pointer'
                       }}
                     >
-                      {tag.name}
+                      Add
                     </button>
-                  ))}
-                  {tags.length === 0 && (
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: 'var(--color-text-muted)',
-                      margin: 0
-                    }}>
-                      No tags yet. <button type="button" onClick={() => setShowSettings(true)} style={{
-                        color: 'var(--color-primary)',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textDecoration: 'underline'
-                      }}>Create one</button>
-                    </p>
+                  </div>
+                  {subtasks.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {subtasks.map((subtask, idx) => (
+                        <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
+                          <input
+                            type="checkbox"
+                            checked={subtask.isCompleted}
+                            onChange={() => {
+                              const updated = [...subtasks];
+                              updated[idx].isCompleted = !updated[idx].isCompleted;
+                              setSubtasks(updated);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
+                            {subtask.title}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
+                            style={{
+                              padding: '4px 8px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              )}
-          </div>
-          </form>
 
-        {/* Task List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {filteredTodos.length === 0 && (
-            <div
-              className="fade-in-scale-up"
-              style={{
-                textAlign: 'center',
-                padding: '80px 0'
-              }}
-            >
-                <div
-                  className="rotate-scale-infinite"
-                  style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
-                >
-                  <SparklesIcon />
-                </div>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontFamily: 'var(--font-family-heading)',
-                  fontWeight: '600',
-                  color: 'var(--color-text)',
-                  marginBottom: '8px'
-                }}>
-                  All clear!
-                </h3>
-                <p style={{
-                  color: 'var(--color-text-muted)',
-                  fontFamily: 'var(--font-family-base)',
-                  margin: 0
-                }}>
-                  No tasks for {title.toLowerCase()}
-                </p>
+                {/* Tags */}
+                {showTagInput && (
+                  <div
+                    className="fade-in-height-auto"
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                      {tags.map((tag, i) => (
+                        <button
+                          key={tag.id}
+                          className="tag-button-fade-in-scale"
+                          type="button"
+                          onClick={() => toggleTagSelection(tag)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: `1px solid ${tag.color}`,
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                            transition: 'all 0.1s ease-out',
+                            background: selectedTags.find(t => t.id === tag.id) ? 'var(--color-surface-hover)' : 'transparent',
+                            color: selectedTags.find(t => t.id === tag.id) ? tag.color : 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            boxShadow: selectedTags.find(t => t.id === tag.id) ? '0 10px 15px -3px var(--shadow-dark)' : 'none'
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                      {tags.length === 0 && (
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: 'var(--color-text-muted)',
+                          margin: 0
+                        }}>
+                          No tags yet. <button type="button" onClick={() => setShowSettings(true)} style={{
+                            color: 'var(--color-primary)',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textDecoration: 'underline'
+                          }}>Create one</button>
+                        </p>
+                      )}
+                    </div>
+                  )}
               </div>
-            )}
+              </form>
 
-            {filteredTodos.map((todo, index) => (
-              <TaskCard
-                key={todo.id}
-                todo={todo}
-                index={index}
-                theme={theme}
-                onToggle={handleToggle}
-                onFlag={handleFlag}
-                onDelete={handleDelete}
-                formatDuration={formatDuration}
-                showDate={!!searchQuery.trim()}
-                onGoToDay={handleGoToDay}
-                isEditing={editingTodoId === todo.id}
-                editingTitle={editingTodoTitle}
-                editingDescription={editingTodoDescription}
-                editingTags={editingTodoTags}
-                setEditingTags={setEditingTodoTags}
-                editingSubtasks={editingTodoSubtasks}
-                setEditingSubtasks={setEditingTodoSubtasks}
-                editingPriority={editingTodoPriority}
-                setEditingPriority={setEditingTodoPriority}
-                editingDuration={editingTodoDuration}
-                setEditingDuration={setEditingTodoDuration}
-                allTags={tags}
-                onStartEdit={handleStartEdit}
-                onSaveEdit={handleSaveEdit}
-                onCancelEdit={handleCancelEdit}
-                setEditingTitle={setEditingTodoTitle}
-                setEditingDescription={setEditingTodoDescription}
-                onUpdatePriority={(id, priority) => handleUpdateTodo(id, { priority })}
-                onUpdateTodo={handleUpdateTodo}
-                onDragStart={(e, id) => {
-                  setDraggedTodoId(id);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }}
-                onDrop={async (e, targetId) => {
-                  e.preventDefault();
-                  if (draggedTodoId && draggedTodoId !== targetId) {
-                    const draggedIndex = filteredTodos.findIndex(t => t.id === draggedTodoId);
-                    const targetIndex = filteredTodos.findIndex(t => t.id === targetId);
-                    const newOrder = targetIndex + 1;
-                    await reorderTodo(draggedTodoId, newOrder);
-                    await loadTodos();
-                  }
-                  setDraggedTodoId(null);
-                }}
-                isExpanded={expandedTodoId === todo.id}
-                onToggleExpand={() => {
-                  setExpandedTodoId(expandedTodoId === todo.id ? null : todo.id);
-                }}
-                setTodos={setTodos}
-              />
-            ))}
-          </div>
-      </DashboardPage>
+            {/* Task List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {filteredTodos.length === 0 && (
+                <div
+                  className="fade-in-scale-up"
+                  style={{
+                    textAlign: 'center',
+                    padding: '80px 0'
+                  }}
+                >
+                    <div
+                      className="rotate-scale-infinite"
+                      style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
+                    >
+                      <SparklesIcon />
+                    </div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-family-heading)',
+                      fontWeight: '600',
+                      color: 'var(--color-text)',
+                      marginBottom: '8px'
+                    }}>
+                      All clear!
+                    </h3>
+                    <p style={{
+                      color: 'var(--color-text-muted)',
+                      fontFamily: 'var(--font-family-base)',
+                      margin: 0
+                    }}>
+                      No tasks for {title.toLowerCase()}
+                    </p>
+                  </div>
+                )}
+
+                {filteredTodos.map((todo, index) => (
+                  <TaskCard
+                    key={todo.id}
+                    todo={todo}
+                    index={index}
+                    theme={theme}
+                    onToggle={handleToggle}
+                    onFlag={handleFlag}
+                    onDelete={handleDelete}
+                    formatDuration={formatDuration}
+                    showDate={!!searchQuery.trim()}
+                    onGoToDay={handleGoToDay}
+                    isEditing={editingTodoId === todo.id}
+                    editingTitle={editingTodoTitle}
+                    editingDescription={editingTodoDescription}
+                    editingTags={editingTodoTags}
+                    setEditingTags={setEditingTodoTags}
+                    editingSubtasks={editingTodoSubtasks}
+                    setEditingSubtasks={setEditingTodoSubtasks}
+                    editingPriority={editingTodoPriority}
+                    setEditingPriority={setEditingTodoPriority}
+                    editingDuration={editingTodoDuration}
+                    setEditingDuration={setEditingTodoDuration}
+                    allTags={tags}
+                    onStartEdit={handleStartEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                    setEditingTitle={setEditingTodoTitle}
+                    setEditingDescription={setEditingTodoDescription}
+                    onUpdatePriority={handleUpdatePriority}
+                    onUpdateTodo={handleUpdateTodo}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    isExpanded={expandedTodoId === todo.id}
+                    onToggleExpand={() => toggleExpand(todo.id)}
+                    setTodos={setTodos}
+                  />
+                ))}
+
+              </div>
+            </DashboardPage>
+          } />
+
+      </Routes>
+
       {commonOverlays}
+
     </>
   );
 }

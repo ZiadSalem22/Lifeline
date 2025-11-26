@@ -1,26 +1,32 @@
-const Auth = ({ onBack }) => (
-  <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center', padding: '48px 24px' }}>
-    <h2 style={{ fontFamily: 'var(--font-family-heading)', color: 'var(--color-text)', marginBottom: '12px' }}>
-      Authentication Coming Soon
-    </h2>
-    <p style={{ color: 'var(--color-text-muted)', marginBottom: '24px' }}>
-      This placeholder keeps the layout ready for a future sign-in experience.
-    </p>
-    <button
-      type="button"
-      onClick={onBack}
-      style={{
-        padding: '10px 18px',
-        borderRadius: '10px',
-        border: '1px solid var(--color-border)',
-        background: 'var(--color-surface)',
-        color: 'var(--color-text)',
-        cursor: 'pointer'
-      }}
-    >
-      Back to dashboard
-    </button>
-  </div>
-);
+import React, { useState } from 'react';
+import SignInForm from './SignInForm';
+import SignUpForm from './SignUpForm';
+import '../../styles/auth.css';
+
+const Auth = ({ onBack }) => {
+  const [mode, setMode] = useState('signup');
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-tabs">
+            <button className={mode === 'signin' ? 'auth-tab active' : 'auth-tab'} onClick={() => setMode('signin')}>Sign In</button>
+            <button className={mode === 'signup' ? 'auth-tab active' : 'auth-tab'} onClick={() => setMode('signup')}>Sign Up</button>
+          </div>
+          <p className="auth-sub">{mode === 'signin' ? 'Welcome back — please sign in to continue.' : 'Create an account to sync your tasks across devices.'}</p>
+        </div>
+
+        <div className="auth-body">
+          {mode === 'signin' ? (
+            <SignInForm onSwitchToSignUp={() => setMode('signup')} onBack={onBack} />
+          ) : (
+            <SignUpForm onSwitchToSignIn={() => setMode('signin')} onBack={onBack} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Auth;
