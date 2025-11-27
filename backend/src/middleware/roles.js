@@ -1,7 +1,18 @@
 const { AppError } = require('../utils/errors');
 
-function requireAuth() {
+
+// Enhanced requireAuth: allow guest mode for todos/tags/me, block admin/paid
+function requireAuth(options = {}) {
+  // options: { allowGuest: boolean, guestModeResponse: boolean }
   return function (req, res, next) {
+    const isGuest = req.currentUser && req.currentUser.isGuest;
+    // Allow guest for certain routes
+    if (isGuest && options.allowGuest) {
+      if (options.guestModeResponse) {
+        return res.json({ mode: 'guest' });
+      }
+      return next();
+    }
     if (!req.currentUser || !req.currentUser.id) {
       return next(new AppError('Forbidden', 403));
     }

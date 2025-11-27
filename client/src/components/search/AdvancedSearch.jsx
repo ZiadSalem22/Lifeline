@@ -11,7 +11,7 @@ const formatDuration = (totalMinutes) => {
   return `${m}m`;
 };
 
-const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
+const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMode, guestTodos = [], guestTags = [] }) => {
   const [allTodos, setAllTodos] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [query, setQuery] = useState('');
@@ -34,8 +34,20 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
   const latestSearchIdRef = useRef(0);
   const [serverLoading, setServerLoading] = useState(false);
   const [monthLoaded, setMonthLoaded] = useState(false);
+  const lastTapRef = useRef(0);
+
+  const navigateToDay = useCallback((dueDate) => {
+    if (onGoToDay && dueDate) onGoToDay(dueDate);
+  }, [onGoToDay]);
 
   useEffect(() => {
+    if (guestMode) {
+      setAllTags(guestTags || []);
+      setAllTodos(guestTodos || []);
+      setMonthTodos(guestTodos || []);
+      setMonthLoaded(true);
+      return;
+    }
     if (!fetchWithAuth) {
       return;
     }
@@ -48,20 +60,42 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
       }
     };
     loadTags();
-    // Preload current month to enable fast client-side filtering
     (async () => {
       try {
         const now = new Date();
         const res = await fetchTodosForMonth(now.getFullYear(), now.getMonth() + 1, {}, fetchWithAuth);
-        // fetchTodosForMonth uses searchTodos and returns { todos, total, page, limit }
         if (res && res.todos) setMonthTodos(res.todos);
         setMonthLoaded(true);
       } catch (err) {
-        // non-fatal
         console.debug('Month preload failed', err.message || err);
+        // Fallback to locally available todos passed from parent
+        setMonthTodos(guestTodos || []);
+        setMonthLoaded(true);
       }
     })();
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode, guestTodos, guestTags]);
+
+  // When logged in and no filters, default results to monthTodos
+  useEffect(() => {
+    if (!guestMode && monthLoaded) {
+      const hasFilters = (
+        (query && query.trim().length > 0) ||
+        selectedTags.length > 0 ||
+        priority !== 'any' ||
+        status !== 'any' ||
+        flaggedOnly ||
+        startDate ||
+        endDate ||
+        minDuration ||
+        maxDuration
+      );
+      if (!hasFilters) {
+        setAllTodos(monthTodos || []);
+        setTotal((monthTodos || []).length);
+        setPage(1);
+      }
+    }
+  }, [guestMode, monthLoaded, monthTodos, query, selectedTags, priority, status, flaggedOnly, startDate, endDate, minDuration, maxDuration]);
 
   const toggleTag = (id) => {
     setSelectedTags(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -139,15 +173,26 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
         page: p,
         limit
       };
-      const results = await searchTodos(params, fetchWithAuth);
+      const hasFilters = Object.values(params).some(v => v !== undefined);
+      const results = hasFilters
+        ? await searchTodos(params, fetchWithAuth)
+        : await fetchTodosForMonth(new Date().getFullYear(), new Date().getMonth() + 1, {}, fetchWithAuth);
       // Only apply results if this is the latest search
       if (searchId === latestSearchIdRef.current) {
-        setAllTodos(results.todos || []);
-        setTotal(results.total || 0);
+        const list = results.todos || [];
+        setAllTodos(list);
+        setTotal((results.total !== undefined) ? results.total : list.length);
         setPage(results.page || p);
       }
     } catch (err) {
       console.error('Server-side search failed', err);
+      // Fallback: use locally available todos from parent so page still renders
+      if (searchId === latestSearchIdRef.current) {
+        const list = guestTodos || [];
+        setAllTodos(list);
+        setTotal(list.length);
+        setPage(1);
+      }
     } finally {
       if (searchId === latestSearchIdRef.current) setServerLoading(false);
     }
@@ -216,8 +261,15 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
   }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, performSearch, query, selectedTags, sortBy, startDate, status, endDate, priority]);
 
   return (
-    <div style={{ padding: '20px', paddingTop: '28px', minHeight: '80vh', maxWidth: '1100px', margin: '0 auto' }}>
-      <style>{`@media (max-width: 960px) { .adv-search-grid { grid-template-columns: 1fr !important; } .adv-search-aside { order: 2; } }`}</style>
+    <div style={{ padding: '28px', minHeight: '80vh', maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1000 }}>
+      <style>{`
+        /* Match Statistics page container behavior and prevent sidebar overlay */
+        @media (max-width: 1300px) {
+          .adv-search-grid { grid-template-columns: 1fr !important; }
+          .adv-search-aside { order: 2; }
+        }
+        .adv-search-container { position: relative; z-index: 1000; }
+      `}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -230,7 +282,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div className="adv-search-container" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '12px' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)' }} />
@@ -338,18 +390,43 @@ const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
 
         {/* Results */}
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflow: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflow: 'auto', position: 'relative', zIndex: 1000 }}>
             {(() => {
               const displayTodos = (clientResults && clientResults.length) ? clientResults : allTodos;
               return displayTodos.map(todo => (
-              <div key={todo.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px', borderRadius: '10px', background: 'var(--color-surface-light)', gap: '12px' }}>
+              <div
+                key={todo.id}
+                style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px', borderRadius: '10px', background: 'var(--color-surface-light)', gap: '12px', cursor: todo.dueDate ? 'pointer' : 'default' }}
+                onDoubleClick={() => navigateToDay(todo.dueDate)}
+                onTouchStart={(e) => {
+                  // Mobile emulator double-tap detection
+                  const now = Date.now();
+                  if (now - lastTapRef.current < 300) {
+                    e.preventDefault();
+                    navigateToDay(todo.dueDate);
+                  }
+                  lastTapRef.current = now;
+                }}
+              >
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flex: 1 }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input type="checkbox" checked={!!todo.isCompleted} onChange={() => handleToggleComplete(todo)} />
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{todo.title}</div>
+                      <span
+                        onDoubleClick={() => navigateToDay(todo.dueDate)}
+                        title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
+                        style={{
+                          fontWeight: 700,
+                          color: 'var(--color-text)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {todo.title}
+                      </span>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>{todo.dueDate ? todo.dueDate : 'No date'}</div>
                     </div>
                     {todo.description && <div style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{todo.description}</div>}

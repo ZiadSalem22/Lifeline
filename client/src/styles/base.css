@@ -179,6 +179,12 @@ body {
     overflow-x: hidden;
 }
 
+/* Global layout variables */
+:root {
+  /* Default desktop sidebar width; used to offset content */
+  --sidebar-width: 300px;
+}
+
 h1,
 h2,
 h3,
@@ -1122,5 +1128,19 @@ input[type="checkbox"]:focus {
   .has-open-sidebar .top-bar {
     transform: translateX(clamp(240px, 80vw, 300px));
     transition: transform 0.3s ease;
+  }
+}
+
+/* Desktop: permanently allocate space for the fixed sidebar */
+@media (min-width: 769px) {
+  .main-content {
+    margin-left: var(--sidebar-width);
+  }
+
+  /* Shift the fixed top bar so it doesn't sit under the sidebar */
+  .top-bar {
+    left: var(--sidebar-width);
+    right: 0;
+    width: auto;
   }
 }

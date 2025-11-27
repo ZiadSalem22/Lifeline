@@ -197,13 +197,19 @@ app.get('/api/notifications/pending', async (req, res) => {
 
 
 // /api/todos/* - requireAuth
-app.get('/api/todos', requireAuth(), async (req, res, next) => {
+app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const todos = await listTodos.execute();
         res.json(todos);
     } catch (err) { next(err); }
 });
-app.post('/api/todos', requireAuth(), async (req, res, next) => {
+app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
         const todo = await createTodo.execute(title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
@@ -249,14 +255,20 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
     } catch (err) { next(err); }
 });
-app.patch('/api/todos/:id/toggle', requireAuth(), async (req, res, next) => {
+app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { id } = req.params;
         const todo = await toggleTodo.execute(id);
         res.json(todo);
     } catch (err) { next(err); }
 });
-app.patch('/api/todos/:id/flag', requireAuth(), async (req, res, next) => {
+app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { id } = req.params;
         const todo = await todoRepository.findById(id);
@@ -266,7 +278,10 @@ app.patch('/api/todos/:id/flag', requireAuth(), async (req, res, next) => {
         res.json(todo);
     } catch (err) { next(err); }
 });
-app.delete('/api/todos/:id', requireAuth(), async (req, res, next) => {
+app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { id } = req.params;
         await deleteTodo.execute(id);
@@ -279,7 +294,10 @@ app.use('/api/admin', requireRole('admin'));
 app.use('/api/ai', requirePaid());
 
 // Tag Routes
-app.get('/api/tags', async (req, res) => {
+app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const tags = await listTags.execute();
         res.json(tags);
@@ -288,7 +306,10 @@ app.get('/api/tags', async (req, res) => {
     }
 });
 
-app.post('/api/tags', async (req, res) => {
+app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { name, color } = req.body;
         const tag = await createTag.execute(name, color);
@@ -309,7 +330,10 @@ app.patch('/api/tags/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/tags/:id', async (req, res) => {
+app.delete('/api/tags/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+    if (req.currentUser && req.currentUser.isGuest) {
+        return res.json({ mode: 'guest' });
+    }
     try {
         const { id } = req.params;
         await deleteTag.execute(id);
