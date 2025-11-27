@@ -12,5 +12,13 @@ class ToggleTodo {
         await this.todoRepository.save(todo);
         return todo;
     }
+    
+    async execute(userId, id) {
+        const todo = await this.todoRepository.findById(id, userId);
+        if (!todo) return null;
+        todo.toggle();
+        await this.todoRepository.save(todo);
+        return todo;
+    }
 }
 module.exports = ToggleTodo;

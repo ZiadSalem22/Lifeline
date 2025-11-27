@@ -3,8 +3,8 @@ class DeleteTodo {
         this.todoRepository = todoRepository;
     }
 
-    async execute(id) {
-        await this.todoRepository.delete(id);
+    async execute(userId, id) {
+        await this.todoRepository.delete(id, userId);
     }
 }
 module.exports = DeleteTodo;

@@ -5,8 +5,8 @@ class UpdateTodo {
         this.todoRepository = todoRepository;
     }
 
-    async execute(id, updates) {
-        const todo = await this.todoRepository.findById(id);
+    async execute(userId, id, updates) {
+        const todo = await this.todoRepository.findById(id, userId);
         if (!todo) {
             throw new Error('Todo not found');
         }

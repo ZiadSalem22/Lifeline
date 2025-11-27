@@ -7,8 +7,8 @@ class SearchTodos {
      * Execute search with a filters object.
      * Supported filters: q, tags (array), priority, status ('completed'|'active'), startDate, endDate, minDuration, maxDuration, flagged (boolean), sortBy
      */
-    async execute(filters = {}) {
-        return this.todoRepository.findByFilters(filters);
+    async execute(userId, filters = {}) {
+        return this.todoRepository.findByFilters({ ...filters, userId });
     }
 }
 

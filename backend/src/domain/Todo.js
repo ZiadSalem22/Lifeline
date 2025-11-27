@@ -1,5 +1,5 @@
 class Todo {
-    constructor(id, title, isCompleted = false, dueDate = null, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], order = 0, description = '', recurrence = null, nextRecurrenceDue = null, originalId = null) {
+    constructor(id, title, isCompleted = false, dueDate = null, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], order = 0, description = '', recurrence = null, nextRecurrenceDue = null, originalId = null, userId = null) {
         if (!title) throw new Error('Title cannot be empty');
         this.id = id;
         this.title = title;
@@ -16,6 +16,7 @@ class Todo {
         this.recurrence = recurrence; // { type: 'daily'|'weekly'|'monthly'|'custom', endDate: null|string, interval: 1 }
         this.nextRecurrenceDue = nextRecurrenceDue; // ISO string of when next recurrence is due
         this.originalId = originalId; // For tracking recurring task originals
+        this.userId = userId; // Owner user id
     }
 
     toggle() {

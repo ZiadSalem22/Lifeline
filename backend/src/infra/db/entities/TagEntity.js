@@ -6,7 +6,9 @@ module.exports = new EntitySchema({
     columns: {
         id: { type: 'varchar', primary: true },
         name: { type: 'nvarchar', nullable: false },
-        color: { type: 'nvarchar', nullable: false }
+        color: { type: 'nvarchar', nullable: false },
+        user_id: { type: 'nvarchar', length: 128, nullable: true },
+        is_default: { type: 'int', default: 0 },
     },
     relations: {
         todos: {

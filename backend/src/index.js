@@ -219,7 +219,7 @@ app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true })
         return res.json({ mode: 'guest' });
     }
     try {
-        const todos = await listTodos.execute();
+        const todos = await listTodos.execute(req.currentUser.id);
         res.json(todos);
     } catch (err) { next(err); }
 });
@@ -228,16 +228,16 @@ app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }
         return res.json({ mode: 'guest' });
     }
     try {
-        // Free tier limits enforcement
         const role = req.currentUser?.role || 'free';
+        const userId = req.currentUser.id;
         if (role === 'free') {
-            const currentCount = await todoRepository.countAll();
+            const currentCount = await todoRepository.countByUser(userId);
             if (currentCount >= 200) {
-                return next(new AppError('Task limit reached for free tier', 403));
+                return next(new AppError('Free tier max tasks reached.', 403));
             }
         }
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
-        const todo = await createTodo.execute(title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
+        const todo = await createTodo.execute(userId, title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
         res.status(201).json(todo);
     } catch (err) { next(err); }
 });
@@ -245,7 +245,7 @@ app.patch('/api/todos/:id/reorder', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { order } = req.body;
-        const todo = await todoRepository.findById(id);
+        const todo = await todoRepository.findById(id, req.currentUser.id);
         if (!todo) return next(new AppError('Todo not found', 404));
         todo.order = order;
         await todoRepository.save(todo);
@@ -256,7 +256,7 @@ app.patch('/api/todos/:id', requireAuth(), validateTodoUpdate, async (req, res, 
     try {
         const { id } = req.params;
         const updates = req.body;
-        const todo = await updateTodo.execute(id, updates);
+        const todo = await updateTodo.execute(req.currentUser.id, id, updates);
         res.json(todo);
     } catch (err) { next(err); }
 });
@@ -279,7 +279,7 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
         const limit = parseInt(req.query.limit || req.query.pageSize || '30', 10) || 30;
         const offset = (page - 1) * limit;
         const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset };
-        const results = await searchTodos.execute(filters);
+        const results = await searchTodos.execute(req.currentUser.id, filters);
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
     } catch (err) { next(err); }
 });
@@ -289,7 +289,7 @@ app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResp
     }
     try {
         const { id } = req.params;
-        const todo = await toggleTodo.execute(id);
+        const todo = await toggleTodo.execute(req.currentUser.id, id);
         res.json(todo);
     } catch (err) { next(err); }
 });
@@ -299,7 +299,7 @@ app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeRespon
     }
     try {
         const { id } = req.params;
-        const todo = await todoRepository.findById(id);
+        const todo = await todoRepository.findById(id, req.currentUser.id);
         if (!todo) return next(new AppError('Todo not found', 404));
         todo.toggleFlag();
         await todoRepository.save(todo);
@@ -312,7 +312,8 @@ app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: 
     }
     try {
         const { id } = req.params;
-        await deleteTodo.execute(id);
+        // ownership enforced by repository delete
+        await deleteTodo.execute(req.currentUser.id, id);
         res.status(204).send();
     } catch (err) { next(err); }
 });
@@ -344,7 +345,7 @@ app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }),
         return res.json({ mode: 'guest' });
     }
     try {
-        const tags = await listTags.execute();
+        const tags = await listTags.execute(req.currentUser.id);
         res.json(tags);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -357,25 +358,32 @@ app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true })
     }
     try {
         const role = req.currentUser?.role || 'free';
+        const userId = req.currentUser.id;
         if (role === 'free') {
-            const currentCount = await tagRepository.countAll();
+            const currentCount = await tagRepository.countByUser(userId);
             if (currentCount >= 50) {
-                return next(new AppError('Tag limit reached for free tier', 403));
+                return next(new AppError('Free tier max tags reached.', 403));
             }
         }
         const { name, color } = req.body;
-        const tag = await createTag.execute(name, color);
+        const tag = await createTag.execute(req.currentUser.id, name, color);
         res.status(201).json(tag);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 });
 
-app.patch('/api/tags/:id', async (req, res) => {
+app.patch('/api/tags/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { name, color } = req.body;
-        const tag = await updateTag.execute(id, name, color);
+        // ownership: ensure tag belongs to user if not default
+        const existing = await tagRepository.findById(id);
+        if (!existing) return next(new AppError('Tag not found', 404));
+        if (!existing.isDefault && existing.userId !== req.currentUser.id) {
+            return next(new AppError('Forbidden', 403));
+        }
+        const tag = await updateTag.execute(req.currentUser.id, id, name, color);
         res.json(tag);
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -6,8 +6,8 @@ class CreateTag {
         this.tagRepository = tagRepository;
     }
 
-    async execute(name, color) {
-        const tag = new Tag(uuidv4(), name, color);
+    async execute(userId, name, color) {
+        const tag = new Tag(uuidv4(), name, color, userId, false);
         await this.tagRepository.save(tag);
         return tag;
     }
@@ -18,8 +18,8 @@ class ListTags {
         this.tagRepository = tagRepository;
     }
 
-    async execute() {
-        return await this.tagRepository.findAll();
+    async execute(userId) {
+        return await this.tagRepository.findAllForUser(userId);
     }
 }
 
@@ -38,8 +38,8 @@ class UpdateTag {
         this.tagRepository = tagRepository;
     }
 
-    async execute(id, name, color) {
-        const tag = new Tag(id, name, color);
+    async execute(userId, id, name, color) {
+        const tag = new Tag(id, name, color, userId, false);
         await this.tagRepository.save(tag);
         return tag;
     }

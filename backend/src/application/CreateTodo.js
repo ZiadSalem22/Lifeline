@@ -8,7 +8,7 @@ class CreateTodo {
         this.todoRepository = todoRepository;
     }
 
-    async execute(title, dueDate, tags, isFlagged, duration, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null) {
+    async execute(userId, title, dueDate, tags, isFlagged, duration, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null) {
         // If no recurrence, just create one todo as before
         if (!recurrence) {
             const todo = new Todo(
@@ -24,7 +24,10 @@ class CreateTodo {
                 subtasks,
                 0,
                 description,
-                recurrence
+                recurrence,
+                null,
+                null,
+                userId
             );
             await this.todoRepository.save(todo);
             return todo;
@@ -79,21 +82,7 @@ class CreateTodo {
         // Create a todo for each date
         const todos = [];
         for (const date of dates) {
-            const todo = new Todo(
-                uuidv4(),
-                title,
-                false,
-                date,
-                tags,
-                isFlagged,
-                duration,
-                priority,
-                dueTime,
-                subtasks,
-                0,
-                description,
-                recurrence
-            );
+            const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
             await this.todoRepository.save(todo);
             todos.push(todo);
         }

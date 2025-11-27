@@ -25,7 +25,8 @@ class TypeORMTodoRepository extends ITodoRepository {
             order: todo.order || 0,
             recurrence: todo.recurrence ? JSON.stringify(todo.recurrence) : null,
             next_recurrence_due: todo.nextRecurrenceDue || null,
-            original_id: todo.originalId || null
+            original_id: todo.originalId || null,
+            user_id: todo.userId,
         };
 
         const tagIds = (todo.tags || []).map(t => t.id);
@@ -36,14 +37,14 @@ class TypeORMTodoRepository extends ITodoRepository {
         await this.repo.save({ ...entity, tags });
     }
 
-    async findById(id) {
-        const row = await this.repo.findOne({ where: { id }, relations: ['tags'] });
+    async findById(id, userId) {
+        const row = await this.repo.findOne({ where: { id, user_id: userId }, relations: ['tags'] });
         if (!row) return null;
         return this._mapRowToDomain(row);
     }
 
-    async findAll() {
-        const rows = await this.repo.find({ where: { archived: 0 }, relations: ['tags'] });
+    async findAll(userId) {
+        const rows = await this.repo.find({ where: { archived: 0, user_id: userId }, relations: ['tags'] });
         return rows.map(row => this._mapRowToDomain(row));
     }
 
@@ -60,13 +61,17 @@ class TypeORMTodoRepository extends ITodoRepository {
             flagged,
             sortBy,
             limit = 30,
-            offset = 0
+            offset = 0,
+            userId
         } = filters;
 
         const qb = this.repo.createQueryBuilder('todo')
             .leftJoinAndSelect('todo.tags', 'tag');
 
         qb.andWhere('ISNULL(todo.archived, 0) = 0');
+        if (userId) {
+            qb.andWhere('todo.user_id = :userId', { userId });
+        }
 
         if (q) {
             qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q)', { q: `%${q}%` });
@@ -122,25 +127,24 @@ class TypeORMTodoRepository extends ITodoRepository {
         return { todos, total };
     }
 
-    async delete(id) {
-        // Soft delete -> set archived = 1 and clear tags relation
-        const todo = await this.repo.findOne({ where: { id }, relations: ['tags'] });
+    async delete(id, userId) {
+        const todo = await this.repo.findOne({ where: { id, user_id: userId }, relations: ['tags'] });
         if (!todo) return;
         todo.tags = [];
         todo.archived = 1;
         await this.repo.save(todo);
     }
 
-    async archive(id) {
-        await this.repo.update({ id }, { archived: 1 });
+    async archive(id, userId) {
+        await this.repo.update({ id, user_id: userId }, { archived: 1 });
     }
 
-    async unarchive(id) {
-        await this.repo.update({ id }, { archived: 0 });
+    async unarchive(id, userId) {
+        await this.repo.update({ id, user_id: userId }, { archived: 0 });
     }
 
-    async countAll() {
-        return await this.repo.count();
+    async countByUser(userId) {
+        return await this.repo.count({ where: { user_id: userId, archived: 0 } });
     }
 
     _mapRowToDomain(row) {
@@ -162,7 +166,8 @@ class TypeORMTodoRepository extends ITodoRepository {
             row.description || '',
             recurrence,
             row.next_recurrence_due || null,
-            row.original_id || null
+            row.original_id || null,
+            row.user_id || null
         );
     }
 }

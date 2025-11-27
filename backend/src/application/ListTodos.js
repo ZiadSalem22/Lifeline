@@ -3,8 +3,8 @@ class ListTodos {
         this.todoRepository = todoRepository;
     }
 
-    async execute() {
-        return this.todoRepository.findAll();
+    async execute(userId) {
+        return this.todoRepository.findAll(userId);
     }
 }
 module.exports = ListTodos;
