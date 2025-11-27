@@ -1,16 +1,52 @@
-# React + Vite
+# Lifeline Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the Lifeline web client, a modern React app built with Vite. It provides a polished, mobile-first UI for managing todos, tags, and statistics, with full Guest Mode support (localStorage-only) and seamless integration with the Lifeline Node.js backend when logged in.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Guest Mode: create/update/toggle/flag/delete todos and tags stored in localStorage (no backend or auth required).
+- Advanced Search: multi-criteria search with month preload and robust client fallbacks when the server is unavailable.
+- Statistics: displays productivity insights; uses backend data when available, otherwise computes locally.
+- Calendar & Navigation: modern calendar and double-click/double-tap on search results to jump to the task date.
+- Sidebar & TopBar: responsive Apple-style header and drawer; global layout offset so content never sits under the sidebar.
+- Themes & Animations: light/dark themes, CSS variables, and smooth transitions with framer-motion.
 
-## React Compiler
+## Project Structure (client/)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `src/app/App.jsx`: main app orchestration, routing, global state.
+- `src/components/`: UI modules (layout, search, statistics, calendar, settings).
+- `src/utils/api.js`: backend API calls (used when authenticated).
+- `src/utils/guestApi.js`: localStorage-backed CRUD for Guest Mode.
+- `src/hooks/useGuestStorage.js`: helpers to safely read/write guest data.
+- `src/styles/base.css`: global styles, theme variables, and layout rules (includes `--sidebar-width`).
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Run the client locally (default Vite dev server at http://localhost:5173):
+
+```powershell
+cd client
+npm install
+npm run dev
+```
+
+If you also run the backend, it should be available at `http://localhost:3000/api`. The client will use authenticated API calls when logged in; otherwise it remains fully functional in Guest Mode.
+
+## Build
+
+```powershell
+cd client
+npm run build
+```
+
+## Key Behaviors
+
+- Auth transitions: on login/logout, guest localStorage (`guest_todos`, `guest_tags`) is cleared to prevent mixed sessions.
+- Advanced Search: empty filters default to current-month results; falls back to local data if server returns errors.
+- Statistics: tries server first; computes locally on failure.
+- Layout: desktop pages offset by `--sidebar-width`; TopBar shifts accordingly; mobile drawer uses overlay without covering content.
+
+## Notes
+
+- Ensure the backend URL in `src/utils/api.js` matches your deployed server if not using `http://localhost:3000`.
+- For production hosting, build and deploy the `client/dist` directory to your platform of choice.
