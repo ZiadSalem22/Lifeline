@@ -43,7 +43,7 @@ class TypeORMTodoRepository extends ITodoRepository {
     }
 
     async findAll() {
-        const rows = await this.repo.find({ relations: ['tags'] });
+        const rows = await this.repo.find({ where: { archived: 0 }, relations: ['tags'] });
         return rows.map(row => this._mapRowToDomain(row));
     }
 
@@ -65,6 +65,8 @@ class TypeORMTodoRepository extends ITodoRepository {
 
         const qb = this.repo.createQueryBuilder('todo')
             .leftJoinAndSelect('todo.tags', 'tag');
+
+        qb.andWhere('ISNULL(todo.archived, 0) = 0');
 
         if (q) {
             qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q)', { q: `%${q}%` });
@@ -121,13 +123,24 @@ class TypeORMTodoRepository extends ITodoRepository {
     }
 
     async delete(id) {
+        // Soft delete -> set archived = 1 and clear tags relation
         const todo = await this.repo.findOne({ where: { id }, relations: ['tags'] });
-        if (!todo) {
-            return;
-        }
+        if (!todo) return;
         todo.tags = [];
+        todo.archived = 1;
         await this.repo.save(todo);
-        await this.repo.delete({ id });
+    }
+
+    async archive(id) {
+        await this.repo.update({ id }, { archived: 1 });
+    }
+
+    async unarchive(id) {
+        await this.repo.update({ id }, { archived: 0 });
+    }
+
+    async countAll() {
+        return await this.repo.count();
     }
 
     _mapRowToDomain(row) {

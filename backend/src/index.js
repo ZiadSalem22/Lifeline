@@ -6,6 +6,8 @@ const path = require('path');
 const { checkJwt } = require('./middleware/auth0');
 const { errorHandler, notFoundHandler, AppError } = require('./middleware/errorHandler');
 const { attachCurrentUser } = require('./middleware/attachCurrentUser');
+const { createRateLimiter } = require('./middleware/rateLimit');
+const { validateTodoCreate, validateTodoUpdate } = require('./middleware/validateTodo');
 const { requireAuth, requireRole, requireRoleIn, requirePaid } = require('./middleware/roles');
 const logger = require('./config/logger');
 
@@ -158,6 +160,21 @@ const updateTag = new UpdateTag(tagRepository);
 // Secure API: checkJwt, then attachCurrentUser
 app.use('/api', checkJwt, attachCurrentUser);
 
+// Rate limits
+const todosLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    keyGenerator: (req) => (req.currentUser && req.currentUser.id) || req.ip,
+});
+const aiLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 10,
+    keyGenerator: (req) => (req.currentUser && req.currentUser.id) || req.ip,
+    exempt: (req) => Array.isArray(req.currentUser?.roles) && req.currentUser.roles.includes('admin'),
+});
+app.use('/api/todos', todosLimiter);
+app.use('/api/ai', aiLimiter);
+
 // /api/me - requireAuth
 app.get('/api/me', requireAuth(), (req, res) => {
     const user = req.currentUser || {};
@@ -206,11 +223,19 @@ app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true })
         res.json(todos);
     } catch (err) { next(err); }
 });
-app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
+app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), validateTodoCreate, async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
     }
     try {
+        // Free tier limits enforcement
+        const role = req.currentUser?.role || 'free';
+        if (role === 'free') {
+            const currentCount = await todoRepository.countAll();
+            if (currentCount >= 200) {
+                return next(new AppError('Task limit reached for free tier', 403));
+            }
+        }
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
         const todo = await createTodo.execute(title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
         res.status(201).json(todo);
@@ -227,7 +252,7 @@ app.patch('/api/todos/:id/reorder', requireAuth(), async (req, res, next) => {
         res.json(todo);
     } catch (err) { next(err); }
 });
-app.patch('/api/todos/:id', requireAuth(), async (req, res, next) => {
+app.patch('/api/todos/:id', requireAuth(), validateTodoUpdate, async (req, res, next) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -238,17 +263,20 @@ app.patch('/api/todos/:id', requireAuth(), async (req, res, next) => {
 app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
     try {
         const q = req.query.q || '';
-        const tags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags.split(',')) : [];
+        // support both 'tags' (array) and single 'tag'
+        let tags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags.split(',')) : [];
+        if (!tags.length && req.query.tag) tags = [req.query.tag];
         const priority = req.query.priority || null;
         const status = req.query.status || null;
-        const startDate = req.query.startDate || null;
-        const endDate = req.query.endDate || null;
+        // support dueDateFrom/dueDateTo aliases
+        const startDate = req.query.startDate || req.query.dueDateFrom || null;
+        const endDate = req.query.endDate || req.query.dueDateTo || null;
         const minDuration = req.query.minDuration || null;
         const maxDuration = req.query.maxDuration || null;
         const flagged = typeof req.query.flagged !== 'undefined' ? (req.query.flagged === '1' || req.query.flagged === 'true') : undefined;
         const sortBy = req.query.sortBy || null;
         const page = parseInt(req.query.page || '1', 10) || 1;
-        const limit = parseInt(req.query.limit || '30', 10) || 30;
+        const limit = parseInt(req.query.limit || req.query.pageSize || '30', 10) || 30;
         const offset = (page - 1) * limit;
         const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset };
         const results = await searchTodos.execute(filters);
@@ -311,6 +339,13 @@ app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true })
         return res.json({ mode: 'guest' });
     }
     try {
+        const role = req.currentUser?.role || 'free';
+        if (role === 'free') {
+            const currentCount = await tagRepository.countAll();
+            if (currentCount >= 50) {
+                return next(new AppError('Tag limit reached for free tier', 403));
+            }
+        }
         const { name, color } = req.body;
         const tag = await createTag.execute(name, color);
         res.status(201).json(tag);

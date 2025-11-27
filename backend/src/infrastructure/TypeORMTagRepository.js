@@ -30,6 +30,9 @@ class TypeORMTagRepository {
     async delete(id) {
         await this.repo.delete({ id });
     }
+    async countAll() {
+        return await this.repo.count();
+    }
 }
 
 module.exports = TypeORMTagRepository;

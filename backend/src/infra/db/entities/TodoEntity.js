@@ -4,20 +4,21 @@ module.exports = new EntitySchema({
     name: 'Todo',
     tableName: 'todos',
     columns: {
-        id: { type: 'varchar', primary: true },
-        title: { type: 'nvarchar', nullable: false },
-        description: { type: 'nvarchar', nullable: true },
-        due_date: { type: 'nvarchar', nullable: true },
+        id: { type: 'varchar', primary: true, length: 64 },
+        title: { type: 'nvarchar', length: 200, nullable: false },
+        description: { type: 'nvarchar', length: 2000, nullable: true },
+        due_date: { type: 'datetime', nullable: true },
         is_completed: { type: 'int', default: 0 },
         is_flagged: { type: 'int', default: 0 },
         duration: { type: 'int', default: 0 },
-        priority: { type: 'nvarchar', default: 'medium' },
-        due_time: { type: 'nvarchar', nullable: true },
-        subtasks: { type: 'nvarchar', default: '[]' },
+        priority: { type: 'nvarchar', length: 16, default: 'medium' },
+        due_time: { type: 'nvarchar', length: 16, nullable: true },
+        subtasks: { type: 'nvarchar', length: 'MAX', default: '[]' },
         order: { type: 'int', default: 0 },
-        recurrence: { type: 'nvarchar', nullable: true },
-        next_recurrence_due: { type: 'nvarchar', nullable: true },
-        original_id: { type: 'nvarchar', nullable: true }
+        recurrence: { type: 'nvarchar', length: 'MAX', nullable: true },
+        next_recurrence_due: { type: 'datetime', nullable: true },
+        original_id: { type: 'nvarchar', length: 64, nullable: true },
+        archived: { type: 'int', default: 0 }
     },
     relations: {
         tags: {
