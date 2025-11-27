@@ -30,17 +30,19 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture (Updated)
 
 ### Backend (`backend/`)
 
 - **Clean/Hexagonal Architecture:**
   - `src/application/`: Use cases (business logic, e.g., CreateTodo, RecurrenceService, NotificationService)
-  - `src/domain/`: Entities (Todo, Tag, User) and repository interfaces
-  - `src/infrastructure/`: Data persistence (TypeORM, SQLite, User/Tag repositories)
+  - `src/domain/`: Entities (Todo, Tag, User, etc.) and repository interfaces
+  - `src/infrastructure/`: Data persistence (TypeORM repositories for SQL databases, including SQLite and MSSQL)
   - `src/middleware/`: Auth0 JWT validation, attachCurrentUser, RBAC roles, error handling, logging, validation
   - `src/routes/`: API endpoints for todos, tags, attachments, etc.
-  - **Database:** SQLite (default, with TypeORM for extensibility)
+  - **Database:** SQL database (SQLite for dev, MSSQL or other SQL for production) via TypeORM
+  - **TypeORM Entities:** All core models (User, Todo, Tag, etc.) are defined as TypeORM entities, enabling migrations and cross-database support
+  - **Repository Pattern:** Use case classes interact with repository interfaces; concrete implementations use TypeORM for all SQL operations
   - **Auth0 Integration:**
     - JWT validation via `express-oauth2-jwt-bearer`
     - User upsert/profile on every request (`attachCurrentUser`)
@@ -50,62 +52,15 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
   - **Logging:** Winston for error/activity logging
   - **Validation:** Joi for robust input validation
 
-### Frontend (`client/`)
-
-- **React + Vite:**
-  - `src/app/App.jsx`: Global state, API calls, and UI orchestration
-  - `src/utils/api.js`: Centralized backend API communication
-  - `src/components/`: Modular UI (Sidebar, TopBar, RecurrenceSelector, ExportImport, etc.)
-  - **Styling:** Global CSS + inline styles, Framer Motion for animation, theme variables, and responsive design
-  - **Auth0 Integration:**
-    - Auth0 SPA SDK for login/logout
-    - Access tokens sent with API requests
-    - Role-based UI (admin/paid/free features)
-  - **Mobile-First:** Responsive layout, touch-friendly controls
-  - **Themes:** Light/dark mode, theme toggle, and CSS variables
-
 ---
 
-## 🔐 Auth0 Integration
-
-- **Backend:**
-  - Validates JWTs for all protected routes
-  - Extracts user info and roles from Auth0 claims
-  - Upserts user and loads profile on every request
-  - Enforces RBAC (admin, paid, free) in middleware
-
-- **Frontend:**
-  - Uses Auth0 SPA SDK for authentication
-  - Stores and sends access tokens with API requests
-  - UI adapts based on user role (admin features, paid features, etc.)
-
----
-
-## 🧪 Testing & Quality
-
-- **Backend:**
-  - Jest + Supertest for all business logic, middleware, and API endpoints
-  - In-memory/mocked DB for all tests (no real DB required)
-  - Full coverage for RBAC, user upsert, recurrence, notifications, and error handling
-  - No console logs or unhandled errors in test output
-
-- **Frontend:**
-  - Manual and automated UI testing (unit and integration tests recommended)
-  - Responsive and theme switching tested across devices
-
-- **CI/CD:**
-  - GitHub Actions for automated backend tests and frontend builds
-  - Linting and build checks on every push/PR
-
----
-
-## 🔄 Data Flow & API
+## 🔄 Data Flow (Corrected)
 
 - **Frontend → Backend:**
-  - All actions go through `api.js` to `/api/todos`, `/api/tags`, etc.
+  - All actions go through `api.js` to Express API endpoints (`/api/todos`, `/api/tags`, etc.)
 - **Backend:**
-  - Express routes → Use cases → Repositories → SQLite DB
-  - Auth0 JWT required for all protected endpoints
+  - Express routes → Use case classes (application layer) → Repository interfaces (domain layer) → TypeORM repository implementations (infrastructure layer) → SQL database (SQLite/MSSQL)
+  - No direct frontend access to SQLite or any database; all data access is through the backend API and TypeORM
 
 ---
 
