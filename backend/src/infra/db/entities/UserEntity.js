@@ -1,0 +1,42 @@
+const { EntitySchema } = require('typeorm');
+
+module.exports = new EntitySchema({
+  name: 'User',
+  tableName: 'users',
+  columns: {
+    id: {
+      type: String,
+      length: 64,
+      primary: true,
+      nullable: false,
+    },
+    email: {
+      type: String,
+      length: 255,
+      unique: true,
+      nullable: false,
+    },
+    name: {
+      type: String,
+      length: 255,
+      nullable: true,
+    },
+    picture: {
+      type: String,
+      length: 512,
+      nullable: true,
+    },
+    created_at: {
+      type: 'datetime',
+      createDate: true,
+      nullable: false,
+      default: () => 'GETDATE()'
+    },
+    updated_at: {
+      type: 'datetime',
+      updateDate: true,
+      nullable: false,
+      default: () => 'GETDATE()'
+    },
+  },
+});

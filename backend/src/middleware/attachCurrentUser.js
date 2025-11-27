@@ -1,27 +1,30 @@
 // backend/src/middleware/attachCurrentUser.js
 
-// Lightweight middleware that attaches user info from the JWT itself,
-// without persisting to a separate users table.
+// Middleware that upserts the user into MSSQL via TypeORM and
+// attaches the current user record to req.currentUser.
+const TypeORMUserRepository = require('../infrastructure/TypeORMUserRepository');
 
-function attachCurrentUser(/* db */) {
+function attachCurrentUser() {
+  const userRepo = new TypeORMUserRepository();
   return async function (req, res, next) {
     try {
-      const sub = req.auth && req.auth.payload && req.auth.payload.sub;
-      if (!sub) {
-        return res.status(401).json({ message: 'Missing auth sub' });
+      const payload = req.auth?.payload || {};
+      const sub = payload.sub;
+      const email = payload.email;
+      const name = payload.name;
+      const picture = payload.picture;
+
+      if (!sub || !email) {
+        req.currentUser = null;
+        return next();
       }
 
-      const email =
-        (req.auth && req.auth.payload && req.auth.payload.email) || null;
-
-      req.user = {
-        auth0Sub: sub,
-        email,
-      };
-
-      next();
+      const user = await userRepo.saveOrUpdateFromAuth0({ sub, email, name, picture });
+      req.currentUser = user || { id: sub, email, name, picture };
+      return next();
     } catch (err) {
-      next(err);
+      req.currentUser = null;
+      return next();
     }
   };
 }

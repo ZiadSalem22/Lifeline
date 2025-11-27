@@ -153,7 +153,7 @@ const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
 
 // Secure API: checkJwt, then attachCurrentUser (SQLite-backed user store only)
-app.use('/api', checkJwt, attachCurrentUser(db));
+app.use('/api', checkJwt, attachCurrentUser());
 
 // Auth probe
 app.get('/api/me', (req, res) => {
