@@ -3,7 +3,9 @@ import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
-import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, reorderTodo, getPendingNotifications } from '../utils/api';
+import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, getPendingNotifications } from '../utils/api';
+import { useApi, createTokenOptions } from '../hooks/useApi';
+import { useAuth } from '../hooks/useAuth';
 import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
 import AdvancedSearch from '../components/search/AdvancedSearch';
 import AdvancedSearchPage from '../pages/AdvancedSearchPage';
@@ -14,8 +16,10 @@ import RecurrenceSelector from '../components/calendar/RecurrenceSelector';
 import DashboardPage from '../pages/DashboardPage';
 import AuthPage from '../pages/AuthPage';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
-
 function App() {
+  const { fetchWithAuth, tokenOptions } = useApi();
+  const { isAuthenticated, isLoading: authLoading, getAccessTokenSilently } = useAuth();
+
     // Modal state for new tag creation
     const [showNewTagModal, setShowNewTagModal] = useState(false);
     const [newTagName, setNewTagName] = useState('');
@@ -52,6 +56,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
+  const inputRef = useRef(null);
   const navigate = useNavigate();
   
   // New feature states
@@ -67,7 +72,13 @@ function App() {
   const [savedMessage, setSavedMessage] = useState('');
   const [draggedTodoId, setDraggedTodoId] = useState(null);
   const [expandedTodoId, setExpandedTodoId] = useState(null);
+  const [hasLoggedToken, setHasLoggedToken] = useState(false);
 
+  // Fix: Define handleSelectDate for sidebarProps
+  const handleSelectDate = useCallback((date) => {
+    setSelectedDate(date);
+    setSearchQuery('');
+  }, []);
   // Recurring tasks and export/import states
   const [showRecurrenceSelector, setShowRecurrenceSelector] = useState(false);
   const [currentRecurrence, setCurrentRecurrence] = useState(null);
@@ -85,23 +96,24 @@ function App() {
     document.documentElement.style.setProperty('--font-family-base', newFont);
   }, []);
 
+
   const loadTodos = useCallback(async () => {
     try {
-      const data = await fetchTodos();
+      const data = await fetchTodos(fetchWithAuth);
       setTodos(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load todos', error);
     }
-  }, []);
+  }, [fetchWithAuth]);
 
   const loadTags = useCallback(async () => {
     try {
-      const data = await fetchTags();
+      const data = await fetchTags(fetchWithAuth);
       setTags(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load tags', error);
     }
-  }, []);
+  }, [fetchWithAuth]);
 
   const pollNotifications = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -111,13 +123,12 @@ function App() {
       return;
     }
     try {
-      const payload = await getPendingNotifications();
+      const payload = await getPendingNotifications(fetchWithAuth);
       const notifications = Array.isArray(payload?.notifications)
         ? payload.notifications
         : Array.isArray(payload)
           ? payload
           : [];
-
       notifications.forEach((notification) => {
         const title = notification?.title || 'Lifeline Reminder';
         const body = notification?.body || notification?.message || 'You have a pending task.';
@@ -126,25 +137,22 @@ function App() {
     } catch (error) {
       console.error('Failed to poll notifications', error);
     }
-  }, []);
+  }, [fetchWithAuth]);
 
-  // Helper to refresh todos when picking a date from the calendar
-  const handleSelectDate = useCallback((date) => {
-    setSelectedDate(date);
-    setTimeout(() => {
-      loadTodos();
-    }, 0);
-  }, [loadTodos]);
-
-  const inputRef = useRef(null);
 
   useEffect(() => {
-    console.log('🔄 showRecurrenceSelector state:', showRecurrenceSelector);
-  }, [showRecurrenceSelector]);
+    if (authLoading) {
+      return;
+    }
 
-  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setHasLoggedToken(false);
+      return;
+    }
+
     let isMounted = true;
-
+    let pollingInterval;
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -168,7 +176,6 @@ function App() {
       document.documentElement.style.setProperty('--font-family-base', savedFont);
     }
 
-    let pollingInterval;
     const startPolling = () => {
       if (typeof window === 'undefined') return;
       pollNotifications();
@@ -193,7 +200,27 @@ function App() {
         clearInterval(pollingInterval);
       }
     };
-  }, [loadTodos, loadTags, pollNotifications]);
+  }, [authLoading, isAuthenticated, loadTodos, loadTags, pollNotifications]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || hasLoggedToken) {
+      return;
+    }
+
+    const logToken = async () => {
+      try {
+        const options = tokenOptions || createTokenOptions();
+        const token = await getAccessTokenSilently(options);
+        if (token) {
+          setHasLoggedToken(true);
+        }
+      } catch (err) {
+        // Swallow errors here; core auth flow is handled elsewhere.
+      }
+    };
+
+    logToken();
+  }, [authLoading, getAccessTokenSilently, hasLoggedToken, isAuthenticated, tokenOptions]);
 
   const filteredTodos = useMemo(() => {
     let filtered = [...todos];
@@ -280,7 +307,7 @@ function App() {
     const maxOrder = todos.length > 0 ? Math.max(...todos.map(t => t.order || 0)) : 0;
     try {
       // Pass inputDescription as description and recurrence pattern
-      const newTodo = await createTodo(inputValue, scheduleDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence);
+      const newTodo = await createTodo(inputValue, scheduleDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence, fetchWithAuth);
       newTodo.order = maxOrder + 1;
       newTodo.description = inputDescription;
       setTodos(prev => [...prev, newTodo]);
@@ -304,7 +331,7 @@ function App() {
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
-      const updatedTodo = await updateTodo(id, updates);
+      const updatedTodo = await updateTodo(id, updates, fetchWithAuth);
       setTodos(prev => prev.map(t => {
         if (t.id === id) {
           return { ...t, ...updatedTodo };
@@ -316,7 +343,7 @@ function App() {
       console.error("Failed to update todo", error);
       throw error;
     }
-  }, []);
+  }, [fetchWithAuth]);
 
   const handleStartEdit = useCallback((todo) => {
     setEditingTodoId(todo.id);
@@ -356,31 +383,78 @@ function App() {
 
   const handleToggle = useCallback(async (id) => {
     try {
-      const updatedTodo = await toggleTodo(id);
+      const updatedTodo = await toggleTodo(id, fetchWithAuth);
       setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
       console.error("Failed to toggle todo", error);
     }
-  }, []);
+  }, [fetchWithAuth]);
 
   const handleFlag = useCallback(async (id, e) => {
     e.stopPropagation();
     try {
-      const updatedTodo = await toggleFlag(id);
+      const updatedTodo = await toggleFlag(id, fetchWithAuth);
       setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
       console.error("Failed to toggle flag", error);
+    }
+  }, [fetchWithAuth]);
+
+  const handleUpdatePriority = useCallback(async (id, newPriority) => {
+    try {
+      await handleUpdateTodo(id, { priority: newPriority });
+    } catch (error) {
+      console.error('Failed to update priority', error);
+    }
+  }, [handleUpdateTodo]);
+
+  const handleDragStart = useCallback((event, todoId) => {
+    try {
+      event.dataTransfer.setData('text/plain', todoId);
+      event.dataTransfer.effectAllowed = 'move';
+    } catch (error) {
+      console.error('Failed to start drag', error);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback((event, targetTodoId) => {
+    try {
+      event.preventDefault();
+      const sourceId = event.dataTransfer.getData('text/plain');
+      if (!sourceId || sourceId === targetTodoId) {
+        return;
+      }
+
+      setTodos((prevTodos) => {
+        const sourceIndex = prevTodos.findIndex((t) => t.id === sourceId);
+        const targetIndex = prevTodos.findIndex((t) => t.id === targetTodoId);
+        if (sourceIndex === -1 || targetIndex === -1) {
+          return prevTodos;
+        }
+
+        const updated = [...prevTodos];
+        const [moved] = updated.splice(sourceIndex, 1);
+        updated.splice(targetIndex, 0, moved);
+        return updated;
+      });
+    } catch (error) {
+      console.error('Failed to handle drop', error);
     }
   }, []);
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await deleteTodo(id);
+      await deleteTodo(id, fetchWithAuth);
       setTodos(prev => prev.filter(t => t.id !== id));
     } catch (error) {
       console.error("Failed to delete todo", error);
     }
-  }, []);
+  }, [fetchWithAuth]);
 
   const toggleTagSelection = (tag) => {
     if (selectedTags.find(t => t.id === tag.id)) {
@@ -477,6 +551,7 @@ function App() {
     font,
     fonts,
     setFont: handleFontChange,
+    fetchWithAuth,
   };
 
   const recurrenceProps = {
@@ -501,6 +576,7 @@ function App() {
       loadTodos();
       setShowExportImport(false);
     },
+    fetchWithAuth,
   };
 
   const commonOverlays = (
@@ -544,7 +620,8 @@ function App() {
               topBarProps={topBarProps}
               searchProps={{
                 onBack: () => navigate('/'),
-                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
+                fetchWithAuth,
               }}
             />
           </ProtectedRoute>
@@ -557,7 +634,8 @@ function App() {
               topBarProps={topBarProps}
               searchProps={{
                 onBack: () => navigate('/'),
-                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); }
+                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
+                fetchWithAuth,
               }}
             />
           </ProtectedRoute>
@@ -565,13 +643,13 @@ function App() {
 
         <Route path="/statistics" element={
           <ProtectedRoute>
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth }} />
           </ProtectedRoute>
         } />
 
         <Route path="/stats" element={
           <ProtectedRoute>
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/') }} />
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth }} />
           </ProtectedRoute>
         } />
 
@@ -1246,7 +1324,7 @@ function App() {
                             onClick={async () => {
                               if (!newTagName.trim()) return;
                               try {
-                                const newTag = await createTag(newTagName.trim(), newTagColor);
+                                const newTag = await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
                                 setTags(prev => [...prev, newTag]);
                                 setShowNewTagModal(false);
                                 setNewTagName('');

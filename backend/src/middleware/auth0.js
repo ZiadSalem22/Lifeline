@@ -1,18 +1,26 @@
 const { auth } = require('express-oauth2-jwt-bearer');
 
-const REQUIRED_ENV_VARS = ['AUTH0_DOMAIN', 'AUTH0_AUDIENCE'];
-const missing = REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
+// Configure Auth0 based on the values actually present in the tokens.
+// You can override these with environment variables, but the defaults
+// are aligned with the frontend Auth0 setup.
+const AUTH0_DOMAIN =
+  process.env.AUTH0_DOMAIN || 'dev-1b4upl01bjz8l8li.us.auth0.com';
 
-if (missing.length) {
-  throw new Error(`Missing Auth0 environment variables: ${missing.join(', ')}`);
-}
+// Your access token's "aud" claim is an array containing both
+// the API audience and the Auth0 userinfo audience. Allow either.
+const EXPECTED_AUDIENCES = [
+  process.env.AUTH0_AUDIENCE || 'https://lifeline-api',
+  `https://${AUTH0_DOMAIN}/userinfo`,
+];
 
-const issuerBaseURL = process.env.AUTH0_ISSUER || `https://${process.env.AUTH0_DOMAIN}/`;
+// express-oauth2-jwt-bearer uses Auth0 JWKS under the hood with
+// caching and rate limiting.
+const issuerBaseURL = `https://${AUTH0_DOMAIN}/`;
 
 const checkJwt = auth({
-  audience: process.env.AUTH0_AUDIENCE,
   issuerBaseURL,
-  tokenSigningAlg: 'RS256'
+  audience: EXPECTED_AUDIENCES,
+  tokenSigningAlg: 'RS256',
 });
 
 module.exports = { checkJwt };

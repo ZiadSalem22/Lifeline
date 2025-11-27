@@ -15,7 +15,7 @@ const Bar = ({ percent, color }) => (
   </div>
 );
 
-const Statistics = ({ onBack }) => {
+const Statistics = ({ onBack, fetchWithAuth }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,9 +23,16 @@ const Statistics = ({ onBack }) => {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      if (!fetchWithAuth) {
+        if (mounted) {
+          setError('Authentication not ready');
+          setLoading(false);
+        }
+        return;
+      }
       try {
         setLoading(true);
-        const data = await fetchStats();
+        const data = await fetchStats(fetchWithAuth);
         if (mounted) setStats(data);
       } catch (e) {
         console.error(e);
@@ -36,7 +43,7 @@ const Statistics = ({ onBack }) => {
     };
     load();
     return () => { mounted = false; };
-  }, []);
+  }, [fetchWithAuth]);
 
   const total = stats?.totalTodos || 0;
   const completed = stats?.completedCount || 0;

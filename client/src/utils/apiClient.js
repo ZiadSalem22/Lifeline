@@ -1,19 +1,24 @@
-export function createApiClient(getAccessToken) {
-  const baseUrl = "http://localhost:3000";
+const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_ENV) {
+  throw new Error('VITE_API_BASE_URL is not defined');
+}
+
+const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
+
+const joinUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+export function createApiClient(fetchWithAuth) {
+  if (typeof fetchWithAuth !== 'function') {
+    throw new Error('createApiClient requires fetchWithAuth');
+  }
 
   async function get(path) {
-    const token = await getAccessToken();
-    const response = await fetch(`${baseUrl}${path}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
+    const response = await fetchWithAuth(joinUrl(path));
     if (!response.ok) {
+      console.log('API ERROR STATUS:', response.status, 'createApiClient.get');
       throw new Error(`API error ${response.status}`);
     }
-
     return response.json();
   }
 

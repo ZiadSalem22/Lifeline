@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createTag, deleteTag, updateTag } from '../../utils/api';
 import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
 
-const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, font, fonts, setFont }) => {
+const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, font, fonts, setFont, fetchWithAuth }) => {
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState('#6366f1');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +18,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
 
         setIsSubmitting(true);
         try {
-            const newTag = await createTag(newTagName, newTagColor);
+            const newTag = await createTag(newTagName, newTagColor, fetchWithAuth);
             setTags([...tags, newTag]);
             setNewTagName('');
             setNewTagColor('#6366f1');
@@ -31,7 +31,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
 
     const handleDeleteTag = async (id) => {
         try {
-            await deleteTag(id);
+            await deleteTag(id, fetchWithAuth);
             setTags(tags.filter(t => t.id !== id));
         } catch (error) {
             console.error("Failed to delete tag", error);
@@ -53,7 +53,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
     const handleSaveEdit = async (id) => {
         if (!editTagName.trim()) return;
         try {
-            const updatedTag = await updateTag(id, editTagName.trim(), editTagColor);
+            const updatedTag = await updateTag(id, editTagName.trim(), editTagColor, fetchWithAuth);
             setTags(tags.map(t => t.id === id ? updatedTag : t));
             handleCancelEdit();
         } catch (error) {

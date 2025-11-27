@@ -223,7 +223,24 @@ class SQLiteTodoRepository extends ITodoRepository {
                         const todos = await Promise.all(rows.map(async row => {
                             const tags = await this.getTagsForTodo(row.id);
                             const subtasks = row.subtasks ? JSON.parse(row.subtasks) : [];
-                            return new Todo(row.id, row.title, !!row.is_completed, row.due_date, tags, !!row.is_flagged, row.duration, row.priority || 'medium', row.due_time || null, subtasks, row.order || 0, row.description || '');
+                            const recurrence = row.recurrence ? JSON.parse(row.recurrence) : null;
+                            return new Todo(
+                                row.id,
+                                row.title,
+                                !!row.is_completed,
+                                row.due_date,
+                                tags,
+                                !!row.is_flagged,
+                                row.duration,
+                                row.priority || 'medium',
+                                row.due_time || null,
+                                subtasks,
+                                row.order || 0,
+                                row.description || '',
+                                recurrence,
+                                row.next_recurrence_due || null,
+                                row.original_id || null
+                            );
                         }));
                         resolve({ todos, total });
                     } catch (e) {
@@ -312,10 +329,55 @@ class SQLiteTodoRepository extends ITodoRepository {
     }
 
     delete(id) {
+        // Delete todo and its todo_tags in a transaction
         return new Promise((resolve, reject) => {
-            this.db.run('DELETE FROM todos WHERE id = ?', [id], (err) => {
-                if (err) reject(err);
-                else resolve();
+            this.db.serialize(() => {
+                this.db.run('BEGIN TRANSACTION');
+                this.db.run('DELETE FROM todo_tags WHERE todo_id = ?', [id], (err1) => {
+                    if (err1) {
+                        this.db.run('ROLLBACK');
+                        return reject(err1);
+                    }
+                    this.db.run('DELETE FROM todos WHERE id = ?', [id], (err2) => {
+                        if (err2) {
+                            this.db.run('ROLLBACK');
+                            return reject(err2);
+                        }
+                        this.db.run('COMMIT', (err3) => {
+                            if (err3) return reject(err3);
+                            resolve();
+                        });
+                    });
+                });
+            });
+        });
+    }
+
+    // Helper to prune orphaned todo_tags
+    pruneOrphanTodoTags() {
+        return new Promise((resolve, reject) => {
+            // Delete todo_tags where todo_id does not exist in todos
+            const sql1 = 'DELETE FROM todo_tags WHERE todo_id NOT IN (SELECT id FROM todos)';
+            // Delete todo_tags where tag_id does not exist in tags
+            const sql2 = 'DELETE FROM todo_tags WHERE tag_id NOT IN (SELECT id FROM tags)';
+            this.db.serialize(() => {
+                this.db.run('BEGIN TRANSACTION');
+                this.db.run(sql1, (err1) => {
+                    if (err1) {
+                        this.db.run('ROLLBACK');
+                        return reject(err1);
+                    }
+                    this.db.run(sql2, (err2) => {
+                        if (err2) {
+                            this.db.run('ROLLBACK');
+                            return reject(err2);
+                        }
+                        this.db.run('COMMIT', (err3) => {
+                            if (err3) return reject(err3);
+                            resolve();
+                        });
+                    });
+                });
             });
         });
     }

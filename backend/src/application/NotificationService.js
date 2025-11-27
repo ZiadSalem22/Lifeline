@@ -6,7 +6,13 @@ class NotificationService {
     constructor(db) {
         this.db = db;
         this.activeNotifications = new Map();
-        this.initializeNotificationTable();
+        // When running with MSSQL/TypeORM (no SQLite db), skip
+        // creating or using the notifications table. This keeps
+        // the service non-fatal while preserving legacy behavior
+        // for SQLite-based setups.
+        if (this.db) {
+            this.initializeNotificationTable();
+        }
     }
 
     initializeNotificationTable() {
@@ -87,6 +93,10 @@ class NotificationService {
      * Save notification to database
      */
     saveNotification(todoId, message, scheduledTime) {
+        if (!this.db) {
+            // Notifications are disabled when no SQLite DB is present
+            return Promise.resolve(null);
+        }
         return new Promise((resolve, reject) => {
             const { v4: uuidv4 } = require('uuid');
             const notificationId = uuidv4();
@@ -106,6 +116,9 @@ class NotificationService {
      * Mark notification as sent
      */
     markNotificationSent(notificationId) {
+        if (!this.db) {
+            return Promise.resolve();
+        }
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(
                 'UPDATE notifications SET is_sent = 1, sent_time = ? WHERE id = ?'
@@ -122,6 +135,9 @@ class NotificationService {
      * Get pending notifications
      */
     getPendingNotifications() {
+        if (!this.db) {
+            return Promise.resolve([]);
+        }
         return new Promise((resolve, reject) => {
             this.db.all(
                 'SELECT * FROM notifications WHERE is_sent = 0 AND scheduled_time <= datetime("now") ORDER BY scheduled_time ASC',
@@ -137,6 +153,9 @@ class NotificationService {
      * Delete notification
      */
     deleteNotification(notificationId) {
+        if (!this.db) {
+            return Promise.resolve();
+        }
         return new Promise((resolve, reject) => {
             this.db.run('DELETE FROM notifications WHERE id = ?', [notificationId], (err) => {
                 if (err) reject(err);
@@ -149,6 +168,9 @@ class NotificationService {
      * Delete all notifications for a todo
      */
     deleteNotificationsForTodo(todoId) {
+        if (!this.db) {
+            return Promise.resolve();
+        }
         return new Promise((resolve, reject) => {
             this.db.run('DELETE FROM notifications WHERE todo_id = ?', [todoId], (err) => {
                 if (err) reject(err);

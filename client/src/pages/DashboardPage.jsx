@@ -2,33 +2,55 @@ import { useEffect, useState } from 'react';
 import CosmicBackground from '../components/background/CosmicBackground';
 import { Sidebar, TopBar } from '../components/layout';
 import { useAuth } from '../hooks/useAuth';
-import { createApiClient } from '../utils/apiClient';
+import { useApi } from '../hooks/useApi';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL is not defined');
+}
+const API_BASE = API_BASE_URL.replace(/\/$/, '');
 
 const DashboardPage = ({ sidebarProps, topBarProps, children, showBackground = false }) => {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { fetchWithAuth } = useApi();
   const [me, setMe] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      return;
+    }
 
-    const api = createApiClient(() =>
-      getAccessTokenSilently({
-        audience: import.meta.env.VITE_AUTH0_AUDIENCE,
-      })
-    );
+    let cancelled = false;
 
-    api
-      .get('/api/me')
-      .then((data) => {
-        setMe(data);
-        console.log('API /api/me result:', data);
-      })
-      .catch((err) => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/me`);
+        if (!response.ok) {
+          throw new Error(`API error ${response.status}`);
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setMe(data);
+          setError(null);
+        }
+      } catch (err) {
         console.error('Error calling /api/me:', err);
-        setError(err.message);
-      });
-  }, [isAuthenticated, getAccessTokenSilently]);
+        if (!cancelled) {
+          setError(err.message);
+        }
+      }
+    };
+
+    // Note: In React 18 StrictMode, effects run twice in development,
+    // so this may trigger /api/me twice in dev. This does not happen
+    // in production builds.
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchWithAuth, isAuthenticated]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent', position: 'relative', overflow: 'hidden' }}>

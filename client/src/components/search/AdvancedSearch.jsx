@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth } from '../../utils/api';
 import { FlagIcon, EditIcon } from '../../icons/Icons';
 
@@ -11,7 +11,7 @@ const formatDuration = (totalMinutes) => {
   return `${m}m`;
 };
 
-const AdvancedSearch = ({ onBack, onOpenTodo }) => {
+const AdvancedSearch = ({ onBack, onOpenTodo, fetchWithAuth }) => {
   const [allTodos, setAllTodos] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [query, setQuery] = useState('');
@@ -36,9 +36,12 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
   const [monthLoaded, setMonthLoaded] = useState(false);
 
   useEffect(() => {
+    if (!fetchWithAuth) {
+      return;
+    }
     const loadTags = async () => {
       try {
-        const tags = await fetchTags();
+        const tags = await fetchTags(fetchWithAuth);
         setAllTags(tags || []);
       } catch (err) {
         console.error('Failed to load tags for search', err);
@@ -49,7 +52,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
     (async () => {
       try {
         const now = new Date();
-        const res = await fetchTodosForMonth(now.getFullYear(), now.getMonth() + 1);
+        const res = await fetchTodosForMonth(now.getFullYear(), now.getMonth() + 1, {}, fetchWithAuth);
         // fetchTodosForMonth uses searchTodos and returns { todos, total, page, limit }
         if (res && res.todos) setMonthTodos(res.todos);
         setMonthLoaded(true);
@@ -58,7 +61,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
         console.debug('Month preload failed', err.message || err);
       }
     })();
-  }, []);
+  }, [fetchWithAuth]);
 
   const toggleTag = (id) => {
     setSelectedTags(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -107,8 +110,9 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
   }, [allTodos, query, selectedTags, priority, status, startDate, endDate, minDuration, maxDuration, flaggedOnly, sortBy]);
 
   const handleToggleComplete = async (todo) => {
+    if (!fetchWithAuth) return;
     try {
-      await toggleTodo(todo.id);
+      await toggleTodo(todo.id, fetchWithAuth);
       setAllTodos(prev => prev.map(t => t.id === todo.id ? { ...t, isCompleted: !t.isCompleted } : t));
     } catch (err) {
       console.error('toggle complete failed', err);
@@ -116,7 +120,8 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
   };
 
   // Trigger server-side search
-  const performSearch = async (p = 1) => {
+  const performSearch = useCallback(async (p = 1) => {
+    if (!fetchWithAuth) return;
     const searchId = ++latestSearchIdRef.current;
     setServerLoading(true);
     try {
@@ -134,7 +139,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
         page: p,
         limit
       };
-      const results = await searchTodos(params);
+      const results = await searchTodos(params, fetchWithAuth);
       // Only apply results if this is the latest search
       if (searchId === latestSearchIdRef.current) {
         setAllTodos(results.todos || []);
@@ -146,7 +151,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
     } finally {
       if (searchId === latestSearchIdRef.current) setServerLoading(false);
     }
-  };
+  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, query, selectedTags, sortBy, startDate, status, endDate, priority]);
 
   // Client-side quick filter for current-month preload
   useEffect(() => {
@@ -208,7 +213,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo }) => {
     }, 400);
 
     return () => clearTimeout(t);
-  }, [query, selectedTags, priority, status, flaggedOnly, startDate, endDate, minDuration, maxDuration, sortBy, limit]);
+  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, performSearch, query, selectedTags, sortBy, startDate, status, endDate, priority]);
 
   return (
     <div style={{ padding: '20px', paddingTop: '28px', minHeight: '80vh', maxWidth: '1100px', margin: '0 auto' }}>

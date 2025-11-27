@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { downloadExport, importTodos } from '../../utils/api';
 
 // Settings-adjacent dialog responsible for exporting and importing workspace data safely.
-const ExportImport = ({ onImportComplete, isOpen, onClose }) => {
+const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
   const [exportFormat, setExportFormat] = useState('json');
   const [importMode, setImportMode] = useState('merge');
   const [importMessage, setImportMessage] = useState('');
@@ -10,8 +10,13 @@ const ExportImport = ({ onImportComplete, isOpen, onClose }) => {
   const fileInputRef = useRef(null);
 
   const handleExport = async () => {
+    if (!fetchWithAuth) {
+      setImportError('Authentication not ready');
+      setTimeout(() => setImportError(''), 3000);
+      return;
+    }
     try {
-      await downloadExport(exportFormat);
+      await downloadExport(exportFormat, fetchWithAuth);
       setImportMessage(`Export started (${exportFormat.toUpperCase()})`);
       setTimeout(() => setImportMessage(''), 3000);
     } catch (error) {
@@ -29,11 +34,16 @@ const ExportImport = ({ onImportComplete, isOpen, onClose }) => {
     if (!file) return;
 
     try {
+      if (!fetchWithAuth) {
+        setImportError('Authentication not ready');
+        setTimeout(() => setImportError(''), 3000);
+        return;
+      }
       setImportError('');
       setImportMessage('Importing...');
 
       const fileContent = await file.text();
-      const result = await importTodos(fileContent, importMode);
+      const result = await importTodos(fileContent, importMode, fetchWithAuth);
 
       setImportMessage(`Successfully imported ${result.importedCount} todos`);
       setTimeout(() => setImportMessage(''), 3000);

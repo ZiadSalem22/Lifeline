@@ -1,6 +1,37 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/todos';
+const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
 
-export const searchTodos = async (params = {}) => {
+if (!API_BASE_ENV) {
+    throw new Error('VITE_API_BASE_URL is not defined');
+}
+
+const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
+
+const joinUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+const TODOS_URL = joinUrl('/todos');
+const TAGS_URL = joinUrl('/tags');
+const NOTIFICATIONS_URL = joinUrl('/notifications');
+const STATS_URL = joinUrl('/stats');
+const EXPORT_URL = joinUrl('/export');
+const IMPORT_URL = joinUrl('/import');
+
+const assertFetcher = (fetchWithAuth, caller) => {
+    if (typeof fetchWithAuth !== 'function') {
+        throw new Error(`${caller} requires fetchWithAuth`);
+    }
+    return fetchWithAuth;
+};
+
+const ensureOk = (response, message, context) => {
+    if (!response.ok) {
+        console.log('API ERROR STATUS:', response.status, context);
+        throw new Error(message);
+    }
+    return response;
+};
+
+export const searchTodos = async (params = {}, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'searchTodos');
     const searchParams = new URLSearchParams();
     if (params.q) searchParams.set('q', params.q);
     if (params.tags && params.tags.length) searchParams.set('tags', params.tags.join(','));
@@ -15,97 +46,104 @@ export const searchTodos = async (params = {}) => {
     if (params.page) searchParams.set('page', params.page);
     if (params.limit) searchParams.set('limit', params.limit);
 
-    const url = `${API_URL}/search?${searchParams.toString()}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to search todos');
+    const response = await executeFetch(`${TODOS_URL}/search?${searchParams.toString()}`);
+    ensureOk(response, 'Failed to search todos', 'searchTodos');
     return response.json();
 };
 
-export const fetchTodosForMonth = async (year, month, params = {}) => {
-    // year: full year e.g. 2025, month: 1-12
+export const fetchTodosForMonth = async (year, month, params = {}, fetchWithAuth) => {
     const y = parseInt(year, 10);
     const m = parseInt(month, 10);
     if (Number.isNaN(y) || Number.isNaN(m)) throw new Error('Invalid year or month');
-    // build startDate and endDate strings
     const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 0); // last day of month
-    const p = { ...(params || {}), startDate: start.toISOString().slice(0,10), endDate: end.toISOString().slice(0,10), limit: params.limit || 1000 };
-    return searchTodos(p);
+    const end = new Date(y, m, 0);
+    const p = {
+        ...(params || {}),
+        startDate: start.toISOString().slice(0, 10),
+        endDate: end.toISOString().slice(0, 10),
+        limit: params.limit || 1000,
+    };
+    return searchTodos(p, fetchWithAuth);
 };
 
-export const fetchTodos = async () => {
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Failed to fetch todos');
+export const fetchTodos = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'fetchTodos');
+    const response = await executeFetch(TODOS_URL);
+    ensureOk(response, 'Failed to fetch todos', 'fetchTodos');
     return response.json();
 };
 
-export const createTodo = async (title, dueDate, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null) => {
-    const response = await fetch(API_URL, {
+export const createTodo = async (title, dueDate, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'createTodo');
+    const response = await executeFetch(TODOS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence }),
     });
-    if (!response.ok) throw new Error('Failed to create todo');
+    ensureOk(response, 'Failed to create todo', 'createTodo');
     return response.json();
 };
 
-export const reorderTodo = async (id, order) => {
-    const response = await fetch(`${API_URL}/${id}/reorder`, {
+export const reorderTodo = async (id, order, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'reorderTodo');
+    const response = await executeFetch(`${TODOS_URL}/${id}/reorder`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order }),
     });
-    if (!response.ok) throw new Error('Failed to reorder todo');
+    ensureOk(response, 'Failed to reorder todo', 'reorderTodo');
     return response.json();
 };
 
-export const updateTodo = async (id, updates) => {
-    const response = await fetch(`${API_URL}/${id}`, {
+export const updateTodo = async (id, updates, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'updateTodo');
+    const response = await executeFetch(`${TODOS_URL}/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
     });
-    if (!response.ok) throw new Error('Failed to update todo');
+    ensureOk(response, 'Failed to update todo', 'updateTodo');
     return response.json();
 };
 
-export const toggleTodo = async (id) => {
-    const response = await fetch(`${API_URL}/${id}/toggle`, {
+export const toggleTodo = async (id, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'toggleTodo');
+    const response = await executeFetch(`${TODOS_URL}/${id}/toggle`, {
         method: 'PATCH',
     });
-    if (!response.ok) throw new Error('Failed to toggle todo');
+    ensureOk(response, 'Failed to toggle todo', 'toggleTodo');
     return response.json();
 };
 
-export const toggleFlag = async (id) => {
-    const response = await fetch(`${API_URL}/${id}/flag`, {
+export const toggleFlag = async (id, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'toggleFlag');
+    const response = await executeFetch(`${TODOS_URL}/${id}/flag`, {
         method: 'PATCH',
     });
-    if (!response.ok) throw new Error('Failed to toggle flag');
+    ensureOk(response, 'Failed to toggle flag', 'toggleFlag');
     return response.json();
 };
 
-export const deleteTodo = async (id) => {
-    const response = await fetch(`${API_URL}/${id}`, {
+export const deleteTodo = async (id, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'deleteTodo');
+    const response = await executeFetch(`${TODOS_URL}/${id}`, {
         method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Failed to delete todo');
+    ensureOk(response, 'Failed to delete todo', 'deleteTodo');
 };
 
-// Export/Import APIs
-export const exportTodos = async (format = 'json') => {
-    const response = await fetch(`http://localhost:3000/api/export?format=${format}`);
-    if (!response.ok) throw new Error('Failed to export todos');
+export const exportTodos = async (format = 'json', fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'exportTodos');
+    const response = await executeFetch(`${EXPORT_URL}?format=${format}`);
+    ensureOk(response, 'Failed to export todos', 'exportTodos');
     if (format === 'csv') {
         return response.text();
     }
     return response.json();
 };
 
-export const downloadExport = async (format = 'json') => {
-    const response = await fetch(`http://localhost:3000/api/export?format=${format}`);
-    if (!response.ok) throw new Error('Failed to export todos');
-    
+export const downloadExport = async (format = 'json', fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'downloadExport');
+    const response = await executeFetch(`${EXPORT_URL}?format=${format}`);
+    ensureOk(response, 'Failed to export todos', 'downloadExport');
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -115,83 +153,88 @@ export const downloadExport = async (format = 'json') => {
     window.URL.revokeObjectURL(url);
 };
 
-export const importTodos = async (data, mode = 'merge') => {
-    const response = await fetch('http://localhost:3000/api/import', {
+export const importTodos = async (data, mode = 'merge', fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'importTodos');
+    const response = await executeFetch(IMPORT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data, mode }),
     });
-    if (!response.ok) throw new Error('Failed to import todos');
+    ensureOk(response, 'Failed to import todos', 'importTodos');
     return response.json();
 };
 
-// Notification APIs
-export const getPendingNotifications = async () => {
-    const response = await fetch('http://localhost:3000/api/notifications/pending');
-    if (!response.ok) throw new Error('Failed to fetch notifications');
+export const getPendingNotifications = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'getPendingNotifications');
+    const response = await executeFetch(`${NOTIFICATIONS_URL}/pending`);
+    ensureOk(response, 'Failed to fetch notifications', 'getPendingNotifications');
     return response.json();
 };
 
-export const scheduleNotification = async (todoId, minutesBefore = 0) => {
-    const response = await fetch('http://localhost:3000/api/notifications/schedule', {
+export const scheduleNotification = async (todoId, minutesBefore = 0, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'scheduleNotification');
+    const response = await executeFetch(`${NOTIFICATIONS_URL}/schedule`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todoId, minutesBefore }),
     });
-    if (!response.ok) throw new Error('Failed to schedule notification');
+    ensureOk(response, 'Failed to schedule notification', 'scheduleNotification');
     return response.json();
 };
 
-export const markNotificationSent = async (notificationId) => {
-    const response = await fetch(`http://localhost:3000/api/notifications/${notificationId}/sent`, {
+export const markNotificationSent = async (notificationId, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'markNotificationSent');
+    const response = await executeFetch(`${NOTIFICATIONS_URL}/${notificationId}/sent`, {
         method: 'PATCH',
     });
-    if (!response.ok) throw new Error('Failed to mark notification as sent');
+    ensureOk(response, 'Failed to mark notification as sent', 'markNotificationSent');
     return response.json();
 };
 
-export const deleteNotification = async (notificationId) => {
-    const response = await fetch(`http://localhost:3000/api/notifications/${notificationId}`, {
+export const deleteNotification = async (notificationId, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'deleteNotification');
+    const response = await executeFetch(`${NOTIFICATIONS_URL}/${notificationId}`, {
         method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Failed to delete notification');
+    ensureOk(response, 'Failed to delete notification', 'deleteNotification');
 };
 
-export const fetchTags = async () => {
-    const response = await fetch('http://localhost:3000/api/tags');
-    if (!response.ok) throw new Error('Failed to fetch tags');
+export const fetchTags = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'fetchTags');
+    const response = await executeFetch(TAGS_URL);
+    ensureOk(response, 'Failed to fetch tags', 'fetchTags');
     return response.json();
 };
 
-export const fetchStats = async () => {
-    const response = await fetch('http://localhost:3000/api/stats');
-    if (!response.ok) throw new Error('Failed to fetch stats');
+export const fetchStats = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'fetchStats');
+    const response = await executeFetch(STATS_URL);
+    ensureOk(response, 'Failed to fetch stats', 'fetchStats');
     return response.json();
 };
 
-export const createTag = async (name, color) => {
-    const response = await fetch('http://localhost:3000/api/tags', {
+export const createTag = async (name, color, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'createTag');
+    const response = await executeFetch(TAGS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, color }),
     });
-    if (!response.ok) throw new Error('Failed to create tag');
+    ensureOk(response, 'Failed to create tag', 'createTag');
     return response.json();
 };
 
-export const updateTag = async (id, name, color) => {
-    const response = await fetch(`http://localhost:3000/api/tags/${id}`, {
+export const updateTag = async (id, name, color, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'updateTag');
+    const response = await executeFetch(`${TAGS_URL}/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, color }),
     });
-    if (!response.ok) throw new Error('Failed to update tag');
+    ensureOk(response, 'Failed to update tag', 'updateTag');
     return response.json();
 };
 
-export const deleteTag = async (id) => {
-    const response = await fetch(`http://localhost:3000/api/tags/${id}`, {
+export const deleteTag = async (id, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'deleteTag');
+    const response = await executeFetch(`${TAGS_URL}/${id}`, {
         method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Failed to delete tag');
+    ensureOk(response, 'Failed to delete tag', 'deleteTag');
 };
