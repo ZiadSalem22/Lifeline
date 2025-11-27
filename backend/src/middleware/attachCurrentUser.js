@@ -23,6 +23,8 @@ function attachCurrentUser() {
       req.currentUser = user || { id: sub, email, name, picture };
       return next();
     } catch (err) {
+      // Log and continue without blocking the request
+      try { require('../config/logger').error('[attachCurrentUser] upsert failed', { error: err.message }); } catch (_) {}
       req.currentUser = null;
       return next();
     }
