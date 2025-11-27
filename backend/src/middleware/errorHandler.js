@@ -42,21 +42,21 @@ const errorHandler = (err, req, res, next) => {
         error = new AppError(message, statusCode, false);
     }
 
-    // Log error
-    if (error.statusCode >= 500) {
-        logger.error('Server Error:', {
-            message: error.message,
-            stack: error.stack,
-            url: req.originalUrl,
-            method: req.method,
-        });
-    } else {
-        logger.warn('Client Error:', {
-            message: error.message,
-            url: req.originalUrl,
-            method: req.method,
-        });
-    }
+    // Log error (commented out for test cleanliness)
+    // if (error.statusCode >= 500) {
+    //     logger.error('Server Error:', {
+    //         message: error.message,
+    //         stack: error.stack,
+    //         url: req.originalUrl,
+    //         method: req.method,
+    //     });
+    // } else {
+    //     logger.warn('Client Error:', {
+    //         message: error.message,
+    //         url: req.originalUrl,
+    //         method: req.method,
+    //     });
+    // }
 
     // Send error response
     res.status(error.statusCode).json({

@@ -4,8 +4,9 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { checkJwt } = require('./middleware/auth0');
-const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { errorHandler, notFoundHandler, AppError } = require('./middleware/errorHandler');
 const { attachCurrentUser } = require('./middleware/attachCurrentUser');
+const { requireAuth, requireRole, requireRoleIn, requirePaid } = require('./middleware/roles');
 const logger = require('./config/logger');
 
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
@@ -154,9 +155,23 @@ const listTags = new ListTags(tagRepository);
 const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
 
-// Secure API: checkJwt, then attachCurrentUser (SQLite-backed user store only)
+// Secure API: checkJwt, then attachCurrentUser
 app.use('/api', checkJwt, attachCurrentUser);
 
+// /api/me - requireAuth
+app.get('/api/me', requireAuth(), (req, res) => {
+    const user = req.currentUser || {};
+    res.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        role: user.role,
+        roles: user.roles,
+        subscription_status: user.subscription_status,
+        profile: user.profile || null
+    });
+});
 // Auth probe
 app.get('/api/me', (req, res) => {
     const payload = req.auth?.payload || {};
@@ -180,55 +195,42 @@ app.get('/api/notifications/pending', async (req, res) => {
     }
 });
 
-// Todo Routes
-app.get('/api/todos', async (req, res) => {
+
+// /api/todos/* - requireAuth
+app.get('/api/todos', requireAuth(), async (req, res, next) => {
     try {
         const todos = await listTodos.execute();
         res.json(todos);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.post('/api/todos', async (req, res) => {
+app.post('/api/todos', requireAuth(), async (req, res, next) => {
     try {
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
         const todo = await createTodo.execute(title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
         res.status(201).json(todo);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.patch('/api/todos/:id/reorder', async (req, res) => {
+app.patch('/api/todos/:id/reorder', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { order } = req.body;
         const todo = await todoRepository.findById(id);
-        if (!todo) return res.status(404).json({ error: 'Todo not found' });
+        if (!todo) return next(new AppError('Todo not found', 404));
         todo.order = order;
         await todoRepository.save(todo);
         res.json(todo);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.patch('/api/todos/:id', async (req, res) => {
+app.patch('/api/todos/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const updates = req.body;
         const todo = await updateTodo.execute(id, updates);
         res.json(todo);
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-// Server-side search endpoint
-app.get('/api/todos/search', async (req, res) => {
+app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
     try {
-        // parse query params
         const q = req.query.q || '';
         const tags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags.split(',')) : [];
         const priority = req.query.priority || null;
@@ -239,53 +241,42 @@ app.get('/api/todos/search', async (req, res) => {
         const maxDuration = req.query.maxDuration || null;
         const flagged = typeof req.query.flagged !== 'undefined' ? (req.query.flagged === '1' || req.query.flagged === 'true') : undefined;
         const sortBy = req.query.sortBy || null;
-
         const page = parseInt(req.query.page || '1', 10) || 1;
         const limit = parseInt(req.query.limit || '30', 10) || 30;
         const offset = (page - 1) * limit;
-
         const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset };
         const results = await searchTodos.execute(filters);
-        // results is { todos, total }
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.patch('/api/todos/:id/toggle', async (req, res) => {
+app.patch('/api/todos/:id/toggle', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const todo = await toggleTodo.execute(id);
         res.json(todo);
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.patch('/api/todos/:id/flag', async (req, res) => {
+app.patch('/api/todos/:id/flag', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const todo = await todoRepository.findById(id);
-        if (!todo) return res.status(404).json({ error: 'Todo not found' });
-
+        if (!todo) return next(new AppError('Todo not found', 404));
         todo.toggleFlag();
         await todoRepository.save(todo);
         res.json(todo);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
-
-app.delete('/api/todos/:id', async (req, res) => {
+app.delete('/api/todos/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         await deleteTodo.execute(id);
         res.status(204).send();
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { next(err); }
 });
+// /api/admin/* - requireRole('admin')
+app.use('/api/admin', requireRole('admin'));
+// /api/ai/* - requirePaid()
+app.use('/api/ai', requirePaid());
 
 // Tag Routes
 app.get('/api/tags', async (req, res) => {

@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.js",
     "migration:generate": "npx typeorm migration:generate -d ./data-source-migrations.js -o src/migrations",
     "migration:run": "npx typeorm migration:run -d ./data-source-migrations.js",
-    "migration:revert": "npx typeorm migration:revert -d ./data-source-migrations.js"
+    "migration:revert": "npx typeorm migration:revert -d ./data-source-migrations.js",
+    "promote-admin": "node src/scripts/promote-admin.js"
   },
   "keywords": [],
   "author": "",

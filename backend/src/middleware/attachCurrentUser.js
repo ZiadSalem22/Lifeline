@@ -17,10 +17,19 @@ async function attachCurrentUser(req, res, next) {
       req.currentUser = null;
       return next();
     }
-    // Upsert user and map roles
+    // Auth0 roles as source of truth
+    const customClaims = claims || {};
+    const roles = customClaims["https://lifeline-api/roles"] || [];
+    // First valid role or 'free'
+    let role = 'free';
+    if (Array.isArray(roles)) {
+      if (roles.includes('admin')) role = 'admin';
+      else if (roles.includes('paid')) role = 'paid';
+      else if (roles.includes('free')) role = 'free';
+    }
     let user = await userRepo.ensureUserFromAuth0Claims(claims);
     if (!user) {
-      req.currentUser = { id: sub, email: email || null };
+      req.currentUser = { id: sub, email: email || null, roles, role };
       return next();
     }
     // Load profile
@@ -35,7 +44,8 @@ async function attachCurrentUser(req, res, next) {
       email: user.email,
       name: user.name,
       picture: user.picture,
-      role: user.role,
+      role,
+      roles,
       subscription_status: user.subscription_status,
       profile: profile
         ? {

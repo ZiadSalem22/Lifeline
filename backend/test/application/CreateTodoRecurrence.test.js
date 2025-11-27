@@ -92,8 +92,6 @@ describe('CreateTodo Recurrence Integration', () => {
         });
         // Debug: print actual days and their names
         const RecurrenceService = require('../../src/application/RecurrenceService');
-        // eslint-disable-next-line no-console
-        console.log('DEBUG actual days:', all.map(t => t.due_date + ' ' + RecurrenceService.getDayName(new Date(t.due_date).getDay())));
         expect(all.map(t => t.due_date)).toEqual([
             '2025-11-24',
             '2025-11-26',
