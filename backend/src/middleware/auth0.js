@@ -1,26 +1,43 @@
 const { auth } = require('express-oauth2-jwt-bearer');
+const logger = require('../config/logger');
 
-// Configure Auth0 based on the values actually present in the tokens.
-// You can override these with environment variables, but the defaults
-// are aligned with the frontend Auth0 setup.
-const AUTH0_DOMAIN =
-  process.env.AUTH0_DOMAIN || 'dev-1b4upl01bjz8l8li.us.auth0.com';
+// Required env vars
+// AUTH0_DOMAIN should be just the domain (without protocol or trailing slash)
+// AUTH0_AUDIENCE should match the access token's aud claim (API identifier or client id)
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN?.replace(/^https?:\/\//, '').replace(/\/$/, '') || 'dev-1b4upl01bjz8l8li.us.auth0.com';
+const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE || '5THMMyQGm2mIbpLnCVW1RpXGIyd1G9jr';
 
-// Your access token's "aud" claim is an array containing both
-// the API audience and the Auth0 userinfo audience. Allow either.
-const EXPECTED_AUDIENCES = [
-  process.env.AUTH0_AUDIENCE || 'https://lifeline-api',
-  `https://${AUTH0_DOMAIN}/userinfo`,
-];
+// Build issuer URL for library (must include protocol, trailing slash optional but consistent)
+const issuerBaseURL = `https://${AUTH0_DOMAIN}`; // library will normalize
 
-// express-oauth2-jwt-bearer uses Auth0 JWKS under the hood with
-// caching and rate limiting.
-const issuerBaseURL = `https://${AUTH0_DOMAIN}/`;
-
+// Strict audience: prefer single audience match to avoid accidental acceptance
 const checkJwt = auth({
   issuerBaseURL,
-  audience: EXPECTED_AUDIENCES,
+  audience: AUTH0_AUDIENCE,
   tokenSigningAlg: 'RS256',
 });
 
-module.exports = { checkJwt };
+// Diagnostic middleware to log failures (optional enable via AUTH0_DEBUG=1)
+function authDebugWrapper(req, res, next) {
+  if (process.env.AUTH0_DEBUG === '1') {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function (...args) {
+      const status = res.statusCode;
+      if (status === 401 || status === 403) {
+        logger.warn('[auth0] JWT validation failed', {
+          status,
+          path: req.path,
+          authHeader: req.headers.authorization ? 'present' : 'missing',
+          domain: AUTH0_DOMAIN,
+          audienceExpected: AUTH0_AUDIENCE,
+        });
+      }
+      res.end = originalEnd;
+      return res.end(...args);
+    };
+  }
+  return checkJwt(req, res, next);
+}
+
+module.exports = { checkJwt: authDebugWrapper };
