@@ -16,7 +16,8 @@ const AppDataSource = new DataSource({
     entities: [
         require('./entities/TodoEntity'),
         require('./entities/TagEntity'),
-        require('./entities/TodoTagEntity')
+        require('./entities/TodoTagEntity'),
+        require('./entities/UserEntity')
     ],
 
     synchronize: false,
