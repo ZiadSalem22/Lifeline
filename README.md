@@ -313,3 +313,28 @@ If you want, I can:
 - Set up a simple Render/Railway deployment for the backend and wire the frontend build to it
 
 Tell me which of the above you want me to add next and I will implement it.
+
+---
+
+## 🧩 Additional Technical Highlights
+
+- **Swagger/OpenAPI:**
+  - Live API documentation available via Swagger UI (`/api/docs`), powered by `swagger.json` and `swagger.js`.
+
+- **Database Migrations:**
+  - Schema managed via SQL and JS migration files (see `backend/migrations/`).
+  - Includes user, tag, todo, and join table migrations for full relational integrity.
+
+- **Backend Scripts:**
+  - Utility scripts for DB initialization, testing, JWT inspection, and admin promotion (see `backend/scripts/`).
+  - Example: `promote-admin.js` for RBAC admin elevation, `test-mssql-connection.js` for DB health checks.
+
+- **Frontend Advanced Features:**
+  - **Advanced Search:** Multi-criteria search for todos and tags.
+  - **Statistics:** Dashboard and statistics page for productivity insights.
+  - **Calendar:** Modern calendar component for date selection and recurrence visualization.
+  - **Export/Import:** UI for exporting/importing data in JSON/CSV, with merge/replace options.
+
+- **Testing (Frontend):**
+  - Hooks and utilities for API, theme, and Auth0 integration are unit tested.
+  - (Add more automated frontend tests for full coverage if desired.)
