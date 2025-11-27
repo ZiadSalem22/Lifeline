@@ -316,6 +316,23 @@ app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: 
         res.status(204).send();
     } catch (err) { next(err); }
 });
+
+// Archive/Unarchive (soft-delete management)
+app.post('/api/todos/:id/archive', requireAuth(), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await todoRepository.archive(id);
+        res.json({ id, archived: true });
+    } catch (err) { next(err); }
+});
+
+app.post('/api/todos/:id/unarchive', requireAuth(), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await todoRepository.unarchive(id);
+        res.json({ id, archived: false });
+    } catch (err) { next(err); }
+});
 // /api/admin/* - requireRole('admin')
 app.use('/api/admin', requireRole('admin'));
 // /api/ai/* - requirePaid()
