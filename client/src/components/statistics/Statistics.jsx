@@ -15,7 +15,7 @@ const Bar = ({ percent, color }) => (
   </div>
 );
 
-const Statistics = ({ onBack, fetchWithAuth }) => {
+const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTags = [] }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,17 +23,64 @@ const Statistics = ({ onBack, fetchWithAuth }) => {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      if (!fetchWithAuth) {
-        if (mounted) {
-          setError('Authentication not ready');
-          setLoading(false);
-        }
-        return;
-      }
       try {
         setLoading(true);
-        const data = await fetchStats(fetchWithAuth);
-        if (mounted) setStats(data);
+        if (guestMode) {
+          // Compute stats locally from guestTodos/guestTags
+          const totalTodos = Array.isArray(guestTodos) ? guestTodos.length : 0;
+          const completedCount = guestTodos.filter(t => t.isCompleted).length;
+          const completionRate = totalTodos ? Math.round((completedCount / totalTodos) * 100) : 0;
+          const durations = guestTodos.map(t => parseInt(t.duration || 0, 10) || 0);
+          const timeSpentTotal = durations.reduce((a, b) => a + b, 0);
+          const avgDuration = totalTodos ? Math.round(timeSpentTotal / totalTodos) : 0;
+          const tagCounts = {};
+          guestTodos.forEach(t => {
+            (t.tags || []).forEach(tag => { tagCounts[tag.id] = (tagCounts[tag.id] || 0) + 1; });
+          });
+          const topTags = Object.entries(tagCounts)
+            .map(([id, count]) => {
+              const tag = guestTags.find(t => t.id === id) || { id, name: 'Tag', color: 'var(--color-primary)' };
+              return { id, name: tag.name, color: tag.color, count };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8);
+          const perDayMap = {};
+          guestTodos.forEach(t => {
+            const d = t.dueDate || 'unscheduled';
+            perDayMap[d] = (perDayMap[d] || 0) + 1;
+          });
+          const tasksPerDay = Object.entries(perDayMap)
+            .filter(([d]) => d !== 'unscheduled')
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+          const data = { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal, topTags, tasksPerDay };
+          if (mounted) setStats(data);
+        } else {
+          try {
+            const data = await fetchStats(fetchWithAuth);
+            if (mounted) setStats(data);
+          } catch (apiErr) {
+            console.warn('Stats fetch failed, computing locally as fallback:', apiErr?.message || apiErr);
+            // Fallback to local computation even when logged in
+            const totalTodos = Array.isArray(guestTodos) ? guestTodos.length : 0;
+            const completedCount = guestTodos.filter(t => t.isCompleted).length;
+            const completionRate = totalTodos ? Math.round((completedCount / totalTodos) * 100) : 0;
+            const durations = guestTodos.map(t => parseInt(t.duration || 0, 10) || 0);
+            const timeSpentTotal = durations.reduce((a, b) => a + b, 0);
+            const avgDuration = totalTodos ? Math.round(timeSpentTotal / totalTodos) : 0;
+            const tagCounts = {};
+            guestTodos.forEach(t => { (t.tags || []).forEach(tag => { tagCounts[tag.id] = (tagCounts[tag.id] || 0) + 1; }); });
+            const topTags = Object.entries(tagCounts).map(([id, count]) => {
+              const tag = guestTags.find(t => t.id === id) || { id, name: 'Tag', color: 'var(--color-primary)' };
+              return { id, name: tag.name, color: tag.color, count };
+            }).sort((a, b) => b.count - a.count).slice(0, 8);
+            const perDayMap = {};
+            guestTodos.forEach(t => { const d = t.dueDate || 'unscheduled'; perDayMap[d] = (perDayMap[d] || 0) + 1; });
+            const tasksPerDay = Object.entries(perDayMap).filter(([d]) => d !== 'unscheduled').map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+            const fallback = { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal, topTags, tasksPerDay };
+            if (mounted) setStats(fallback);
+          }
+        }
       } catch (e) {
         console.error(e);
         if (mounted) setError(e.message || 'Failed to load stats');
@@ -43,7 +90,7 @@ const Statistics = ({ onBack, fetchWithAuth }) => {
     };
     load();
     return () => { mounted = false; };
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode, guestTodos, guestTags]);
 
   const total = stats?.totalTodos || 0;
   const completed = stats?.completedCount || 0;

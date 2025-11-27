@@ -3,7 +3,9 @@ import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
-import { fetchTodos, createTodo, toggleTodo, deleteTodo, toggleFlag, fetchTags, updateTodo, getPendingNotifications } from '../utils/api';
+import { fetchTodos as apiFetchTodos, createTodo as apiCreateTodo, toggleTodo as apiToggleTodo, deleteTodo as apiDeleteTodo, toggleFlag as apiToggleFlag, fetchTags as apiFetchTags, updateTodo as apiUpdateTodo, getPendingNotifications } from '../utils/api';
+import * as guestApi from '../utils/guestApi';
+import { useGuestStorage } from '../hooks/useGuestStorage';
 import { useApi, createTokenOptions } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
@@ -19,6 +21,25 @@ import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 function App() {
   const { fetchWithAuth, tokenOptions } = useApi();
   const { isAuthenticated, isLoading: authLoading, getAccessTokenSilently } = useAuth();
+  const [guestMode, setGuestMode] = useState(false);
+  const guestStorage = useGuestStorage();
+
+  // Reset guest data on successful login and on logout
+  useEffect(() => {
+    if (authLoading) return;
+    try {
+      if (isAuthenticated) {
+        // Successful login: clear any previous guest data
+        localStorage.removeItem('guest_todos');
+        localStorage.removeItem('guest_tags');
+        setGuestMode(false);
+      } else {
+        // Logged out: ensure guest data starts fresh
+        localStorage.removeItem('guest_todos');
+        localStorage.removeItem('guest_tags');
+      }
+    } catch (e) {}
+  }, [authLoading, isAuthenticated]);
 
     // Modal state for new tag creation
     const [showNewTagModal, setShowNewTagModal] = useState(false);
@@ -99,21 +120,39 @@ function App() {
 
   const loadTodos = useCallback(async () => {
     try {
-      const data = await fetchTodos(fetchWithAuth);
+      let data;
+      if (guestMode) {
+        data = await guestApi.fetchTodos();
+      } else {
+        data = await apiFetchTodos(fetchWithAuth);
+        if (data && data.mode === 'guest') {
+          setGuestMode(true);
+          data = await guestApi.fetchTodos();
+        }
+      }
       setTodos(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load todos', error);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const loadTags = useCallback(async () => {
     try {
-      const data = await fetchTags(fetchWithAuth);
+      let data;
+      if (guestMode) {
+        data = await guestApi.fetchTags();
+      } else {
+        data = await apiFetchTags(fetchWithAuth);
+        if (data && data.mode === 'guest') {
+          setGuestMode(true);
+          data = await guestApi.fetchTags();
+        }
+      }
       setTags(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load tags', error);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const pollNotifications = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -141,16 +180,25 @@ function App() {
 
 
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
+
+    // Guest mode: set immediately and do not call any API
 
     if (!isAuthenticated) {
+      setGuestMode(true);
       setIsLoading(false);
       setHasLoggedToken(false);
+      // Load from guest storage asynchronously
+      (async () => {
+        const todos = await guestApi.fetchTodos();
+        const tags = await guestApi.fetchTags();
+        setTodos(Array.isArray(todos) ? todos : []);
+        setTags(Array.isArray(tags) ? tags : []);
+      })();
       return;
     }
 
+    setGuestMode(false);
     let isMounted = true;
     let pollingInterval;
     const loadData = async () => {
@@ -232,7 +280,7 @@ function App() {
       const dueDate = todo.dueDate;
 
       if (selectedDate === 'today') {
-        if (!dueDate) return true;
+        if (!dueDate) return false;
         return dueDate === today;
       }
 
@@ -245,7 +293,7 @@ function App() {
       }
 
       if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
-        return dueDate === selectedDate;
+        return !!dueDate && dueDate === selectedDate;
       }
 
       return true;
@@ -307,7 +355,15 @@ function App() {
     const maxOrder = todos.length > 0 ? Math.max(...todos.map(t => t.order || 0)) : 0;
     try {
       // Pass inputDescription as description and recurrence pattern
-      const newTodo = await createTodo(inputValue, scheduleDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence, fetchWithAuth);
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const effectiveDate = scheduleDate && scheduleDate.includes('-')
+        ? scheduleDate
+        : (selectedDate === 'today' ? todayStr
+         : (selectedDate === 'tomorrow' ? format(addDays(new Date(), 1), 'yyyy-MM-dd')
+          : (typeof selectedDate === 'string' && selectedDate.includes('-') ? selectedDate : '')));
+      const newTodo = guestMode
+        ? await guestApi.createTodo(inputValue, effectiveDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence)
+        : await apiCreateTodo(inputValue, effectiveDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence, fetchWithAuth);
       newTodo.order = maxOrder + 1;
       newTodo.description = inputDescription;
       setTodos(prev => [...prev, newTodo]);
@@ -331,19 +387,24 @@ function App() {
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
-      const updatedTodo = await updateTodo(id, updates, fetchWithAuth);
-      setTodos(prev => prev.map(t => {
-        if (t.id === id) {
-          return { ...t, ...updatedTodo };
+      let updatedTodo;
+      if (guestMode) {
+        updatedTodo = await guestApi.updateTodo(id, updates);
+      } else {
+        try {
+          updatedTodo = await apiUpdateTodo(id, updates, fetchWithAuth);
+        } catch (authErr) {
+          console.warn('Auth update failed, falling back to local update:', authErr?.message || authErr);
+          updatedTodo = await guestApi.updateTodo(id, updates);
         }
-        return t;
-      }));
+      }
+      setTodos(prev => prev.map(t => (t.id === id ? { ...t, ...updatedTodo } : t)));
       return updatedTodo;
     } catch (error) {
       console.error("Failed to update todo", error);
       throw error;
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const handleStartEdit = useCallback((todo) => {
     setEditingTodoId(todo.id);
@@ -383,22 +444,26 @@ function App() {
 
   const handleToggle = useCallback(async (id) => {
     try {
-      const updatedTodo = await toggleTodo(id, fetchWithAuth);
+      const updatedTodo = guestMode
+        ? await guestApi.toggleTodo(id)
+        : await apiToggleTodo(id, fetchWithAuth);
       setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
       console.error("Failed to toggle todo", error);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const handleFlag = useCallback(async (id, e) => {
     e.stopPropagation();
     try {
-      const updatedTodo = await toggleFlag(id, fetchWithAuth);
+      const updatedTodo = guestMode
+        ? await guestApi.toggleFlag(id)
+        : await apiToggleFlag(id, fetchWithAuth);
       setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
       console.error("Failed to toggle flag", error);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const handleUpdatePriority = useCallback(async (id, newPriority) => {
     try {
@@ -449,12 +514,16 @@ function App() {
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await deleteTodo(id, fetchWithAuth);
+      if (guestMode) {
+        await guestApi.deleteTodo(id);
+      } else {
+        await apiDeleteTodo(id, fetchWithAuth);
+      }
       setTodos(prev => prev.filter(t => t.id !== id));
     } catch (error) {
       console.error("Failed to delete todo", error);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, guestMode]);
 
   const toggleTagSelection = (tag) => {
     if (selectedTags.find(t => t.id === tag.id)) {
@@ -505,10 +574,11 @@ function App() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
     const dateFiltered = todos.filter(todo => {
-      if (selectedDate === 'tomorrow') return todo.dueDate === tomorrow;
-      if (!todo.dueDate) return selectedDate === 'today';
-      if (selectedDate === 'today') return todo.dueDate === today;
-      return todo.dueDate === selectedDate;
+      const due = todo.dueDate;
+      if (selectedDate === 'tomorrow') return !!due && due === tomorrow;
+      if (selectedDate === 'today') return !!due && due === today;
+      if (typeof selectedDate === 'string' && selectedDate.includes('-')) return !!due && due === selectedDate;
+      return true;
     });
     return dateFiltered.filter(t => t.isCompleted).length;
   }, [todos, selectedDate]);
@@ -614,55 +684,66 @@ function App() {
     <>
       <Routes>
         <Route path="/search" element={
-          <ProtectedRoute>
             <AdvancedSearchPage
               sidebarProps={sidebarProps}
               topBarProps={topBarProps}
               searchProps={{
                 onBack: () => navigate('/'),
                 onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
+                onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) {} ; navigate('/'); },
                 fetchWithAuth,
+                guestMode,
+                guestTodos: todos,
+                guestTags: tags,
               }}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/advanced-search" element={
-          <ProtectedRoute>
             <AdvancedSearchPage
               sidebarProps={sidebarProps}
               topBarProps={topBarProps}
               searchProps={{
                 onBack: () => navigate('/'),
                 onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
+                onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) {} ; navigate('/'); },
                 fetchWithAuth,
+                guestMode,
+                guestTodos: todos,
+                guestTags: tags,
               }}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/statistics" element={
-          <ProtectedRoute>
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth }} />
-          </ProtectedRoute>
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
         } />
 
         <Route path="/stats" element={
-          <ProtectedRoute>
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth }} />
-          </ProtectedRoute>
+            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
         } />
 
 
-        <Route path="/auth" element={
-          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-            <AuthPage onBack={() => navigate('/')} />
-          </DashboardPage>
-        } />
+        {/* Remove auth route; guest mode uses home */}
 
         <Route path="/" element={
-          <ProtectedRoute>
             <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            {guestMode && (
+              <div style={{ marginTop: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                  padding: '12px 16px',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Hello guest</div>
+                  <div style={{ fontSize: '0.95rem' }}>
+                    You are using Guest Mode. Your tasks and tags are stored locally on this browser. Sign in to sync across devices.
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Saved toast */}
             {savedMessage && (
               <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
@@ -1324,7 +1405,9 @@ function App() {
                             onClick={async () => {
                               if (!newTagName.trim()) return;
                               try {
-                                const newTag = await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
+                                const newTag = guestMode
+                                  ? await guestApi.createTag(newTagName.trim(), newTagColor)
+                                  : await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
                                 setTags(prev => [...prev, newTag]);
                                 setShowNewTagModal(false);
                                 setNewTagName('');
@@ -1430,7 +1513,6 @@ function App() {
 
               </div>
             </DashboardPage>
-          </ProtectedRoute>
           } />
 
       </Routes>

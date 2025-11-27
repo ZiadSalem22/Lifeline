@@ -10,6 +10,15 @@ const logger = require('../config/logger');
 
 async function attachCurrentUser(req, res, next) {
   try {
+    // Guest mode: No Authorization header at all
+    if (!req.headers.authorization) {
+      req.currentUser = {
+        id: null,
+        role: 'guest',
+        isGuest: true
+      };
+      return next();
+    }
     const claims = req.auth?.payload || {};
     const sub = claims.sub;
     const email = claims.email;

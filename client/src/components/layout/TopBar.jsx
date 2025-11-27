@@ -62,7 +62,7 @@ const TopBar = (props) => {
                         <button
                             type="button"
                             className="top-bar-button top-bar-login"
-                            onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                            onClick={() => { try { localStorage.removeItem('guest_todos'); localStorage.removeItem('guest_tags'); } catch (e) {} ; logout({ logoutParams: { returnTo: window.location.origin } }); }}
                             title="Logout"
                         >
                             Logout

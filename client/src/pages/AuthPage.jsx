@@ -1,27 +1,19 @@
-import Auth from '../components/auth/Auth';
+
 import { useAuth } from '../hooks/useAuth';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
-const AuthPage = ({ onBack }) => {
-  const { isAuthenticated, loginWithRedirect } = useAuth();
-  const navigate = useNavigate();
-
-  const handleBack = () => {
-    if (typeof onBack === 'function') {
-      onBack();
-      return;
-    }
-    navigate('/');
-  };
+const AuthPage = () => {
+  const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
+  // Only show hello guest, let App.jsx render the dashboard/task UI
   return (
-    <section style={{ padding: '32px 0' }}>
-      <Auth onBack={handleBack} onAuthAction={() => loginWithRedirect()} />
-    </section>
+    <div style={{ padding: '32px 0', textAlign: 'center' }}>
+      <h2>Hello guest</h2>
+    </div>
   );
 };
 
