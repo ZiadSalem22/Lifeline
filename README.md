@@ -14,18 +14,20 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 
 ## 🌟 Features
 
-- **Todos:** Create, update, complete, and delete tasks
+- **Todos:** Create, update, complete, flag, and delete tasks
 - **Tagging:** Many-to-many tags for organization
 - **Recurring Tasks:** Flexible recurrence (daily, weekly, monthly, custom)
 - **Reminders & Notifications:** Browser notifications for upcoming tasks
 - **Export/Import:** Backup and restore data (JSON/CSV, merge/replace)
+- **Guest Mode:** Full-featured localStorage-only mode (no backend/auth required)
+- **Advanced Search:** Multi-criteria search with month preload and client fallbacks
+- **Statistics:** Server-backed insights with automatic local computation fallback
 - **User Accounts:** Auth0 login, user upsert, and profile management
 - **RBAC:** Role-based access (admin, paid, free) enforced via Auth0 and backend middleware
-- **Admin Tools:** CLI script to promote users to admin
-- **Mobile-First UI:** Responsive, Apple-style design
+- **Mobile-First UI:** Responsive, Apple-style design; sidebar/top bar that never overlay content
 - **Themes:** Light/dark mode, theme toggle, and CSS variables
 - **Animations:** Framer Motion for smooth UI transitions
-- **Comprehensive Tests:** Jest + Supertest for backend, with full RBAC and business logic coverage (in-memory/mocked DB)
+- **Comprehensive Tests:** Jest + Supertest for backend, with full RBAC and business logic coverage
 - **CI/CD:** Automated tests and builds via GitHub Actions
 
 ---
@@ -37,30 +39,30 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 - **Clean/Hexagonal Architecture:**
   - `src/application/`: Use cases (business logic, e.g., CreateTodo, RecurrenceService, NotificationService)
   - `src/domain/`: Entities (Todo, Tag, User, etc.) and repository interfaces
-  - `src/infrastructure/`: Data persistence (TypeORM repositories for SQL databases, including SQLite and MSSQL)
+  - `src/infrastructure/`: Repository implementations for SQLite (and TypeORM variants available for SQL)
   - `src/middleware/`: Auth0 JWT validation, attachCurrentUser, RBAC roles, error handling, logging, validation
   - `src/routes/`: API endpoints for todos, tags, attachments, etc.
-  - **Database:** SQL database (SQLite for dev, MSSQL or other SQL for production) via TypeORM
-  - **TypeORM Entities:** All core models (User, Todo, Tag, etc.) are defined as TypeORM entities, enabling migrations and cross-database support
-  - **Repository Pattern:** Use case classes interact with repository interfaces; concrete implementations use TypeORM for all SQL operations
+  - **Database:** SQLite by default in development; TypeORM repositories are available for broader SQL support
+  - **Repository Pattern:** Use case classes interact with repository interfaces; concrete implementations use SQLite/TypeORM
   - **Auth0 Integration:**
     - JWT validation via `express-oauth2-jwt-bearer`
-    - User upsert/profile on every request (`attachCurrentUser`)
+    - User upsert/profile on request (`attachCurrentUser`)
     - Roles extracted from custom Auth0 claims
     - RBAC enforced in middleware and routes
-  - **Testing:** Jest + Supertest, with all DB operations mocked or in-memory for speed and reliability
+  - **Testing:** Jest + Supertest, DB operations mocked or in-memory where appropriate
   - **Logging:** Winston for error/activity logging
   - **Validation:** Joi for robust input validation
 
 ---
 
-## 🔄 Data Flow (Corrected)
+## 🔄 Data Flow (Updated)
 
 - **Frontend → Backend:**
-  - All actions go through `api.js` to Express API endpoints (`/api/todos`, `/api/tags`, etc.)
+  - When authenticated, actions go through `client/src/utils/api.js` to Express endpoints (`/api/todos`, `/api/tags`, etc.)
+  - In Guest Mode, actions go through `client/src/utils/guestApi.js` to localStorage, with identical UX
 - **Backend:**
-  - Express routes → Use case classes (application layer) → Repository interfaces (domain layer) → TypeORM repository implementations (infrastructure layer) → SQL database (SQLite/MSSQL)
-  - No direct frontend access to SQLite or any database; all data access is through the backend API and TypeORM
+  - Express routes → Use case classes (application) → Repository interfaces (domain) → SQLite/TypeORM implementations (infrastructure) → SQL database
+  - No direct frontend access to any database; all authenticated data access is via the backend API
 
 ---
 
@@ -68,6 +70,7 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 
 - **Apple-style UI:** Translucent search pill, sidebar, and quick actions
 - **Mobile-First:** Responsive layout, touch-friendly controls
+- **Layout Reliability:** Global sidebar offset so content never sits under the drawer
 - **Themes:** Light/dark mode, theme toggle, and CSS variables
 - **Animations:** Framer Motion for smooth transitions
 - **Accessibility:** Keyboard navigation and ARIA labels
@@ -81,7 +84,12 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 - `backend/src/domain/`: Backend domain entities and interfaces
 - `backend/src/infrastructure/`: Backend data persistence implementations
 - `client/src/app/App.jsx`: Main frontend component, state management
-- `client/src/utils/api.js`: Centralized frontend API calls
+- `client/src/utils/api.js`: Centralized frontend API calls (authenticated)
+- `client/src/utils/guestApi.js`: LocalStorage CRUD (Guest Mode)
+- `client/src/hooks/useGuestStorage.js`: Helpers for guest data safety
+- `client/src/components/search/AdvancedSearch.jsx`: Advanced search with month preload and fallbacks
+- `client/src/components/statistics/Statistics.jsx`: Statistics with server + local fallback
+- `client/src/components/layout/AppLayout.jsx`: Global layout applying sidebar offset via `main-content`
 - `client/src/styles/base.css`: Consolidated global frontend styles
 
 ---
@@ -94,6 +102,11 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
   - `npm install`, `npm run dev`, `npm run build`
 - **Testing:**
   - `npm test` (backend, with full coverage for RBAC, todos, recurrence, etc.)
+
+Notes:
+- Frontend dev server: `http://localhost:5173`
+- Backend API: `http://localhost:3000/api`
+- Guest Mode runs entirely client-side (no backend required)
 
 ---
 
@@ -154,7 +167,7 @@ npm run dev
 # Open http://localhost:5173 (Vite default)
 ```
 
-4. Shared state: the frontend expects the API at `http://localhost:3000/api` by default. If you run the backend on a different port, update `client/src/utils/api.js` or set the environment variable used by the frontend.
+4. Shared state: the frontend expects the API at `http://localhost:3000/api` by default when authenticated. If you run the backend on a different port, update `client/src/utils/api.js` or set the frontend environment variable.
 
 —
 
@@ -167,7 +180,7 @@ cd backend
 npm test
 ```
 
-There's a small unit test suite focused on domain logic and the SQLite repository.
+There is a unit test suite focused on domain logic and repositories; see `TESTING_CHECKLIST.md` for scenarios.
 
 ---
 
@@ -190,7 +203,7 @@ The backend now includes comprehensive automated tests for all major features an
   - Recurrence logic is tested for correct next-due calculation and auto-creation of new tasks.
 
 - **Repository Layer**
-  - All DB operations are mocked in tests to ensure fast, isolated, and reliable test runs.
+  - DB operations are mocked or use in-memory strategies to ensure fast, isolated, and reliable runs.
 
 - **Test Approach**
   - Uses Jest for assertions and mocking, Supertest for HTTP simulation, and in-memory/mocked DB for all backend tests.
@@ -279,6 +292,9 @@ Notes about environment variables and API URL:
 - After the backend is live at `https://<BACKEND_WEBAPP_NAME>.azurewebsites.net`, update `client/src/utils/api.js` (or set a frontend env var) to point API calls at that URL.
 - If you need persistent storage for SQLite you must mount storage or use a hosted DB for production. App Service local storage may not persist through instance restarts in all situations; for a demo it often works but is not guaranteed.
 
+Guest Mode in production:
+- The frontend can operate fully in Guest Mode (localStorage-only). Authenticated mode will seamlessly use the backend when available.
+
 
 —
 
@@ -330,10 +346,11 @@ Tell me which of the above you want me to add next and I will implement it.
   - Example: `promote-admin.js` for RBAC admin elevation, `test-mssql-connection.js` for DB health checks.
 
 - **Frontend Advanced Features:**
-  - **Advanced Search:** Multi-criteria search for todos and tags.
-  - **Statistics:** Dashboard and statistics page for productivity insights.
-  - **Calendar:** Modern calendar component for date selection and recurrence visualization.
+  - **Advanced Search:** Multi-criteria search, month preload on empty filters, double-click/tap to navigate to task date, and client fallbacks.
+  - **Statistics:** Dashboard with server data or local computation fallback for resilience.
+  - **Calendar:** Modern calendar for date selection and recurrence visualization; quick prev/today/next controls.
   - **Export/Import:** UI for exporting/importing data in JSON/CSV, with merge/replace options.
+  - **Layout:** Global sidebar offset and fixed header alignment to prevent overlap.
 
 - **Testing (Frontend):**
   - Hooks and utilities for API, theme, and Auth0 integration are unit tested.
