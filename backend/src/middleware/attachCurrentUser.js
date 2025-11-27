@@ -14,7 +14,7 @@ function attachCurrentUser() {
       const name = payload.name;
       const picture = payload.picture;
 
-      if (!sub || !email) {
+      if (!sub) {
         req.currentUser = null;
         return next();
       }
