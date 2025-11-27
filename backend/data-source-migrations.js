@@ -23,6 +23,7 @@ const AppMigrationsDataSource = new DataSource({
     path.join(__dirname, 'src', 'infra', 'db', 'entities', 'TagEntity.js'),
     path.join(__dirname, 'src', 'infra', 'db', 'entities', 'TodoTagEntity.js'),
     path.join(__dirname, 'src', 'infra', 'db', 'entities', 'UserEntity.js'),
+    path.join(__dirname, 'src', 'infra', 'db', 'entities', 'UserProfileEntity.js'),
   ],
   migrations: [path.join(__dirname, 'src', 'migrations', '*.js')],
 });

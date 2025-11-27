@@ -90,15 +90,17 @@ app.get('/api/health/db/schema', async (req, res) => {
     };
     try {
         const pool = await sql.connect(config);
-        const [todos, tags, todo_tags] = await Promise.all([
+        const [todos, tags, todo_tags, users] = await Promise.all([
             pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todos'`),
             pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tags'`),
-            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todo_tags'`)
+            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todo_tags'`),
+            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users'`)
         ]);
         res.json({
             todos: todos.recordset,
             tags: tags.recordset,
-            todo_tags: todo_tags.recordset
+            todo_tags: todo_tags.recordset,
+            users: users.recordset
         });
         await pool.close();
     } catch (err) {
@@ -153,7 +155,7 @@ const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
 
 // Secure API: checkJwt, then attachCurrentUser (SQLite-backed user store only)
-app.use('/api', checkJwt, attachCurrentUser());
+app.use('/api', checkJwt, attachCurrentUser);
 
 // Auth probe
 app.get('/api/me', (req, res) => {

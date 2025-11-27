@@ -34,6 +34,34 @@ class TypeORMUserRepository {
     });
   }
 
+  async ensureUserFromAuth0Claims(claims) {
+    const { sub, email, name, picture } = claims || {};
+    if (!sub) return null;
+    // Role mapping
+    const roles = (claims['https://lifeline.app/roles'] || []);
+    let role = 'free';
+    if (Array.isArray(roles)) {
+      if (roles.includes('admin')) role = 'admin';
+      else if (roles.includes('paid')) role = 'paid';
+    }
+    // Always set subscription_status to 'none' for now
+    const subscription_status = 'none';
+    return await AppDataSource.manager.transaction(async (manager) => {
+      const repo = manager.getRepository('User');
+      let user = await repo.findOne({ where: { id: sub } });
+      if (user) {
+        user.email = email || user.email || null;
+        user.name = name || user.name || null;
+        user.picture = picture || user.picture || null;
+        user.role = role;
+        user.subscription_status = subscription_status;
+        return await repo.save(user);
+      }
+      user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, role, subscription_status });
+      return await repo.save(user);
+    });
+  }
+
   async findById(id) {
     if (!id) return null;
     return await this._repo().findOne({ where: { id } });
@@ -44,9 +72,17 @@ class TypeORMUserRepository {
     return await this._repo().findOne({ where: { email } });
   }
 
+  async findWithProfileById(userId) {
+    if (!userId) return null;
+    return await this._repo().findOne({
+      where: { id: userId },
+      relations: ['profile'],
+    });
+  }
+
   async listAll() {
     return await this._repo().find();
   }
 }
 
-module.exports = TypeORMUserRepository;
+module.exports = new TypeORMUserRepository();

@@ -38,5 +38,17 @@ module.exports = new EntitySchema({
       nullable: false,
       default: () => 'GETDATE()'
     },
+    role: {
+      type: 'nvarchar',
+      length: 32,
+      nullable: true,
+      default: null,
+    },
+    subscription_status: {
+      type: 'nvarchar',
+      length: 32,
+      nullable: false,
+      default: () => "'none'",
+    },
   },
 });
