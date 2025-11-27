@@ -2,13 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const { checkJwt } = require('./middleware/auth0');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { attachCurrentUser } = require('./middleware/attachCurrentUser');
+const logger = require('./config/logger');
 
-const SQLiteTodoRepository = require('./infrastructure/SQLiteTodoRepository');
-const SQLiteTagRepository = require('./infrastructure/SQLiteTagRepository');
+const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
+const TypeORMTagRepository = require('./infrastructure/TypeORMTagRepository');
+const { AppDataSource } = require('./infra/db/data-source');
 const NotificationService = require('./application/NotificationService');
 const CreateTodo = require('./application/CreateTodo');
 const ListTodos = require('./application/ListTodos');
@@ -21,10 +23,89 @@ const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/Tag
 const app = express();
 const port = 3000;
 
-// Middleware
-app.use(cors());
+
+// CORS configuration: allow Vite dev origin and Authorization header
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+
+app.use(
+    cors({
+        origin: FRONTEND_ORIGIN,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: [
+            'Authorization',
+            'Content-Type',
+            'Accept',
+            'Origin',
+            'X-Requested-With',
+        ],
+        credentials: true,
+    })
+);
+
 app.use(bodyParser.json());
-app.use('/api', checkJwt);
+
+// PUBLIC DB health check route (must be before checkJwt)
+app.get('/api/health/db', async (req, res) => {
+    try {
+        if (!AppDataSource.isInitialized) {
+            await AppDataSource.initialize();
+            console.log('[health/db] AppDataSource initialized');
+        }
+
+        await AppDataSource.query('SELECT 1 AS value');
+
+        const opts = AppDataSource.options || {};
+        console.log('[health/db] TypeORM status:', {
+            type: opts.type,
+            host: opts.host,
+            database: opts.database
+        });
+
+        res.status(200).json({ db: 'ok' });
+    } catch (err) {
+        logger.error('[health/db] MSSQL connection error', { error: err.message });
+        res.status(500).json({
+            db: 'error',
+            message: err.message
+        });
+    }
+});
+
+// INTERNAL: Schema validation endpoint for ExpressSQL (not public API, for debugging only)
+app.get('/api/health/db/schema', async (req, res) => {
+    // Build connection from current TypeORM DataSource options
+    const sql = require('mssql');
+    const opts = AppDataSource.options || {};
+    const config = {
+        server: opts.host || 'localhost',
+        port: opts.port || 1433,
+        database: opts.database,
+        user: opts.username,
+        password: opts.password,
+        options: {
+            encrypt: true,
+            trustServerCertificate: true,
+            instanceName: (opts.extra && opts.extra.instanceName) || process.env.MSSQL_INSTANCE || 'SQLEXPRESS'
+        }
+    };
+    try {
+        const pool = await sql.connect(config);
+        const [todos, tags, todo_tags] = await Promise.all([
+            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todos'`),
+            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tags'`),
+            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todo_tags'`)
+        ]);
+        res.json({
+            todos: todos.recordset,
+            tags: tags.recordset,
+            todo_tags: todo_tags.recordset
+        });
+        await pool.close();
+    } catch (err) {
+        logger.error('[health/db/schema] MSSQL schema check failed', { error: err.message });
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Swagger UI (auto-served at /api-docs)
 try {
@@ -33,59 +114,28 @@ try {
     console.warn('Swagger UI not available:', e.message);
 }
 
-// Database Setup
-const dbPath = path.resolve(__dirname, '../todos_v4.db');
-const db = new sqlite3.Database(dbPath);
-
-db.serialize(() => {
-    db.run(`
-    CREATE TABLE IF NOT EXISTS todos (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-         description TEXT,
-      due_date TEXT,
-      is_completed INTEGER DEFAULT 0,
-      is_flagged INTEGER DEFAULT 0,
-      duration INTEGER DEFAULT 0,
-      priority TEXT DEFAULT 'medium',
-      due_time TEXT,
-      subtasks TEXT DEFAULT '[]',
-      \`order\` INTEGER DEFAULT 0,
-      recurrence TEXT,
-      next_recurrence_due TEXT,
-      original_id TEXT
-    )
-  `);
-    // Add new columns if they don't exist (for existing databases)
-    db.run(`ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'medium'`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN due_time TEXT`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN subtasks TEXT DEFAULT '[]'`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN \`order\` INTEGER DEFAULT 0`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN description TEXT`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN recurrence TEXT`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN next_recurrence_due TEXT`, (err) => {});
-    db.run(`ALTER TABLE todos ADD COLUMN original_id TEXT`, (err) => {});
-    db.run(`
-    CREATE TABLE IF NOT EXISTS tags (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      color TEXT NOT NULL
-    )
-  `);
-    db.run(`
-    CREATE TABLE IF NOT EXISTS todo_tags (
-      todo_id TEXT,
-      tag_id TEXT,
-      FOREIGN KEY(todo_id) REFERENCES todos(id),
-      FOREIGN KEY(tag_id) REFERENCES tags(id),
-      PRIMARY KEY (todo_id, tag_id)
-    )
-  `);
-});
+// Database Setup: enforce TypeORM-only mode
+const USE_TYPEORM = true;
+let db = null; // No SQLite in TypeORM-only mode
 
 // Repository & Use Cases
-const todoRepository = new SQLiteTodoRepository(db);
-const tagRepository = new SQLiteTagRepository(db);
+let todoRepository;
+let tagRepository;
+
+// Ensure TypeORM is initialized before repositories are used
+if (!AppDataSource.isInitialized) {
+    AppDataSource.initialize()
+        .then(() => {
+            console.log('[TypeORM] DataSource initialized (MSSQL)');
+        })
+        .catch((err) => {
+            console.error('[TypeORM] Failed to initialize DataSource', err);
+        });
+}
+
+todoRepository = new TypeORMTodoRepository();
+tagRepository = new TypeORMTagRepository();
+
 const notificationService = new NotificationService(db);
 
 const createTodo = new CreateTodo(todoRepository);
@@ -102,6 +152,9 @@ const listTags = new ListTags(tagRepository);
 const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
 
+// Secure API: checkJwt, then attachCurrentUser (SQLite-backed user store only)
+app.use('/api', checkJwt, attachCurrentUser(db));
+
 // Auth probe
 app.get('/api/me', (req, res) => {
     const payload = req.auth?.payload || {};
@@ -110,6 +163,19 @@ app.get('/api/me', (req, res) => {
         email: payload.email,
         claims: payload
     });
+});
+
+// Notifications: in MSSQL/TypeORM mode notifications are effectively
+// disabled (NotificationService is a no-op without SQLite), but the
+// endpoint should still exist and return an empty list so the
+// frontend polling does not fail.
+app.get('/api/notifications/pending', async (req, res) => {
+    try {
+        const pending = await notificationService.getPendingNotifications();
+        res.json(pending || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Todo Routes
@@ -342,17 +408,10 @@ app.post('/api/import', async (req, res) => {
 
         // If mode is 'replace', clear existing data
         if (mode === 'replace') {
-            await new Promise((resolve, reject) => {
-                db.run('DELETE FROM todo_tags', (err) => {
-                    if (err) reject(err);
-                    else {
-                        db.run('DELETE FROM todos', (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        });
-                    }
-                });
-            });
+            // Clear existing data using TypeORM (MSSQL)
+            await AppDataSource.manager.query('DELETE FROM todo_tags');
+            await AppDataSource.manager.query('DELETE FROM todos');
+            await AppDataSource.manager.query('DELETE FROM tags');
         }
 
         // Import tags first
@@ -415,15 +474,7 @@ app.post('/api/import', async (req, res) => {
 });
 
 // Notification endpoints
-// Get pending notifications
-app.get('/api/notifications/pending', async (req, res) => {
-    try {
-        const notifications = await notificationService.getPendingNotifications();
-        res.json(notifications);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// (MSSQL mode: NotificationService is no-op; endpoints retained)
 
 // Schedule notification for a todo
 app.post('/api/notifications/schedule', async (req, res) => {
@@ -476,6 +527,9 @@ app.delete('/api/notifications/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// (Removed duplicate health route; consolidated at top)
 
 // Fallback handlers
 app.use(notFoundHandler);
