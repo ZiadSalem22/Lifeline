@@ -60,7 +60,7 @@ describe('CreateTodo Recurrence Integration', () => {
             startDate: '2025-11-24',
             endDate: '2025-11-27'
         };
-        await createTodo.execute('Test Recurring', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
+        await createTodo.execute('userR', 'Test Recurring', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
         const all = await new Promise((resolve, reject) => {
             db.all('SELECT * FROM todos ORDER BY due_date ASC', (err, rows) => {
                 if (err) reject(err);
@@ -83,7 +83,7 @@ describe('CreateTodo Recurrence Integration', () => {
             endDate: '2025-11-30',
             selectedDays: ['Monday', 'Wednesday', 'Friday']
         };
-        await createTodo.execute('MWF Recurring', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
+        await createTodo.execute('userR', 'MWF Recurring', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
         const all = await new Promise((resolve, reject) => {
             db.all('SELECT * FROM todos ORDER BY due_date ASC', (err, rows) => {
                 if (err) reject(err);
@@ -105,7 +105,7 @@ describe('CreateTodo Recurrence Integration', () => {
             interval: 2,
             endDate: '2025-11-28'
         };
-        await createTodo.execute('Legacy Daily', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
+        await createTodo.execute('userR', 'Legacy Daily', '2025-11-24', [], false, 0, 'medium', null, [], '', recurrence);
         const all = await new Promise((resolve, reject) => {
             db.all('SELECT * FROM todos ORDER BY due_date ASC', (err, rows) => {
                 if (err) reject(err);

@@ -1,5 +1,6 @@
 const Tag = require('../domain/Tag');
 const { AppDataSource } = require('../infra/db/data-source');
+const { AppError } = require('../utils/errors');
 
 class TypeORMTagRepository {
     constructor() {
@@ -25,10 +26,22 @@ class TypeORMTagRepository {
     }
 
     async save(tag) {
-        await this.repo.save({ id: tag.id, name: tag.name, color: tag.color, user_id: tag.userId || null, is_default: tag.isDefault ? 1 : 0 });
+        // Prevent modification of default tags via API layer
+        if (tag.isDefault) {
+            throw new AppError('Default tags cannot be modified', 403);
+        }
+        await this.repo.save({ id: tag.id, name: tag.name, color: tag.color, user_id: tag.userId || null, is_default: 0 });
     }
 
-    async delete(id) {
+    async delete(id, userId) {
+        const existing = await this.repo.findOne({ where: { id } });
+        if (!existing) return; // silence if already gone
+        if (existing.is_default === 1) {
+            throw new AppError('Default tags cannot be deleted', 403);
+        }
+        if (existing.user_id !== userId) {
+            throw new AppError('Forbidden', 403);
+        }
         await this.repo.delete({ id });
     }
     async countAll() {
@@ -39,9 +52,13 @@ class TypeORMTagRepository {
         return await this.repo.count({ where: { user_id: userId } });
     }
 
+    async countCustomByUser(userId) {
+        return await this.repo.count({ where: { user_id: userId, is_default: 0 } });
+    }
+
     async findAllForUser(userId) {
         const rows = await this.repo.createQueryBuilder('tag')
-            .where('(tag.user_id = :userId OR tag.is_default = 1)', { userId })
+            .where('tag.is_default = 1 OR tag.user_id = :userId', { userId })
             .getMany();
         return rows.map(r => new Tag(r.id, r.name, r.color, r.user_id || null, (r.is_default === 1)));
     }

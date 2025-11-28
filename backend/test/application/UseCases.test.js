@@ -38,7 +38,7 @@ describe('Application Use Cases', () => {
     it('should list all todos', async () => {
         mockRepo.todos = [new Todo('1', 'Test 1'), new Todo('2', 'Test 2')];
         const listTodos = new ListTodos(mockRepo);
-        const todos = await listTodos.execute();
+        const todos = await listTodos.execute('userX');
         expect(todos).toHaveLength(2);
     });
 
@@ -46,14 +46,14 @@ describe('Application Use Cases', () => {
         const todo = new Todo('1', 'Test');
         mockRepo.todos = [todo];
         const toggleTodo = new ToggleTodo(mockRepo);
-        await toggleTodo.execute('1');
+        await toggleTodo.execute('userX', '1');
         expect(mockRepo.todos[0].isCompleted).toBe(true);
     });
 
     it('should delete a todo', async () => {
         mockRepo.todos = [new Todo('1', 'Test')];
         const deleteTodo = new DeleteTodo(mockRepo);
-        await deleteTodo.execute('1');
+        await deleteTodo.execute('userX', '1');
         expect(mockRepo.todos).toHaveLength(0);
     });
 });

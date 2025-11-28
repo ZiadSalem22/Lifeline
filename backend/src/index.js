@@ -190,7 +190,8 @@ app.get('/api/me', requireAuth(), (req, res) => {
     });
 });
 // Auth probe
-app.get('/api/me', (req, res) => {
+// Raw auth payload (kept separate to avoid overriding /api/me)
+app.get('/api/me/raw', (req, res) => {
     const payload = req.auth?.payload || {};
     res.json({
         sub: payload.sub,
@@ -360,13 +361,14 @@ app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true })
         const role = req.currentUser?.role || 'free';
         const userId = req.currentUser.id;
         if (role === 'free') {
-            const currentCount = await tagRepository.countByUser(userId);
+            const currentCount = await tagRepository.countCustomByUser(userId);
             if (currentCount >= 50) {
                 return next(new AppError('Free tier max tags reached.', 403));
             }
         }
         const { name, color } = req.body;
-        const tag = await createTag.execute(req.currentUser.id, name, color);
+        // Force custom tag creation only (is_default cannot be spoofed)
+        const tag = await createTag.execute(req.currentUser.id, name, color, role === 'free' ? { maxTags: 50 } : null);
         res.status(201).json(tag);
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -380,9 +382,8 @@ app.patch('/api/tags/:id', requireAuth(), async (req, res, next) => {
         // ownership: ensure tag belongs to user if not default
         const existing = await tagRepository.findById(id);
         if (!existing) return next(new AppError('Tag not found', 404));
-        if (!existing.isDefault && existing.userId !== req.currentUser.id) {
-            return next(new AppError('Forbidden', 403));
-        }
+        if (existing.isDefault) return next(new AppError('Default tags cannot be modified', 403));
+        if (existing.userId !== req.currentUser.id) return next(new AppError('Forbidden', 403));
         const tag = await updateTag.execute(req.currentUser.id, id, name, color);
         res.json(tag);
     } catch (err) {
@@ -396,7 +397,7 @@ app.delete('/api/tags/:id', requireAuth({ allowGuest: true, guestModeResponse: t
     }
     try {
         const { id } = req.params;
-        await deleteTag.execute(id);
+        await deleteTag.execute(req.currentUser.id, id);
         res.status(204).send();
     } catch (err) {
         res.status(500).json({ error: err.message });

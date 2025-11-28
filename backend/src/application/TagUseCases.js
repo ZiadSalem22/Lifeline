@@ -6,7 +6,14 @@ class CreateTag {
         this.tagRepository = tagRepository;
     }
 
-    async execute(userId, name, color) {
+    async execute(userId, name, color, limits) {
+        // Enforce free-tier custom tag limit (default tags excluded)
+        if (limits && limits.maxTags) {
+            const count = await this.tagRepository.countCustomByUser(userId);
+            if (count >= limits.maxTags) {
+                throw new Error('Tag limit reached for free tier');
+            }
+        }
         const tag = new Tag(uuidv4(), name, color, userId, false);
         await this.tagRepository.save(tag);
         return tag;
@@ -28,8 +35,8 @@ class DeleteTag {
         this.tagRepository = tagRepository;
     }
 
-    async execute(id) {
-        await this.tagRepository.delete(id);
+    async execute(userId, id) {
+        await this.tagRepository.delete(id, userId);
     }
 }
 
@@ -39,9 +46,15 @@ class UpdateTag {
     }
 
     async execute(userId, id, name, color) {
-        const tag = new Tag(id, name, color, userId, false);
-        await this.tagRepository.save(tag);
-        return tag;
+        const existing = await this.tagRepository.findById(id);
+        if (!existing) throw new Error('Tag not found');
+        if (existing.isDefault || existing.userId !== userId) {
+            throw new Error('Forbidden');
+        }
+        existing.name = name;
+        existing.color = color;
+        await this.tagRepository.save(existing);
+        return existing;
     }
 }
 

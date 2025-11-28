@@ -29,6 +29,7 @@ describe('attachCurrentUser middleware', () => {
   it('should populate req.currentUser with roles and role from Auth0 claims', async () => {
     const app = express();
     app.use((req, res, next) => {
+      req.headers.authorization = 'Bearer test';
       req.auth = { payload: {
         sub: 'user123',
         email: 'test@example.com',
@@ -52,6 +53,7 @@ describe('attachCurrentUser middleware', () => {
   it('should default to role free if no roles present', async () => {
     const app = express();
     app.use((req, res, next) => {
+      req.headers.authorization = 'Bearer test';
       req.auth = { payload: {
         sub: 'user456',
         email: 'test2@example.com',
