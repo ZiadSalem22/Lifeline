@@ -27,6 +27,7 @@
     "mssql": "^11.0.1",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",
+    "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3",
     "typeorm": "^0.3.27",
     "uuid": "^9.0.1",

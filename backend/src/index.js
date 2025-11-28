@@ -48,6 +48,36 @@ app.use(
 app.use(bodyParser.json());
 
 // PUBLIC DB health check route (must be before checkJwt)
+/**
+ * @openapi
+ * /api/health/db:
+ *   get:
+ *     summary: Database health check
+ *     tags: [Health]
+ *     responses:
+ *       '200':
+ *         description: Database connection is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 db:
+ *                   type: string
+ *                   example: ok
+ *       '500':
+ *         description: Database connection error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 db:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ */
 app.get('/api/health/db', async (req, res) => {
     try {
         if (!AppDataSource.isInitialized) {
@@ -75,6 +105,35 @@ app.get('/api/health/db', async (req, res) => {
 });
 
 // INTERNAL: Schema validation endpoint for ExpressSQL (not public API, for debugging only)
+/**
+ * @openapi
+ * /api/health/db/schema:
+ *   get:
+ *     summary: Inspect database schema (internal)
+ *     tags: [Health]
+ *     responses:
+ *       '200':
+ *         description: Current schema overview
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 todos:
+ *                   type: array
+ *                   items: { type: object }
+ *                 tags:
+ *                   type: array
+ *                   items: { type: object }
+ *                 todo_tags:
+ *                   type: array
+ *                   items: { type: object }
+ *                 users:
+ *                   type: array
+ *                   items: { type: object }
+ *       '500':
+ *         description: Schema inspection failed
+ */
 app.get('/api/health/db/schema', async (req, res) => {
     // Build connection from current TypeORM DataSource options
     const sql = require('mssql');
@@ -176,6 +235,35 @@ app.use('/api/todos', todosLimiter);
 app.use('/api/ai', aiLimiter);
 
 // /api/me - requireAuth
+/**
+ * @openapi
+ * /api/me:
+ *   get:
+ *     summary: Get current authenticated user
+ *     tags: [Auth]
+ *     responses:
+ *       '200':
+ *         description: Current user profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id: { type: string, nullable: true }
+ *                 email: { type: string, nullable: true }
+ *                 name: { type: string, nullable: true }
+ *                 picture: { type: string, nullable: true }
+ *                 role: { type: string, example: free }
+ *                 roles:
+ *                   type: array
+ *                   items: { type: string }
+ *                 subscription_status: { type: string, nullable: true }
+ *                 profile:
+ *                   type: object
+ *                   nullable: true
+ *       '401':
+ *         description: Unauthorized
+ */
 app.get('/api/me', requireAuth(), (req, res) => {
     const user = req.currentUser || {};
     res.json({
@@ -191,6 +279,24 @@ app.get('/api/me', requireAuth(), (req, res) => {
 });
 // Auth probe
 // Raw auth payload (kept separate to avoid overriding /api/me)
+/**
+ * @openapi
+ * /api/me/raw:
+ *   get:
+ *     summary: Raw auth payload (debug)
+ *     tags: [Auth]
+ *     responses:
+ *       '200':
+ *         description: Raw JWT payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sub: { type: string, nullable: true }
+ *                 email: { type: string, nullable: true }
+ *                 claims: { type: object }
+ */
 app.get('/api/me/raw', (req, res) => {
     const payload = req.auth?.payload || {};
     res.json({
@@ -204,6 +310,21 @@ app.get('/api/me/raw', (req, res) => {
 // disabled (NotificationService is a no-op without SQLite), but the
 // endpoint should still exist and return an empty list so the
 // frontend polling does not fail.
+/**
+ * @openapi
+ * /api/notifications/pending:
+ *   get:
+ *     summary: List pending notifications
+ *     tags: [Notifications]
+ *     responses:
+ *       '200':
+ *         description: Array of pending notifications
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { type: object }
+ */
 app.get('/api/notifications/pending', async (req, res) => {
     try {
         const pending = await notificationService.getPendingNotifications();
@@ -215,6 +336,25 @@ app.get('/api/notifications/pending', async (req, res) => {
 
 
 // /api/todos/* - requireAuth
+/**
+ * @openapi
+ * /api/todos:
+ *   get:
+ *     summary: List todos for current user
+ *     tags: [Todos]
+ *     responses:
+ *       '200':
+ *         description: List of todos or guest mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     mode: { type: string, example: guest }
+ *                 - type: array
+ *                   items: { $ref: '#/components/schemas/Todo' }
+ */
 app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -224,6 +364,37 @@ app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true })
         res.json(todos);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos:
+ *   post:
+ *     summary: Create a todo
+ *     tags: [Todos]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               dueDate: { type: string, nullable: true }
+ *               tags: { type: array, items: { type: string }, nullable: true }
+ *               isFlagged: { type: boolean, nullable: true }
+ *               duration: { type: integer, nullable: true }
+ *               priority: { type: string, example: medium }
+ *               dueTime: { type: string, nullable: true }
+ *               subtasks: { type: array, items: { type: object }, nullable: true }
+ *               description: { type: string, nullable: true }
+ *               recurrence: { type: object, nullable: true }
+ *     responses:
+ *       '201':
+ *         description: Created todo
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Todo' }
+ *       '403': { description: Free tier limit reached }
+ */
 app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), validateTodoCreate, async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -242,6 +413,29 @@ app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }
         res.status(201).json(todo);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/{id}/reorder:
+ *   patch:
+ *     summary: Reorder a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               order: { type: integer }
+ *     responses:
+ *       '200': { description: Updated todo }
+ *       '404': { description: Todo not found }
+ */
 app.patch('/api/todos/:id/reorder', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -253,6 +447,27 @@ app.patch('/api/todos/:id/reorder', requireAuth(), async (req, res, next) => {
         res.json(todo);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/{id}:
+ *   patch:
+ *     summary: Update a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200': { description: Updated todo }
+ *       '404': { description: Not found }
+ */
 app.patch('/api/todos/:id', requireAuth(), validateTodoUpdate, async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -261,6 +476,62 @@ app.patch('/api/todos/:id', requireAuth(), validateTodoUpdate, async (req, res, 
         res.json(todo);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/search:
+ *   get:
+ *     summary: Search todos
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema: { type: string }
+ *       - in: query
+ *         name: tags
+ *         schema: { type: string, description: Comma-separated tag IDs }
+ *       - in: query
+ *         name: priority
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string }
+ *       - in: query
+ *         name: minDuration
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: maxDuration
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: flagged
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 30 }
+ *     responses:
+ *       '200':
+ *         description: Paginated results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 todos: { type: array, items: { $ref: '#/components/schemas/Todo' } }
+ *                 total: { type: integer }
+ *                 page: { type: integer }
+ *                 limit: { type: integer }
+ */
 app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
     try {
         const q = req.query.q || '';
@@ -284,6 +555,20 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/{id}/toggle:
+ *   patch:
+ *     summary: Toggle todo completion
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '200': { description: Updated todo }
+ */
 app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -294,6 +579,20 @@ app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResp
         res.json(todo);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/{id}/flag:
+ *   patch:
+ *     summary: Toggle flag on a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '200': { description: Updated todo }
+ */
 app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -307,6 +606,20 @@ app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeRespon
         res.json(todo);
     } catch (err) { next(err); }
 });
+/**
+ * @openapi
+ * /api/todos/{id}:
+ *   delete:
+ *     summary: Delete a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '204': { description: Deleted }
+ */
 app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -320,6 +633,28 @@ app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: 
 });
 
 // Archive/Unarchive (soft-delete management)
+/**
+ * @openapi
+ * /api/todos/{id}/archive:
+ *   post:
+ *     summary: Archive a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '200':
+ *         description: Archived state
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id: { type: string }
+ *                 archived: { type: boolean, example: true }
+ */
 app.post('/api/todos/:id/archive', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -328,6 +663,28 @@ app.post('/api/todos/:id/archive', requireAuth(), async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /api/todos/{id}/unarchive:
+ *   post:
+ *     summary: Unarchive a todo
+ *     tags: [Todos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '200':
+ *         description: Archived state
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id: { type: string }
+ *                 archived: { type: boolean, example: false }
+ */
 app.post('/api/todos/:id/unarchive', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -341,6 +698,30 @@ app.use('/api/admin', requireRole('admin'));
 app.use('/api/ai', requirePaid());
 
 // Tag Routes
+/**
+ * @openapi
+ * /api/tags:
+ *   get:
+ *     summary: List tags (default + user custom)
+ *     tags: [Tags]
+ *     responses:
+ *       '200':
+ *         description: Array of tags or guest mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     mode: { type: string, example: guest }
+ *                 - type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       name: { type: string }
+ *                       color: { type: string }
+ */
 app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -353,6 +734,25 @@ app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }),
     }
 });
 
+/**
+ * @openapi
+ * /api/tags:
+ *   post:
+ *     summary: Create a custom tag
+ *     tags: [Tags]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               color: { type: string }
+ *     responses:
+ *       '201': { description: Created tag }
+ *       '403': { description: Free tier max tags reached }
+ */
 app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -375,6 +775,31 @@ app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true })
     }
 });
 
+/**
+ * @openapi
+ * /api/tags/{id}:
+ *   patch:
+ *     summary: Update a custom tag
+ *     tags: [Tags]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               color: { type: string }
+ *     responses:
+ *       '200': { description: Updated tag }
+ *       '403': { description: Forbidden or default tag }
+ *       '404': { description: Not found }
+ */
 app.patch('/api/tags/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -391,6 +816,21 @@ app.patch('/api/tags/:id', requireAuth(), async (req, res, next) => {
     }
 });
 
+/**
+ * @openapi
+ * /api/tags/{id}:
+ *   delete:
+ *     summary: Delete a custom tag
+ *     tags: [Tags]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '204': { description: Deleted }
+ *       '403': { description: Forbidden or default tag }
+ */
 app.delete('/api/tags/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
     if (req.currentUser && req.currentUser.isGuest) {
         return res.json({ mode: 'guest' });
@@ -405,6 +845,15 @@ app.delete('/api/tags/:id', requireAuth({ allowGuest: true, guestModeResponse: t
 });
 
 // Statistics endpoint
+/**
+ * @openapi
+ * /api/stats:
+ *   get:
+ *     summary: Get statistics
+ *     tags: [Stats]
+ *     responses:
+ *       '200': { description: Statistics payload }
+ */
 app.get('/api/stats', async (req, res) => {
     try {
         const stats = await getStatistics.execute();
@@ -415,6 +864,19 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // Export endpoint
+/**
+ * @openapi
+ * /api/export:
+ *   get:
+ *     summary: Export data
+ *     tags: [Export]
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema: { type: string, enum: [json, csv], default: json }
+ *     responses:
+ *       '200': { description: Export file }
+ */
 app.get('/api/export', async (req, res) => {
     try {
         const format = req.query.format || 'json'; // json or csv
@@ -465,6 +927,33 @@ app.get('/api/export', async (req, res) => {
 });
 
 // Import endpoint
+/**
+ * @openapi
+ * /api/import:
+ *   post:
+ *     summary: Import data
+ *     tags: [Import]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               data: { type: string, description: Export JSON string }
+ *               mode: { type: string, enum: [merge, replace], default: merge }
+ *     responses:
+ *       '200':
+ *         description: Import result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 message: { type: string }
+ *                 importedCount: { type: integer }
+ */
 app.post('/api/import', async (req, res) => {
     try {
         const { data, mode } = req.body; // mode: 'merge' or 'replace'
@@ -555,6 +1044,35 @@ app.post('/api/import', async (req, res) => {
 // (MSSQL mode: NotificationService is no-op; endpoints retained)
 
 // Schedule notification for a todo
+/**
+ * @openapi
+ * /api/notifications/schedule:
+ *   post:
+ *     summary: Schedule notification for a todo
+ *     tags: [Notifications]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               todoId: { type: string }
+ *               minutesBefore: { type: integer, default: 0 }
+ *     responses:
+ *       '200':
+ *         description: Scheduled notification
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id: { type: string }
+ *                 todoId: { type: string }
+ *                 message: { type: string }
+ *                 scheduledTime: { type: string }
+ *                 delayMs: { type: integer }
+ */
 app.post('/api/notifications/schedule', async (req, res) => {
     try {
         const { todoId, minutesBefore = 0 } = req.body;
@@ -585,6 +1103,20 @@ app.post('/api/notifications/schedule', async (req, res) => {
 });
 
 // Mark notification as sent
+/**
+ * @openapi
+ * /api/notifications/{id}/sent:
+ *   patch:
+ *     summary: Mark notification as sent
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '200': { description: Success flag }
+ */
 app.patch('/api/notifications/:id/sent', async (req, res) => {
     try {
         const { id } = req.params;
@@ -596,6 +1128,20 @@ app.patch('/api/notifications/:id/sent', async (req, res) => {
 });
 
 // Delete notification
+/**
+ * @openapi
+ * /api/notifications/{id}:
+ *   delete:
+ *     summary: Delete notification
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       '204': { description: Deleted }
+ */
 app.delete('/api/notifications/:id', async (req, res) => {
     try {
         const { id } = req.params;
