@@ -34,9 +34,7 @@ function App() {
         localStorage.removeItem('guest_tags');
         setGuestMode(false);
       } else {
-        // Logged out: ensure guest data starts fresh
-        localStorage.removeItem('guest_todos');
-        localStorage.removeItem('guest_tags');
+        // Logged out: preserve guest data so it persists across refreshes
       }
     } catch (e) {}
   }, [authLoading, isAuthenticated]);
@@ -48,7 +46,7 @@ function App() {
   const [todos, setTodos] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [inputDescription, setInputDescription] = useState('');
-  const themes = ['dark', 'white', 'pink', 'red', 'blue', 'midnight', 'sunset'];
+  const themes = ['dark', 'blue-dark', 'white', 'pink', 'red', 'blue', 'midnight', 'sunset'];
   const [theme, setTheme] = useState('dark');
   const fonts = [
     { name: 'Inter', value: '"Inter", sans-serif' },
@@ -278,22 +276,24 @@ function App() {
     filtered = filtered.filter((todo) => {
       if (!selectedDate) return true;
       const dueDate = todo.dueDate;
+      // Always compare only the date part
+      const dueDateStr = dueDate ? dueDate.slice(0, 10) : '';
 
       if (selectedDate === 'today') {
-        if (!dueDate) return false;
-        return dueDate === today;
+        if (!dueDateStr) return false;
+        return dueDateStr === today;
       }
 
       if (selectedDate === 'tomorrow') {
-        return dueDate === tomorrow;
+        return dueDateStr === tomorrow;
       }
 
       if (selectedDate instanceof Date) {
-        return dueDate === format(selectedDate, 'yyyy-MM-dd');
+        return dueDateStr === format(selectedDate, 'yyyy-MM-dd');
       }
 
       if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
-        return !!dueDate && dueDate === selectedDate;
+        return !!dueDateStr && dueDateStr === selectedDate;
       }
 
       return true;
@@ -347,8 +347,10 @@ function App() {
     return filtered;
   }, [todos, selectedDate, searchQuery, selectedFilterTags, sortOption]);
 
+  const [addTodoError, setAddTodoError] = useState('');
   const handleAdd = useCallback(async (e) => {
     e.preventDefault();
+    setAddTodoError('');
     if (!inputValue.trim()) return;
 
     const totalDuration = (parseInt(hours) * 60) + parseInt(minutes);
@@ -381,6 +383,7 @@ function App() {
       setShowTagInput(false);
       inputRef.current?.focus();
     } catch (error) {
+      setAddTodoError(error?.message || 'Failed to add todo');
       console.error("Failed to add todo", error);
     }
   }, [inputValue, inputDescription, scheduleDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, todos, currentRecurrence]);
@@ -884,6 +887,22 @@ function App() {
                 
               </div>
             </div>        {/* Add Task Form */}
+            {addTodoError && (
+              <div style={{
+                color: 'var(--color-danger)',
+                background: 'rgba(255,0,0,0.08)',
+                border: '1px solid var(--color-danger)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                marginBottom: '12px',
+                fontWeight: 500,
+                textAlign: 'center',
+                fontSize: '1rem',
+                letterSpacing: '0.01em',
+              }}>
+                {addTodoError}
+              </div>
+            )}
             <form
               className="add-task-form add-task-form-animation"
               onSubmit={handleAdd}
@@ -1850,9 +1869,15 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                     fontWeight: '500',
                     textTransform: 'capitalize'
                   }}
-                  title={`Repeats ${todo.recurrence.type}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
+                  title={`Repeats ${todo.recurrence.type || todo.recurrence.mode}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
                 >
-                  🔄 {todo.recurrence.type}
+                  {todo.recurrence?.mode === 'daily'
+                    ? 'Daily'
+                    : todo.recurrence?.mode === 'dateRange'
+                    ? 'Range'
+                    : todo.recurrence?.mode === 'specificDays'
+                    ? 'Weekdays'
+                    : (todo.recurrence?.type || 'Recurring')}
                 </span>
               )}
             </div>
@@ -1870,9 +1895,15 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   fontWeight: '500',
                   textTransform: 'capitalize'
                 }}
-                title={`Repeats ${todo.recurrence.type}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
+                title={`Repeats ${todo.recurrence.type || todo.recurrence.mode}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
               >
-                🔄 {todo.recurrence.type}
+                {todo.recurrence?.mode === 'daily'
+                  ? 'Daily'
+                  : todo.recurrence?.mode === 'dateRange'
+                  ? 'Range'
+                  : todo.recurrence?.mode === 'specificDays'
+                  ? 'Weekdays'
+                  : (todo.recurrence?.type || 'Recurring')}
               </span>
             </div>
           )}
