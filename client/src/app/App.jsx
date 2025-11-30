@@ -58,6 +58,18 @@ function App() {
   ];
   const [font, setFont] = useState('"DM Sans", sans-serif');
   const [selectedDate, setSelectedDate] = useState('today');
+    // Refetch todos when the selectedDate changes to ensure the view reflects latest recurrence instances
+    useEffect(() => {
+      const doRefetch = async () => {
+        try {
+          const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos({ fetchWithAuth });
+          setTodos(refreshed);
+        } catch (err) {
+          console.warn('Refetch on date change failed:', err?.message || err);
+        }
+      };
+      doRefetch();
+    }, [selectedDate, guestMode, fetchWithAuth]);
   const [scheduleDate, setScheduleDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -369,7 +381,14 @@ function App() {
         : await apiCreateTodo(inputValue, effectiveDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence, fetchWithAuth);
       newTodo.order = maxOrder + 1;
       newTodo.description = inputDescription;
-      setTodos(prev => [...prev, newTodo]);
+      // After create, refetch to ensure recurrence-expanded instances are visible immediately
+      try {
+        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
+        setTodos(refreshed);
+      } catch (refreshErr) {
+        // Fallback to local append if refetch fails
+        setTodos(prev => [...prev, newTodo]);
+      }
       setInputValue('');
       setInputDescription('');
       setHours(0);
@@ -402,7 +421,13 @@ function App() {
           updatedTodo = await guestApi.updateTodo(id, updates);
         }
       }
-      setTodos(prev => prev.map(t => (t.id === id ? { ...t, ...updatedTodo } : t)));
+      // After update (including completion that may create next recurrence), refetch to reflect new instances
+      try {
+        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
+        setTodos(refreshed);
+      } catch (refreshErr) {
+        setTodos(prev => prev.map(t => (t.id === id ? { ...t, ...updatedTodo } : t)));
+      }
       return updatedTodo;
     } catch (error) {
       console.error("Failed to update todo", error);
@@ -451,7 +476,13 @@ function App() {
       const updatedTodo = guestMode
         ? await guestApi.toggleTodo(id)
         : await apiToggleTodo(id, fetchWithAuth);
-      setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
+      // Refetch to ensure recurrence-created next instances are visible immediately
+      try {
+        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
+        setTodos(refreshed);
+      } catch (refreshErr) {
+        setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
+      }
     } catch (error) {
       console.error("Failed to toggle todo", error);
     }
@@ -1794,20 +1825,28 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   {todo.title}
                 </span>
                 {todo.priority && (
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      background: `${priorityColors[todo.priority] || priorityColors.medium}20`,
-                      color: priorityColors[todo.priority] || priorityColors.medium,
-                      border: `1px solid ${priorityColors[todo.priority] || priorityColors.medium}`,
-                      fontWeight: '500'
-                    }}
-                    title={`Priority: ${priorityLabels[todo.priority] || 'Medium'}`}
-                  >
-                    {priorityLabels[todo.priority] || 'Medium'}
-                  </span>
+                  (() => {
+                    const isHigh = todo.priority === 'high';
+                    const badgeColor = isHigh ? priorityColors.high : 'var(--color-text-muted)';
+                    const badgeBorder = isHigh ? priorityColors.high : 'var(--color-border)';
+                    const badgeBg = isHigh ? `${priorityColors.high}20` : 'transparent';
+                    return (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: badgeBg,
+                          color: badgeColor,
+                          border: `1px solid ${badgeBorder}`,
+                          fontWeight: '500'
+                        }}
+                        title={`Priority: ${priorityLabels[todo.priority] || 'Medium'}`}
+                      >
+                        {priorityLabels[todo.priority] || 'Medium'}
+                      </span>
+                    );
+                  })()
                 )}
                 {todo.duration > 0 && (
                   <span
