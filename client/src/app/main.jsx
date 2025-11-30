@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import '../styles/base.css'
 import App from './App.jsx'
+import ErrorBoundary from '../components/common/ErrorBoundary.jsx'
 
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
@@ -28,7 +29,9 @@ createRoot(document.getElementById('root')).render(
           v7_relativeSplatPath: true,
         }}
       >
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </BrowserRouter>
     </Auth0Provider>
   </StrictMode>,

@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from 'react';
+
+let tokenErrorLogged = false; // suppress repeat noisy token errors in dev
 import { useAuth0 } from '@auth0/auth0-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -48,13 +50,31 @@ export function useApi() {
     try {
       token = await getAccessTokenSilently(tokenOptions);
     } catch (err) {
-      console.error('fetchWithAuth: failed to retrieve token', err);
+      if (err) {
+        err.code = err.code || 'TOKEN_ERROR';
+        // unify with HTTP handling so callers can treat like 401
+        err.status = err.status || 401;
+      }
+      if (!tokenErrorLogged) {
+        console.error('fetchWithAuth: failed to retrieve token (will fallback)', err);
+        tokenErrorLogged = true;
+      } else {
+        // minimal subsequent warning
+        console.warn('fetchWithAuth: token still unavailable, suppressing repeat logs');
+      }
       throw err;
     }
 
     if (!token) {
       console.warn('fetchWithAuth: missing token for request', input);
-      throw new Error('Auth token unavailable');
+      const noTokenError = new Error('Auth token unavailable');
+      noTokenError.code = 'TOKEN_ERROR';
+      noTokenError.status = 401;
+      if (!tokenErrorLogged) {
+        console.error('fetchWithAuth: missing token (will fallback)');
+        tokenErrorLogged = true;
+      }
+      throw noTokenError;
     }
 
     const url = ensureAbsoluteUrl(input);

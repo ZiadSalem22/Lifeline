@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useRef, useMemo, useCallback, memo, useEffect } from 'react';
 import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
-import { fetchTodos as apiFetchTodos, createTodo as apiCreateTodo, toggleTodo as apiToggleTodo, deleteTodo as apiDeleteTodo, toggleFlag as apiToggleFlag, fetchTags as apiFetchTags, updateTodo as apiUpdateTodo, getPendingNotifications } from '../utils/api';
+import { toggleFlag as apiToggleFlag } from '../utils/api';
 import * as guestApi from '../utils/guestApi';
 import { useGuestStorage } from '../hooks/useGuestStorage';
-import { useApi, createTokenOptions } from '../hooks/useApi';
-import { useAuth } from '../hooks/useAuth';
+import { useApi } from '../hooks/useApi';
+import { AuthProvider, useAuthContext } from '../providers/AuthProvider.jsx';
+import { ThemeProvider, useTheme } from '../providers/ThemeProvider.jsx';
+import { TodoProvider, useTodos } from '../providers/TodoProvider.jsx';
+import NotificationPoller from '../providers/NotificationPoller.jsx';
 import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
 import AdvancedSearch from '../components/search/AdvancedSearch';
 import AdvancedSearchPage from '../pages/AdvancedSearchPage';
@@ -21,75 +24,52 @@ import AuthPage from '../pages/AuthPage';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 import OnboardingPage from '../pages/OnboardingPage';
 import ProfilePage from '../pages/ProfilePage.jsx';
-function App() {
-  const { fetchWithAuth, tokenOptions } = useApi();
-  const { isAuthenticated, isLoading: authLoading, getAccessTokenSilently } = useAuth();
+import StatusBanner from '../components/common/StatusBanner.jsx';
+function AppInner() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [guestMode, setGuestMode] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [checkedIdentity, setCheckedIdentity] = useState(false);
   const guestStorage = useGuestStorage();
+  const { fetchWithAuth } = useApi();
+  const { currentUser, guestMode, isAuthenticated, checkedIdentity, logout, authLoading, setGuestMode } = useAuthContext();
+  const { theme, changeTheme, font, themes, changeFont } = useTheme();
+  const {
+    loading,
+    error,
+    todos,
+    tags,
+    filteredTodos,
+    selectedDate,
+    searchQuery,
+    setSearchQuery,
+    handleSelectDate,
+    createTodo,
+    updateTodo,
+    toggleTodo,
+    deleteTodo,
+    setTodos,
+    setTags,
+    selectedFilterTags,
+    setSelectedFilterTags,
+    sortOption,
+    setSortOption,
+    toggleFlag
+  } = useTodos();
 
-  // Reset guest data on successful login and on logout
-  useEffect(() => {
-    if (authLoading) return;
-    try {
-      if (isAuthenticated) {
-        // Successful login: clear any previous guest data
-        localStorage.removeItem('guest_todos');
-        localStorage.removeItem('guest_tags');
-        setGuestMode(false);
-      } else {
-        // Logged out: preserve guest data so it persists across refreshes
-      }
-    } catch (e) {}
-  }, [authLoading, isAuthenticated]);
+  // Guest data reset handled inside AuthProvider now
   
-  // Identity load + onboarding redirect logic
-  useEffect(() => {
-    const loadIdentity = async () => {
-      if (authLoading) return;
-      if (!isAuthenticated) {
-        setGuestMode(true);
-        setCurrentUser(null);
-        setCheckedIdentity(true);
-        return;
-      }
-      try {
-        const token = await getAccessTokenSilently(tokenOptions || createTokenOptions());
-        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-        const res = await fetch(`${apiBase}/me`, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-            setCurrentUser(data);
-            if (data.profile && data.profile.onboarding_completed === false) {
-              navigate('/onboarding');
-            }
-        } else if (res.status === 401) {
-          setGuestMode(true);
-          setCurrentUser(null);
-        }
-      } catch (err) {
-        console.warn('Failed to load identity; using guest mode.', err?.message || err);
-        setGuestMode(true);
-        setCurrentUser(null);
-      } finally {
-        setCheckedIdentity(true);
-      }
-    };
-    loadIdentity();
-  }, [authLoading, isAuthenticated, getAccessTokenSilently, tokenOptions, navigate]);
+  // Onboarding redirect based on profile
+  React.useEffect(() => {
+    if (currentUser?.profile && currentUser.profile.onboarding_completed === false) {
+      navigate('/onboarding');
+    }
+  }, [currentUser, navigate]);
 
     // Modal state for new tag creation
     const [showNewTagModal, setShowNewTagModal] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState('#6C63FF');
-  const [todos, setTodos] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [inputDescription, setInputDescription] = useState('');
-  const themes = ['dark', 'blue-dark', 'white', 'pink', 'red', 'blue', 'midnight', 'sunset'];
-  const [theme, setTheme] = useState('dark');
   const fonts = [
     { name: 'Inter', value: '"Inter", sans-serif' },
     { name: 'DM Sans', value: '"DM Sans", sans-serif' },
@@ -97,30 +77,16 @@ function App() {
     { name: 'Montserrat', value: '"Montserrat", sans-serif' },
     { name: 'Times New Roman', value: '"Times New Roman", Times, serif' }
   ];
-  const [font, setFont] = useState('"DM Sans", sans-serif');
-  const [selectedDate, setSelectedDate] = useState('today');
-    // Refetch todos when the selectedDate changes to ensure the view reflects latest recurrence instances
-    useEffect(() => {
-      const doRefetch = async () => {
-        try {
-          const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
-          setTodos(refreshed);
-        } catch (err) {
-          console.warn('Refetch on date change failed:', err?.message || err);
-        }
-      };
-      doRefetch();
-    }, [selectedDate, guestMode, fetchWithAuth]);
+  // selectedDate managed by TodoProvider
   const [scheduleDate, setScheduleDate] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  // Provider supplies loading state; legacy local isLoading removed
 
-  const [tags, setTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [isFlagged, setIsFlagged] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
   const [priority, setPriority] = useState('medium');
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // searchQuery managed by TodoProvider
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(0);
   const [dueTime, setDueTime] = useState('');
@@ -132,9 +98,8 @@ function App() {
   const inputRef = useRef(null);
   // navigate is declared earlier to avoid temporal dead zone in effects
   
-  // New feature states
-  const [selectedFilterTags, setSelectedFilterTags] = useState([]);
-  const [sortOption, setSortOption] = useState('date');
+  // selectedFilterTags provided by TodoProvider
+  // sortOption managed by TodoProvider
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [editingTodoTitle, setEditingTodoTitle] = useState('');
   const [editingTodoDescription, setEditingTodoDescription] = useState('');
@@ -145,298 +110,49 @@ function App() {
   const [savedMessage, setSavedMessage] = useState('');
   const [draggedTodoId, setDraggedTodoId] = useState(null);
   const [expandedTodoId, setExpandedTodoId] = useState(null);
-  const [hasLoggedToken, setHasLoggedToken] = useState(false);
+  // Removed hasLoggedToken (token logging now unnecessary in App layer)
 
-  // Fix: Define handleSelectDate for sidebarProps
-  const handleSelectDate = useCallback((date) => {
-    setSelectedDate(date);
-    setSearchQuery('');
-    let token;
-    if (date === 'today' || date === 'tomorrow') token = date;
-    else if (date instanceof Date) token = format(date, 'yyyy-MM-dd');
-    else token = date;
-    if (typeof token === 'string' && token) {
-      navigate(`/day/${token}`);
-    }
-  }, [navigate]);
+  // handleSelectDate provided by TodoProvider
   // Recurring tasks and export/import states
   const [showRecurrenceSelector, setShowRecurrenceSelector] = useState(false);
   const [currentRecurrence, setCurrentRecurrence] = useState(null);
   const [showExportImport, setShowExportImport] = useState(false);
 
-  const handleThemeChange = useCallback((newTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  }, []);
-
-  const handleFontChange = useCallback((newFont) => {
-    setFont(newFont);
-    localStorage.setItem('font', newFont);
-    document.documentElement.style.setProperty('--font-family-base', newFont);
-  }, []);
+  const handleThemeChange = useCallback((newTheme) => { changeTheme(newTheme); }, [changeTheme]);
+  const handleFontChange = useCallback((newFont) => { /* future: font provider */ }, []);
 
 
-  const loadTodos = useCallback(async () => {
-    try {
-      let data;
-      if (guestMode) {
-        data = await guestApi.fetchTodos();
-      } else {
-        data = await apiFetchTodos(fetchWithAuth);
-        if (data && data.mode === 'guest') {
-          setGuestMode(true);
-          data = await guestApi.fetchTodos();
-        }
-      }
-      setTodos(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load todos', error);
-    }
-  }, [fetchWithAuth, guestMode]);
+  // Removed legacy manual data/theme/notification initialization; handled by providers (AuthProvider, TodoProvider, ThemeProvider, NotificationPoller)
 
-  const loadTags = useCallback(async () => {
-    try {
-      let data;
-      if (guestMode) {
-        data = await guestApi.fetchTags();
-      } else {
-        data = await apiFetchTags(fetchWithAuth);
-        if (data && data.mode === 'guest') {
-          setGuestMode(true);
-          data = await guestApi.fetchTags();
-        }
-      }
-      setTags(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load tags', error);
-    }
-  }, [fetchWithAuth, guestMode]);
+  // Removed legacy token logging effect (now handled within AuthProvider if needed)
 
-  const pollNotifications = useCallback(async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      return;
-    }
-    if (window.Notification.permission !== 'granted') {
-      return;
-    }
-    try {
-      const payload = await getPendingNotifications(fetchWithAuth);
-      const notifications = Array.isArray(payload?.notifications)
-        ? payload.notifications
-        : Array.isArray(payload)
-          ? payload
-          : [];
-      notifications.forEach((notification) => {
-        const title = notification?.title || 'Lifeline Reminder';
-        const body = notification?.body || notification?.message || 'You have a pending task.';
-        new Notification(title, { body });
-      });
-    } catch (error) {
-      console.error('Failed to poll notifications', error);
-    }
-  }, [fetchWithAuth]);
-
-
-  useEffect(() => {
-    if (authLoading) return;
-
-    // Guest mode: set immediately and do not call any API
-
-    if (!isAuthenticated) {
-      setGuestMode(true);
-      setIsLoading(false);
-      setHasLoggedToken(false);
-      // Load from guest storage asynchronously
-      (async () => {
-        const todos = await guestApi.fetchTodos();
-        const tags = await guestApi.fetchTags();
-        setTodos(Array.isArray(todos) ? todos : []);
-        setTags(Array.isArray(tags) ? tags : []);
-      })();
-      return;
-    }
-
-    setGuestMode(false);
-    let isMounted = true;
-    let pollingInterval;
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        await Promise.all([loadTodos(), loadTags()]);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadData();
-
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') || 'dark';
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-
-      const savedFont = localStorage.getItem('font') || '"DM Sans", sans-serif';
-      setFont(savedFont);
-      document.documentElement.style.setProperty('--font-family-base', savedFont);
-    }
-
-    const startPolling = () => {
-      if (typeof window === 'undefined') return;
-      pollNotifications();
-      pollingInterval = window.setInterval(pollNotifications, 30000);
-    };
-
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        startPolling();
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            startPolling();
-          }
-        });
-      }
-    }
-
-    return () => {
-      isMounted = false;
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [authLoading, isAuthenticated, loadTodos, loadTags, pollNotifications]);
-
-  useEffect(() => {
-    if (authLoading || !isAuthenticated || hasLoggedToken) {
-      return;
-    }
-
-    const logToken = async () => {
-      try {
-        const options = tokenOptions || createTokenOptions();
-        const token = await getAccessTokenSilently(options);
-        if (token) {
-          setHasLoggedToken(true);
-        }
-      } catch (err) {
-        // Swallow errors here; core auth flow is handled elsewhere.
-      }
-    };
-
-    logToken();
-  }, [authLoading, getAccessTokenSilently, hasLoggedToken, isAuthenticated, tokenOptions]);
-
-  const filteredTodos = useMemo(() => {
-    let filtered = [...todos];
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-
-    filtered = filtered.filter((todo) => {
-      if (!selectedDate) return true;
-      const dueDate = todo.dueDate;
-      // Always compare only the date part
-      const dueDateStr = dueDate ? dueDate.slice(0, 10) : '';
-
-      if (selectedDate === 'today') {
-        if (!dueDateStr) return false;
-        return dueDateStr === today;
-      }
-
-      if (selectedDate === 'tomorrow') {
-        return dueDateStr === tomorrow;
-      }
-
-      if (selectedDate instanceof Date) {
-        return dueDateStr === format(selectedDate, 'yyyy-MM-dd');
-      }
-
-      if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
-        return !!dueDateStr && dueDateStr === selectedDate;
-      }
-
-      return true;
-    });
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter((todo) => {
-        const inTitle = todo.title?.toLowerCase().includes(query);
-        const inDescription = todo.description?.toLowerCase().includes(query);
-        const inTags = Array.isArray(todo.tags) && todo.tags.some(tag => (tag.name || '').toLowerCase().includes(query));
-        const inSubtasks = Array.isArray(todo.subtasks) && todo.subtasks.some(subtask => subtask.title?.toLowerCase().includes(query));
-        return inTitle || inDescription || inTags || inSubtasks;
-      });
-    }
-
-    if (selectedFilterTags.length > 0) {
-      filtered = filtered.filter(todo =>
-        Array.isArray(todo.tags) && todo.tags.some(tag => selectedFilterTags.includes(tag.id))
-      );
-    }
-
-    filtered = [...filtered].sort((a, b) => {
-      if (a.order !== b.order) {
-        return (a.order || 0) - (b.order || 0);
-      }
-
-      switch (sortOption) {
-        case 'priority': {
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return (priorityOrder[b.priority] || 2) - (priorityOrder[a.priority] || 2);
-        }
-        case 'duration':
-          return (b.duration || 0) - (a.duration || 0);
-        case 'name':
-          return (a.title || '').localeCompare(b.title || '');
-        case 'date':
-        default:
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return new Date(a.dueDate) - new Date(b.dueDate);
-      }
-    });
-
-    filtered = filtered.sort((a, b) => {
-      if ((a.isCompleted || false) === (b.isCompleted || false)) return 0;
-      return (a.isCompleted || false) ? 1 : -1;
-    });
-
-    return filtered;
-  }, [todos, selectedDate, searchQuery, selectedFilterTags, sortOption]);
+  // filteredTodos provided by TodoProvider
 
   const [addTodoError, setAddTodoError] = useState('');
   const handleAdd = useCallback(async (e) => {
     e.preventDefault();
     setAddTodoError('');
     if (!inputValue.trim()) return;
-
     const totalDuration = (parseInt(hours) * 60) + parseInt(minutes);
-    const maxOrder = todos.length > 0 ? Math.max(...todos.map(t => t.order || 0)) : 0;
     try {
-      // Pass inputDescription as description and recurrence pattern
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const effectiveDate = scheduleDate && scheduleDate.includes('-')
         ? scheduleDate
         : (selectedDate === 'today' ? todayStr
          : (selectedDate === 'tomorrow' ? format(addDays(new Date(), 1), 'yyyy-MM-dd')
           : (typeof selectedDate === 'string' && selectedDate.includes('-') ? selectedDate : '')));
-      const newTodo = guestMode
-        ? await guestApi.createTodo(inputValue, effectiveDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence)
-        : await apiCreateTodo(inputValue, effectiveDate, selectedTags, isFlagged, totalDuration, priority, dueTime || null, subtasks, inputDescription, currentRecurrence, fetchWithAuth);
-      newTodo.order = maxOrder + 1;
-      newTodo.description = inputDescription;
-      // After create, refetch to ensure recurrence-expanded instances are visible immediately
-      try {
-        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
-        setTodos(refreshed);
-      } catch (refreshErr) {
-        // Fallback to local append if refetch fails
-        setTodos(prev => [...prev, newTodo]);
-      }
+      await createTodo({
+        title: inputValue.trim(),
+        dueDate: effectiveDate || null,
+        tags: selectedTags,
+        isFlagged,
+        duration: totalDuration,
+        priority,
+        dueTime: dueTime || null,
+        subtasks,
+        description: inputDescription,
+        recurrence: currentRecurrence
+      });
       setInputValue('');
       setInputDescription('');
       setHours(0);
@@ -452,9 +168,9 @@ function App() {
       inputRef.current?.focus();
     } catch (error) {
       setAddTodoError(error?.message || 'Failed to add todo');
-      console.error("Failed to add todo", error);
+      console.error('Failed to add todo', error);
     }
-  }, [inputValue, inputDescription, scheduleDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, todos, currentRecurrence]);
+  }, [inputValue, inputDescription, scheduleDate, selectedDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, currentRecurrence, createTodo]);
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
@@ -646,27 +362,23 @@ function App() {
     if (!dateString) return;
     const today = format(new Date(), 'yyyy-MM-dd');
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-
-    if (dateString === today) setSelectedDate('today');
-    else if (dateString === tomorrow) setSelectedDate('tomorrow');
-    else setSelectedDate(dateString);
-
-    setSearchQuery('');
+    if (dateString === today) handleSelectDate('today');
+    else if (dateString === tomorrow) handleSelectDate('tomorrow');
+    else handleSelectDate(dateString);
     const token = (dateString === today) ? 'today' : (dateString === tomorrow) ? 'tomorrow' : dateString;
     navigate(`/day/${token}`);
-  }, [navigate]);
+  }, [navigate, handleSelectDate]);
 
   // Keep selectedDate in sync with the URL when visiting /day/:day
-  useEffect(() => {
+  React.useEffect(() => {
     const m = location.pathname.match(/^\/day\/(today|tomorrow|\d{4}-\d{2}-\d{2})$/);
     if (m) {
       const token = m[1];
       if (selectedDate !== token) {
-        setSelectedDate(token);
-        setSearchQuery('');
+        handleSelectDate(token);
       }
     }
-  }, [location.pathname]);
+  }, [location.pathname, selectedDate, handleSelectDate]);
 
   const completedCount = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -709,7 +421,7 @@ function App() {
     onOpenProfile: () => navigate('/profile'),
     currentUser,
     guestMode,
-    onLogout: () => { setCurrentUser(null); setGuestMode(true); }
+    onLogout: () => logout({ logoutParams: { returnTo: window.location.origin } })
   };
 
   const settingsProps = {
@@ -744,10 +456,7 @@ function App() {
   const exportImportProps = {
     isOpen: showExportImport,
     onClose: () => setShowExportImport(false),
-    onImportComplete: () => {
-      loadTodos();
-      setShowExportImport(false);
-    },
+    onImportComplete: () => { setShowExportImport(false); },
     fetchWithAuth,
   };
 
@@ -759,7 +468,7 @@ function App() {
     </>
   );
 
-  if (isLoading || !checkedIdentity) {
+  if (loading || !checkedIdentity) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
         {/* <CosmicBackground /> */}
@@ -784,6 +493,8 @@ function App() {
   // Use react-router routes so the URL controls the view
   return (
     <>
+      <StatusBanner />
+      <NotificationPoller onNotify={() => { /* future: show notification toast */ }} />
       <Routes>
         {/* Day-specific route mirrors the home dashboard but with URL reflecting the selected day */}
         <Route path="/day/:day" element={
@@ -1944,6 +1655,18 @@ function App() {
   );
 }
 
+export default function App() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <TodoProvider>
+          <AppInner />
+        </TodoProvider>
+      </ThemeProvider>
+    </AuthProvider>
+  );
+}
+
 // Task Card Component
 // Small modern chevron icon used for subtasks toggle
 const ChevronIcon = ({ size = 14, color = 'currentColor' }) => (
@@ -2997,4 +2720,3 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
   );
 });
 
-export default App;
