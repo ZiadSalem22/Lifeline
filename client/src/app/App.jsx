@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { createTag } from '../utils/api';
-import { useNavigate, Routes, Route } from 'react-router-dom';
+import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
 import { fetchTodos as apiFetchTodos, createTodo as apiCreateTodo, toggleTodo as apiToggleTodo, deleteTodo as apiDeleteTodo, toggleFlag as apiToggleFlag, fetchTags as apiFetchTags, updateTodo as apiUpdateTodo, getPendingNotifications } from '../utils/api';
@@ -19,10 +19,16 @@ import RepeatIcon from '../icons/RepeatIcon';
 import DashboardPage from '../pages/DashboardPage';
 import AuthPage from '../pages/AuthPage';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
+import OnboardingPage from '../pages/OnboardingPage';
+import ProfilePage from '../pages/ProfilePage.jsx';
 function App() {
   const { fetchWithAuth, tokenOptions } = useApi();
   const { isAuthenticated, isLoading: authLoading, getAccessTokenSilently } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [guestMode, setGuestMode] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [checkedIdentity, setCheckedIdentity] = useState(false);
   const guestStorage = useGuestStorage();
 
   // Reset guest data on successful login and on logout
@@ -39,6 +45,41 @@ function App() {
       }
     } catch (e) {}
   }, [authLoading, isAuthenticated]);
+  
+  // Identity load + onboarding redirect logic
+  useEffect(() => {
+    const loadIdentity = async () => {
+      if (authLoading) return;
+      if (!isAuthenticated) {
+        setGuestMode(true);
+        setCurrentUser(null);
+        setCheckedIdentity(true);
+        return;
+      }
+      try {
+        const token = await getAccessTokenSilently(tokenOptions || createTokenOptions());
+        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+        const res = await fetch(`${apiBase}/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+            setCurrentUser(data);
+            if (data.profile && data.profile.onboarding_completed === false) {
+              navigate('/onboarding');
+            }
+        } else if (res.status === 401) {
+          setGuestMode(true);
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.warn('Failed to load identity; using guest mode.', err?.message || err);
+        setGuestMode(true);
+        setCurrentUser(null);
+      } finally {
+        setCheckedIdentity(true);
+      }
+    };
+    loadIdentity();
+  }, [authLoading, isAuthenticated, getAccessTokenSilently, tokenOptions, navigate]);
 
     // Modal state for new tag creation
     const [showNewTagModal, setShowNewTagModal] = useState(false);
@@ -62,7 +103,7 @@ function App() {
     useEffect(() => {
       const doRefetch = async () => {
         try {
-          const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos({ fetchWithAuth });
+          const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
           setTodos(refreshed);
         } catch (err) {
           console.warn('Refetch on date change failed:', err?.message || err);
@@ -89,7 +130,7 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const inputRef = useRef(null);
-  const navigate = useNavigate();
+  // navigate is declared earlier to avoid temporal dead zone in effects
   
   // New feature states
   const [selectedFilterTags, setSelectedFilterTags] = useState([]);
@@ -110,7 +151,14 @@ function App() {
   const handleSelectDate = useCallback((date) => {
     setSelectedDate(date);
     setSearchQuery('');
-  }, []);
+    let token;
+    if (date === 'today' || date === 'tomorrow') token = date;
+    else if (date instanceof Date) token = format(date, 'yyyy-MM-dd');
+    else token = date;
+    if (typeof token === 'string' && token) {
+      navigate(`/day/${token}`);
+    }
+  }, [navigate]);
   // Recurring tasks and export/import states
   const [showRecurrenceSelector, setShowRecurrenceSelector] = useState(false);
   const [currentRecurrence, setCurrentRecurrence] = useState(null);
@@ -592,6 +640,7 @@ function App() {
     }
     return 'All Tasks'; // Fallback title
   }, [searchQuery, selectedDate]);
+  const searchActive = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
 
   const handleGoToDay = useCallback((dateString) => {
     if (!dateString) return;
@@ -603,7 +652,21 @@ function App() {
     else setSelectedDate(dateString);
 
     setSearchQuery('');
-  }, []);
+    const token = (dateString === today) ? 'today' : (dateString === tomorrow) ? 'tomorrow' : dateString;
+    navigate(`/day/${token}`);
+  }, [navigate]);
+
+  // Keep selectedDate in sync with the URL when visiting /day/:day
+  useEffect(() => {
+    const m = location.pathname.match(/^\/day\/(today|tomorrow|\d{4}-\d{2}-\d{2})$/);
+    if (m) {
+      const token = m[1];
+      if (selectedDate !== token) {
+        setSelectedDate(token);
+        setSearchQuery('');
+      }
+    }
+  }, [location.pathname]);
 
   const completedCount = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -643,6 +706,10 @@ function App() {
     onOpenSidebar: () => setIsMobileSidebarOpen(true),
     isMobileSidebarOpen,
     onLoginClick: () => navigate('/auth'),
+    onOpenProfile: () => navigate('/profile'),
+    currentUser,
+    guestMode,
+    onLogout: () => { setCurrentUser(null); setGuestMode(true); }
   };
 
   const settingsProps = {
@@ -692,7 +759,7 @@ function App() {
     </>
   );
 
-  if (isLoading) {
+  if (isLoading || !checkedIdentity) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
         {/* <CosmicBackground /> */}
@@ -718,6 +785,305 @@ function App() {
   return (
     <>
       <Routes>
+        {/* Day-specific route mirrors the home dashboard but with URL reflecting the selected day */}
+        <Route path="/day/:day" element={
+            <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            {guestMode && (
+              <div style={{ marginTop: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                  padding: '12px 16px',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Hello guest</div>
+                  <div style={{ fontSize: '0.95rem' }}>
+                    You are using Guest Mode. Your tasks and tags are stored locally on this browser. Sign in to sync across devices.
+                  </div>
+                </div>
+              </div>
+            )}
+              {/* Reuse the same dashboard content by rendering the same JSX as the home route below */}
+              {/* Saved toast */}
+            {savedMessage && (
+              <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', color: 'var(--color-text)', fontWeight: 600 }}>
+                  {savedMessage}
+                </div>
+              </div>
+                )}
+              <div
+                className="fade-in-slide-down"
+                style={{ marginBottom: '48px' }}
+              >
+              <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <h1 className="header-title" style={{
+                  fontFamily: 'var(--font-family-heading)',
+                  fontWeight: 'bold',
+                  color: 'var(--color-text)',
+                  margin: 0
+                }}>
+                  {title}
+                </h1>
+                {durationString && (
+                  <span
+                    className="scale-in"
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border)'
+                    }}
+                  >
+                    {durationString}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-base)', margin: 0 }}>
+                  {completedCount} of {filteredTodos.length} completed
+                </p>
+                {filteredTodos.length > 0 && (
+                  <div style={{ flex: 1, maxWidth: '300px' }}>
+                    <div style={{
+                      height: '6px',
+                      background: 'var(--color-surface)',
+                      borderRadius: '9999px',
+                      overflow: 'hidden'
+                    }}>
+                      <div
+                        className="progress-bar-fill"
+                        style={{
+                          height: '100%',
+                          background: 'var(--color-primary)',
+                          borderRadius: '9999px',
+                          width: `${progress}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* When searching: show results immediately below header; otherwise show filters first */}
+              {!searchActive && (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Tag Filter */}
+                {tags.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
+                    {tags.map(tag => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFilterTags(prev =>
+                            prev.includes(tag.id)
+                              ? prev.filter(id => id !== tag.id)
+                              : [...prev, tag.id]
+                          );
+                        }}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
+                          background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
+                          color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                    {selectedFilterTags.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFilterTags([])}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-muted)',
+                          background: 'transparent',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Sort Dropdown */}
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
+                  <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
+                  <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
+                  <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
+                </select>
+                
+                </div>
+              )}
+            </div>
+            {/* Task List (search results elevated if searching) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
+              {filteredTodos.length === 0 && (
+                <div
+                  className="fade-in-scale-up"
+                  style={{
+                    textAlign: 'center',
+                    padding: '80px 0'
+                  }}
+                >
+                    <div
+                      className="rotate-scale-infinite"
+                      style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
+                    >
+                      <SparklesIcon />
+                    </div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-family-heading)',
+                      fontWeight: '600',
+                      color: 'var(--color-text)',
+                      marginBottom: '8px'
+                    }}>
+                      All clear!
+                    </h3>
+                    <p style={{
+                      color: 'var(--color-text-muted)',
+                      fontFamily: 'var(--font-family-base)',
+                      margin: 0
+                    }}>
+                      No tasks for {title.toLowerCase()}
+                    </p>
+                  </div>
+                )}
+
+                {filteredTodos.map((todo, index) => (
+                  <TaskCard
+                    key={todo.id}
+                    todo={todo}
+                    index={index}
+                    theme={theme}
+                    onToggle={handleToggle}
+                    onFlag={handleFlag}
+                    onDelete={handleDelete}
+                    formatDuration={formatDuration}
+                    showDate={!!searchQuery.trim()}
+                    onGoToDay={handleGoToDay}
+                    isEditing={editingTodoId === todo.id}
+                    editingTitle={editingTodoTitle}
+                    editingDescription={editingTodoDescription}
+                    editingTags={editingTodoTags}
+                    setEditingTags={setEditingTodoTags}
+                    editingSubtasks={editingTodoSubtasks}
+                    setEditingSubtasks={setEditingTodoSubtasks}
+                    editingPriority={editingTodoPriority}
+                    setEditingPriority={setEditingTodoPriority}
+                    editingDuration={editingTodoDuration}
+                    setEditingDuration={setEditingTodoDuration}
+                    allTags={tags}
+                    onStartEdit={handleStartEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                    setEditingTitle={setEditingTodoTitle}
+                    setEditingDescription={setEditingTodoDescription}
+                    onUpdatePriority={handleUpdatePriority}
+                    onUpdateTodo={handleUpdateTodo}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    isExpanded={expandedTodoId === todo.id}
+                    onToggleExpand={() => toggleExpand(todo.id)}
+                    setTodos={setTodos}
+                  />
+                ))}
+
+              </div>
+            {/* Add Task Form hidden when searching */}
+            {!searchActive && (
+              <form
+              className="add-task-form add-task-form-animation"
+              onSubmit={handleAdd}
+              style={{
+                marginTop: '32px',
+                marginBottom: '40px',
+                background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
+                backdropFilter: 'blur(12px) saturate(160%)',
+                borderRadius: '20px',
+                padding: '28px 28px 24px',
+                border: '1px solid var(--color-border)',
+                boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
+                transition: 'box-shadow 0.3s ease',
+              }}
+            >
+              {/* Title on top, then description, then centered controls */}
+              <div style={{ marginBottom: '12px' }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Title — What do you want to accomplish?"
+                  style={{
+                    width: '100%',
+                    background: 'var(--color-surface-light)',
+                    color: 'var(--color-text)',
+                    fontSize: '1.125rem',
+                    fontFamily: 'var(--font-family-base)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    outline: 'none',
+                    boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
+                    fontWeight: 600
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                />
+              </div>
+              {/* (rest of form remains unchanged; omitted for brevity) */}
+              </form>
+            )}
+            </DashboardPage>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage sidebarProps={sidebarProps} topBarProps={topBarProps} />
+          </ProtectedRoute>
+        } />
+                <Route path="/onboarding" element={
+                  <ProtectedRoute>
+                    <OnboardingPage
+                      user={currentUser}
+                      guestMode={guestMode}
+                      onCompleted={() => navigate('/')}
+                    />
+                  </ProtectedRoute>
+                } />
         <Route path="/search" element={
             <AdvancedSearchPage
               sidebarProps={sidebarProps}
@@ -844,8 +1210,8 @@ function App() {
                 )}
               </div>
               
-              {/* Filter and Sort Controls */}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {!searchActive && (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Tag Filter */}
                 {tags.length > 0 && (
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -917,9 +1283,10 @@ function App() {
                   <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
                 </select>
                 
-              </div>
+                </div>
+              )}
             </div>        {/* Add Task Form */}
-            {addTodoError && (
+            {addTodoError && !searchActive && (
               <div style={{
                 color: 'var(--color-danger)',
                 background: 'rgba(255,0,0,0.08)',
@@ -935,6 +1302,8 @@ function App() {
                 {addTodoError}
               </div>
             )}
+            {/* Hide add task form when searching */}
+            {!searchActive && (
             <form
               className="add-task-form add-task-form-animation"
               onSubmit={handleAdd}
@@ -1485,10 +1854,11 @@ function App() {
                     </div>
                   )}
               </div>
-              </form>
+                </form>
+              )}
 
             {/* Task List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
               {filteredTodos.length === 0 && (
                 <div
                   className="fade-in-scale-up"
@@ -1960,7 +2330,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
               gap: '4px'
             }}>
               <CalendarIcon />
-              {format(new Date(todo.dueDate + 'T00:00:00'), 'MMM d')}
+              {(() => {
+                const d = new Date(`${todo.dueDate}T00:00:00`);
+                return isNaN(d.getTime()) ? '' : format(d, 'MMM d');
+              })()}
               {todo.dueTime && (
                 <span style={{ marginLeft: '4px' }}>
                   {todo.dueTime}

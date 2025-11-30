@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -39,14 +39,29 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
     };
 
     const today = new Date();
-    const prev = format(addDays(today, -1), 'yyyy-MM-dd');
     const todayStr = format(today, 'yyyy-MM-dd');
-    const next = format(addDays(today, 1), 'yyyy-MM-dd');
+    const tomorrowStr = format(addDays(today, 1), 'yyyy-MM-dd');
+
+    // Determine the base date from current selection for continuous nav
+    const resolveSelectedBaseDate = () => {
+        if (!selectedDate) return today;
+        if (selectedDate === 'today') return today;
+        if (selectedDate === 'tomorrow') return addDays(today, 1);
+        if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
+            const d = new Date(selectedDate + 'T00:00:00');
+            return isNaN(d.getTime()) ? today : d;
+        }
+        return today;
+    };
+
+    const baseDate = resolveSelectedBaseDate();
+    const prev = format(addDays(baseDate, -1), 'yyyy-MM-dd');
+    const next = format(addDays(baseDate, 1), 'yyyy-MM-dd');
 
     const pickDay = (dayStr) => {
         if (!onSelectDate) return;
         if (dayStr === todayStr) onSelectDate('today');
-        else if (dayStr === next) onSelectDate('tomorrow');
+        else if (dayStr === tomorrowStr) onSelectDate('tomorrow');
         else onSelectDate(dayStr);
     };
 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, addDays } from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../icons/Icons';
 
 const ModernCalendar = ({ selectedDate, onSelectDate }) => {
@@ -23,11 +23,34 @@ const ModernCalendar = ({ selectedDate, onSelectDate }) => {
     };
 
     const isSelected = (date) => {
+        if (!selectedDate) return false;
+        if (selectedDate === 'today') {
+            return isSameDay(date, new Date());
+        }
+        if (selectedDate === 'tomorrow') {
+            return isSameDay(date, addDays(new Date(), 1));
+        }
         if (typeof selectedDate === 'string' && selectedDate.includes('-')) {
             return isSameDay(date, new Date(selectedDate + 'T00:00:00'));
         }
         return false;
     };
+
+    // Sync visible month to selected date so highlight stays in view
+    useEffect(() => {
+        if (!selectedDate) return;
+        let target;
+        if (selectedDate === 'today') target = new Date();
+        else if (selectedDate === 'tomorrow') target = addDays(new Date(), 1);
+        else if (typeof selectedDate === 'string' && selectedDate.includes('-')) target = new Date(selectedDate + 'T00:00:00');
+        if (target && !isNaN(target.getTime())) {
+            const targetMonthStart = startOfMonth(target);
+            const currentMonthStart = startOfMonth(currentMonth);
+            if (!isSameDay(targetMonthStart, currentMonthStart)) {
+                setCurrentMonth(targetMonthStart);
+            }
+        }
+    }, [selectedDate]);
 
     return (
         <div style={{ width: '100%' }}>

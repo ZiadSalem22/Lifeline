@@ -306,8 +306,84 @@ app.get('/api/me', requireAuth(), (req, res) => {
         role: user.role,
         roles: user.roles,
         subscription_status: user.subscription_status,
-        profile: user.profile || null
+        profile: user.profile || { onboarding_completed: false }
     });
+});
+// Update or create user profile
+/**
+ * @openapi
+ * /api/profile:
+ *   post:
+ *     summary: Create or update the current user's profile
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               first_name: { type: string }
+ *               last_name: { type: string }
+ *               timezone: { type: string }
+ *               phone: { type: string }
+ *               country: { type: string }
+ *               onboarding_completed: { type: boolean }
+ *     responses:
+ *       '200':
+ *         description: Updated profile
+ *       '400':
+ *         description: Validation error
+ *       '401':
+ *         description: Unauthorized
+ */
+app.post('/api/profile', requireAuth(), async (req, res) => {
+    const user = req.currentUser;
+    if (!user || !user.id) return res.status(401).json({ error: 'Unauthorized' });
+    const {
+        first_name,
+        last_name,
+        phone = null,
+        country = null,
+        city = null,
+        birthday = null,
+        avatar_url = null,
+        timezone = null,
+        onboarding_completed
+    } = req.body || {};
+    if (!first_name || !last_name) {
+        return res.status(400).json({ error: 'first_name and last_name are required' });
+    }
+    // Only allow onboarding_completed to be true
+    const onboardingFlag = onboarding_completed === true ? true : undefined;
+    try {
+        const userProfileRepo = require('./infrastructure/TypeORMUserProfileRepository');
+        const saved = await userProfileRepo.saveOrUpdate(user.id, {
+            first_name,
+            last_name,
+            timezone,
+            phone,
+            country,
+            city,
+            birthday,
+            avatar_url,
+            ...(onboardingFlag ? { onboarding_completed: true } : {})
+        });
+        res.json({
+            first_name: saved.first_name,
+            last_name: saved.last_name,
+            timezone: saved.timezone,
+            phone: saved.phone,
+            country: saved.country,
+            city: saved.city,
+            birthday: saved.birthday,
+            avatar_url: saved.avatar_url,
+            onboarding_completed: !!saved.onboarding_completed
+        });
+    } catch (err) {
+        logger.error('[POST /api/profile] failed', { error: err.message });
+        res.status(500).json({ error: 'Failed to save profile' });
+    }
 });
 // Auth probe
 // Raw auth payload (kept separate to avoid overriding /api/me)

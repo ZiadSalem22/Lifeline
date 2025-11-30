@@ -1152,6 +1152,13 @@ input[type="checkbox"]:focus {
     transform: translateX(clamp(240px, 80vw, 300px));
     transition: transform 0.3s ease;
   }
+
+  /* Prevent background scroll when the mobile sidebar is open */
+  html.has-open-sidebar,
+  html.has-open-sidebar body {
+    overflow: hidden;
+    height: 100%;
+  }
 }
 
 /* Desktop: permanently allocate space for the fixed sidebar */

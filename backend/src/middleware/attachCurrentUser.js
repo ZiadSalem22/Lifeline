@@ -60,12 +60,10 @@ async function attachCurrentUser(req, res, next) {
             last_name: profile.last_name,
             phone: profile.phone,
             country: profile.country,
-            city: profile.city,
             timezone: profile.timezone,
-            avatar_url: profile.avatar_url,
-            onboarding_completed: profile.onboarding_completed
+            onboarding_completed: !!profile.onboarding_completed
           }
-        : null
+        : { onboarding_completed: false }
     };
     return next();
   } catch (err) {

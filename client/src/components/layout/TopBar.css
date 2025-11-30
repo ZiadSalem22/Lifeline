@@ -83,7 +83,7 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: nowrap;
-  position: relative; /* for absolute-centered search */
+  position: relative;
 }
 
 .top-bar-title {
@@ -92,12 +92,152 @@
   font-weight: 600;
   font-size: 1.15rem;
   color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .top-bar-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* Centered search pill - responsive, non-overlapping */
+.top-bar-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+  flex: 1 1 480px; /* preferred width */
+  min-width: 240px;
+  max-width: 600px;
+  margin: 0 12px; /* keep spacing from title/identity */
+}
+
+.top-bar-search .search-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.top-bar-search .search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  width: 100%;
+}
+
+/* User identity dropdown */
+.user-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  position: relative;
+}
+
+.user-identity-avatar-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-identity-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+}
+
+.user-identity-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-identity-dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 0;
+  width: 180px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+  z-index: 200;
+}
+
+.user-identity-dropdown button {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.user-identity-dropdown button:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Guest banner in top bar */
+.guest-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  position: relative; /* anchor for dropdown */
+}
+
+.guest-pill .guest-login {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.guest-pill .guest-login:hover { filter: brightness(1.05); }
+
+/* Guest caret (dropdown toggle) */
+.guest-caret-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 4px;
 }
 
 .top-bar-button {
@@ -117,7 +257,10 @@
 }
 
 .top-bar-button:hover {
+  z-index: 2; /* keep above background but below modal dropdowns */
   transform: translateY(-1px);
+.identity-chip { z-index: 1; }
+.chip-dropdown { z-index: 200; }
 }
 
 .top-bar-login {
@@ -144,67 +287,57 @@
   transition: transform 0.15s ease;
 }
 
-.top-bar-menu-button:hover {
-  transform: translateY(-1px);
-}
-
-.top-bar-search {
-  /* Centered apple-style pill */
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+.identity-chip {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: clamp(260px, 45%, 720px);
-  max-width: 720px;
-  padding: 8px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.18);
-}
-
-.top-bar-search::before {
-  content: "";
-  position: absolute;
-  top: 1px;
-  left: 8px;
-  right: 8px;
-  height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.06));
-  opacity: 0.12;
-  pointer-events: none;
-}
-
-.search-icon {
   position: relative;
-  z-index: 2;
-  color: var(--color-text-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 4px;
-}
-
-.search-input {
-  flex: 1 1 auto;
-  background: transparent;
-  border: none;
-  outline: none;
+  transition: background 160ms ease, box-shadow 160ms ease;
+  flex: 0 0 auto;
+  cursor: pointer;
+  max-width: 240px;
   color: var(--color-text);
-  font-family: var(--font-family-base);
-  font-size: 0.95rem;
-  padding: 6px 8px 6px 0;
-  z-index: 2;
 }
-
-.search-input::placeholder { color: var(--color-text-muted); }
+.identity-chip:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+.chip-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+}
+.chip-initials { display:flex; align-items:center; justify-content:center; background:#333; color:#fff; font-size:0.8rem; }
+.chip-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: inherit;
+}
+.chip-chevron { background:transparent; border:none; color:var(--color-text); cursor:pointer; font-size:14px; padding:0 4px; }
+.chip-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  z-index: 200;
+}
+.chip-dropdown button { background:transparent; border:none; text-align:left; padding:6px 8px; border-radius:6px; cursor:pointer; color:var(--color-text); }
+.chip-dropdown button:hover { background: var(--color-surface-hover); }
+}
 
 .top-bar-search:focus-within {
   /* Circular/pill focus ring that follows border-radius */
@@ -213,14 +346,17 @@
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-.search-input:focus {
-  outline: none;
-}
+.search-input:focus { outline: none; }
 
 @media (max-width: 900px) {
   .top-bar {
     padding: 10px 16px 14px;
   }
+  .top-bar-menu-button {
+    display: inline-flex;
+  }
+  .chip-name { max-width: 90px; }
+  .identity-chip { max-width: 200px; }
 }
 
 @media (max-width: 720px) {
@@ -229,24 +365,21 @@
     align-items: stretch;
   }
 
-  .top-bar-menu-button {
-    display: inline-flex;
-  }
+  /* ensure menu button visible by 900px as well; keep here for safety */
+  .top-bar-menu-button { display: inline-flex; width: 44px; height: 44px; }
 
   .top-bar-actions {
     width: 100%;
     justify-content: flex-end;
   }
 
-  /* Mobile: hide the centered pill search and the settings button (moved into sidebar)
-     to avoid overlap and keep header compact. */
-  .top-bar-search {
-    display: none !important;
-  }
+  .guest-pill { max-width: 100%; font-size: 0.7rem; }
+  .chip-name { max-width: 72px; }
+  .identity-chip { max-width: 180px; }
 
-  .top-bar-settings {
-    display: none !important;
-  }
+  /* Mobile: hide search completely to save space */
+  .top-bar-search { display: none !important; }
+  .identity-chip { max-width: 60%; min-height: 44px; padding: 8px 12px; }
 
   /* Center the title horizontally in the header on small screens while keeping
      the menu (left) and login (right) in their places. The title is absolutely
@@ -277,7 +410,7 @@
 
 @media (max-width: 520px) {
   .top-bar {
-    padding: 8px 14px 12px;
+    padding: 8px 12px 10px;
     gap: 8px;
   }
 
@@ -301,21 +434,10 @@
     gap: 10px;
   }
 
-  .top-bar-menu-button {
-    width: 40px;
-    height: 40px;
-  }
+  .top-bar-menu-button { width: 44px; height: 44px; }
 
-  .top-bar-search {
-    position: static;
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 12px;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-    border: 1px solid var(--color-border);
-  }
+  .top-bar-search { position: static; width: 100%; padding: 8px 10px; border-radius: 12px; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border: 1px solid var(--color-border); }
+  .identity-chip { min-height: 44px; padding: 8px 12px; }
 }
 
 /* Extra small screens (iPhone SE and similar) */
@@ -348,15 +470,12 @@
   }
 
   /* Slightly reduce menu button size */
-  .top-bar-menu-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-  }
+  .top-bar-menu-button { width: 44px; height: 44px; border-radius: 12px; }
 
   .top-bar-title {
     font-size: 1.05rem;
   }
+  .identity-chip { min-height: 44px; padding: 8px 12px; }
 }
 
 /* Light theme adjustments for pill contrast */

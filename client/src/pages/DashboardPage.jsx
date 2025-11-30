@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CosmicBackground from '../components/background/CosmicBackground';
 import { Sidebar, TopBar } from '../components/layout';
 import { useAuth } from '../hooks/useAuth';

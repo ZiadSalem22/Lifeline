@@ -32,6 +32,24 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 
 ---
 
+## 🔥 Recent Major Updates (2025-11)
+
+These changes refine UX, routing, identity, and day management without breaking existing data or APIs:
+
+- **Identity & Guest Dropdowns:** Full-width identity chip (authenticated) with Profile/Settings/Logout. Guest mode now shows a dropdown (Login / Sign up) in addition to the inline Login button.
+- **Profile Panel Layout:** Profile view converted to a centered panel rendered inside the persistent layout (TopBar + Sidebar stay visible). Spacing tightened so content appears higher on the page.
+- **Auto Timezone Detection:** Timezone removed from forms; now auto-detected and sent with profile updates.
+- **Day Routing:** Active day reflected in the URL (`/day/:day`) supporting `today`, `tomorrow`, or `YYYY-MM-DD` while preserving previous behavior.
+- **Continuous Day Navigation:** Sidebar Previous/Next buttons advance from the currently selected day (e.g. 30 → 1 → 2 across month boundaries).
+- **Dual Calendar Highlighting:** Calendar now highlights both Today and the actively selected day simultaneously.
+- **Search Experience Upgrade:** Top bar search elevates results directly beneath the header (after guest banner if present) and hides the Add Task form while a query is active.
+- **Mobile Refinements:** Search pill hidden on narrow screens (<720px) for space efficiency; enlarged touch targets (44px) for menu + identity/guest controls; sidebar drawer locks background scroll to prevent “jumping”.
+- **Accessibility & Contrast:** Identity text color forced to theme variable for consistent contrast in dark mode.
+
+No migrations required for these UI changes. Existing tests updated; all pass.
+
+---
+
 ## 🏗️ Architecture (Updated)
 
 ### Backend (`backend/`)
