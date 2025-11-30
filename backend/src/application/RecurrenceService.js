@@ -131,17 +131,17 @@ class RecurrenceService {
 
         // Handle new recurrence modes
         if (recurrence.mode === 'daily') {
-            return '🔄 Every day';
+            return 'Daily';
         } else if (recurrence.mode === 'dateRange') {
             const start = recurrence.startDate ? new Date(recurrence.startDate).toLocaleDateString() : '?';
             const end = recurrence.endDate ? new Date(recurrence.endDate).toLocaleDateString() : '?';
-            return `📆 ${start} to ${end}`;
+            return `${start} → ${end}`;
         } else if (recurrence.mode === 'specificDays') {
             if (recurrence.selectedDays && recurrence.selectedDays.length > 0) {
                 const shortDays = recurrence.selectedDays.map(day => day.substring(0, 3)).join(', ');
-                return `📋 ${shortDays}`;
+                return shortDays;
             }
-            return '📋 Specific days';
+            return 'Specific days';
         }
 
         // Legacy mode handling
