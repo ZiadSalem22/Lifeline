@@ -727,15 +727,15 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                             </div>
                         </div>
 
-                        <style jsx>{`
-              .tag-actions {
-                opacity: 0 !important;
-              }
-              .tag-actions:hover,
-              div:hover .tag-actions {
-                opacity: 1 !important;
-              }
-            `}</style>
+                                                <style>{`
+                            .tag-actions {
+                                opacity: 0 !important;
+                            }
+                            .tag-actions:hover,
+                            div:hover .tag-actions {
+                                opacity: 1 !important;
+                            }
+                        `}</style>
                     </motion.div>
                 </motion.div>
             )}

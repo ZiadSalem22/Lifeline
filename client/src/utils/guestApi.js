@@ -6,10 +6,9 @@ import { getGuestTodos, saveGuestTodos, getGuestTags, saveGuestTags } from '../h
 export const fetchTodos = async () => getGuestTodos();
 export const createTodo = async (title, dueDate, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null) => {
   const todos = getGuestTodos();
-  const todo = {
-    id: uuidv4(),
+
+  const baseProps = {
     title,
-    dueDate,
     tags,
     isFlagged,
     duration,
@@ -19,12 +18,70 @@ export const createTodo = async (title, dueDate, tags = [], isFlagged = false, d
     description,
     recurrence,
     isCompleted: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
-  todos.push(todo);
+
+  const addOne = (date) => {
+    const now = new Date().toISOString();
+    const todo = {
+      id: uuidv4(),
+      dueDate: date,
+      createdAt: now,
+      updatedAt: now,
+      ...baseProps,
+    };
+    todos.push(todo);
+    return todo;
+  };
+
+  // Expand recurrence into multiple dates similar to backend CreateTodo
+  let createdFirst = null;
+  if (!recurrence) {
+    createdFirst = addOne(dueDate);
+  } else if (recurrence.mode === 'daily' || recurrence.mode === 'dateRange') {
+    const startStr = (recurrence.startDate || dueDate);
+    const endStr = (recurrence.endDate || dueDate);
+    let current = new Date(startStr + 'T00:00:00Z');
+    const end = new Date(endStr + 'T00:00:00Z');
+    while (current <= end) {
+      const date = current.toISOString().slice(0, 10);
+      const t = addOne(date);
+      if (!createdFirst) createdFirst = t;
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+  } else if (recurrence.mode === 'specificDays') {
+    const startStr = (recurrence.startDate || dueDate);
+    const endStr = (recurrence.endDate || dueDate);
+    let current = new Date(startStr + 'T00:00:00Z');
+    const end = new Date(endStr + 'T00:00:00Z');
+    const selectedDays = (recurrence.selectedDays || []).map(d => d.toLowerCase());
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    while (current <= end) {
+      const dayName = days[current.getUTCDay()];
+      if (selectedDays.includes(dayName)) {
+        const date = current.toISOString().slice(0, 10);
+        const t = addOne(date);
+        if (!createdFirst) createdFirst = t;
+      }
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+  } else if (recurrence.type === 'daily' || recurrence.type === 'weekly' || recurrence.type === 'monthly' || recurrence.type === 'custom') {
+    const interval = recurrence.interval || 1;
+    let current = new Date(dueDate + 'T00:00:00Z');
+    const end = recurrence.endDate ? new Date(recurrence.endDate + 'T00:00:00Z') : new Date(dueDate + 'T00:00:00Z');
+    while (current <= end) {
+      const date = current.toISOString().slice(0, 10);
+      const t = addOne(date);
+      if (!createdFirst) createdFirst = t;
+      if (recurrence.type === 'weekly') current.setUTCDate(current.getUTCDate() + 7 * interval);
+      else if (recurrence.type === 'monthly') current.setUTCMonth(current.getUTCMonth() + interval);
+      else current.setUTCDate(current.getUTCDate() + interval);
+    }
+  } else {
+    createdFirst = addOne(dueDate);
+  }
+
   saveGuestTodos(todos);
-  return todo;
+  return createdFirst;
 };
 export const updateTodo = async (id, updates) => {
   const todos = getGuestTodos();
@@ -43,8 +100,64 @@ export const toggleTodo = async (id) => {
   const todos = getGuestTodos();
   const idx = todos.findIndex(t => t.id === id);
   if (idx === -1) throw new Error('Todo not found');
+  const wasCompleted = todos[idx].isCompleted;
   todos[idx].isCompleted = !todos[idx].isCompleted;
   todos[idx].updatedAt = new Date().toISOString();
+
+  // If marking completed and recurrence exists, create next occurrence (single next based on mode)
+  if (!wasCompleted && todos[idx].recurrence) {
+    const rec = todos[idx].recurrence;
+    const currentDate = todos[idx].dueDate;
+    const nowIso = new Date().toISOString();
+    const addNext = (date) => {
+      const newTodo = {
+        id: uuidv4(),
+        title: todos[idx].title,
+        dueDate: date,
+        tags: todos[idx].tags,
+        isFlagged: todos[idx].isFlagged,
+        duration: todos[idx].duration,
+        priority: todos[idx].priority,
+        dueTime: todos[idx].dueTime,
+        subtasks: (todos[idx].subtasks || []).map(st => ({ ...st, isCompleted: false, id: uuidv4() })),
+        description: todos[idx].description,
+        recurrence: rec,
+        isCompleted: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      todos.push(newTodo);
+    };
+
+    let nextDate = null;
+    if (rec.mode === 'daily' || rec.mode === 'dateRange') {
+      const next = new Date(currentDate + 'T00:00:00Z');
+      next.setUTCDate(next.getUTCDate() + 1);
+      const end = rec.endDate ? new Date(rec.endDate + 'T00:00:00Z') : null;
+      if (!end || next <= end) nextDate = next.toISOString().slice(0, 10);
+    } else if (rec.mode === 'specificDays') {
+      const selectedDays = (rec.selectedDays || []).map(d => d.toLowerCase());
+      const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      let probe = new Date(currentDate + 'T00:00:00Z');
+      const end = rec.endDate ? new Date(rec.endDate + 'T00:00:00Z') : null;
+      for (let i = 1; i <= 365; i++) {
+        probe.setUTCDate(probe.getUTCDate() + 1);
+        if (end && probe > end) break;
+        if (selectedDays.includes(days[probe.getUTCDay()])) { nextDate = probe.toISOString().slice(0,10); break; }
+      }
+    } else if (rec.type === 'weekly' || rec.type === 'monthly' || rec.type === 'daily' || rec.type === 'custom') {
+      const interval = rec.interval || 1;
+      const next = new Date(currentDate + 'T00:00:00Z');
+      if (rec.type === 'weekly') next.setUTCDate(next.getUTCDate() + 7 * interval);
+      else if (rec.type === 'monthly') next.setUTCMonth(next.getUTCMonth() + interval);
+      else next.setUTCDate(next.getUTCDate() + interval);
+      const end = rec.endDate ? new Date(rec.endDate + 'T00:00:00Z') : null;
+      if (!end || next <= end) nextDate = next.toISOString().slice(0,10);
+    }
+
+    if (nextDate) addNext(nextDate);
+  }
+
   saveGuestTodos(todos);
   return todos[idx];
 };

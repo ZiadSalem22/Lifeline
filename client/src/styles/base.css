@@ -64,6 +64,29 @@
     --search-focus: rgba(0, 255, 65, 0.18);
 }
 
+[data-theme='blue-dark'] {
+  --color-primary: #1E90FF;
+  /* Neon blue */
+  --color-primary-dark: #0050b3;
+  --color-primary-light: #33aaff;
+  --color-accent: #00bfff;
+  --color-bg: #000000;
+  /* Pure black */
+  --color-surface: #0d1a26;
+  --color-surface-light: #1a2633;
+  --color-surface-hover: #22334d;
+  --color-text: #ffffff;
+  --color-text-muted: #7fbfff;
+  --color-border: #22334d;
+  --color-border-hover: #1E90FF;
+  --color-danger: #ef4444;
+  --shadow-primary: rgba(30, 144, 255, 0.6);
+  --shadow-dark: rgba(0, 0, 0, 0.9);
+
+  --color-top-bar-bg: rgba(0, 16, 32, 0.7);
+  --search-focus: rgba(30, 144, 255, 0.18);
+}
+
 /* New Color Themes */
 
 /* Pink Theme */
@@ -687,7 +710,7 @@ body {
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-family-base);
   background: var(--color-bg);
   color: var(--color-text);
   min-height: 100vh;
@@ -701,7 +724,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-family-heading);
 }
 
 /* Scrollbar */
