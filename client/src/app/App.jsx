@@ -15,6 +15,7 @@ import StatisticsPage from '../pages/StatisticsPage';
 import SettingsPage from '../pages/SettingsPage';
 import { Settings, ExportImport } from '../components/settings';
 import RecurrenceSelector from '../components/calendar/RecurrenceSelector';
+import RepeatIcon from '../icons/RepeatIcon';
 import DashboardPage from '../pages/DashboardPage';
 import AuthPage from '../pages/AuthPage';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
@@ -1558,8 +1559,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
   
   const priorityColors = {
     high: '#ef4444',
-    medium: '#f59e0b',
-    low: '#10b981'
+    // Softer tones for better UX
+    medium: '#FDBA74', // light orange (softer)
+    low: '#6EE7B7' // light green (mint/emerald)
   };
   
   const priorityLabels = {
@@ -1871,6 +1873,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   }}
                   title={`Repeats ${todo.recurrence.type || todo.recurrence.mode}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
                 >
+                  <RepeatIcon size={12} style={{ marginRight: '6px' }} />
                   {todo.recurrence?.mode === 'daily'
                     ? 'Daily'
                     : todo.recurrence?.mode === 'dateRange'
@@ -1897,6 +1900,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 }}
                 title={`Repeats ${todo.recurrence.type || todo.recurrence.mode}${todo.recurrence.interval > 1 ? ` every ${todo.recurrence.interval}` : ''}`}
               >
+                <RepeatIcon size={12} style={{ marginRight: '6px' }} />
                 {todo.recurrence?.mode === 'daily'
                   ? 'Daily'
                   : todo.recurrence?.mode === 'dateRange'
