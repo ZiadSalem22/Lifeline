@@ -26,10 +26,11 @@ describe('Protected routes integration', () => {
     expect(res.body.id).toBe('u1');
   });
 
-  it('should block /api/me for unauthenticated user', async () => {
+  it('should block /api/me for unauthenticated user with 401 and message', async () => {
     const app = makeApp(null);
     const res = await request(app).get('/api/me');
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/Guest mode works only locally/);
   });
 
   it('should allow /api/admin/secret for admin', async () => {

@@ -216,7 +216,39 @@ const listTags = new ListTags(tagRepository);
 const deleteTag = new DeleteTag(tagRepository);
 const updateTag = new UpdateTag(tagRepository);
 
-// Secure API: checkJwt, then attachCurrentUser
+// Public info endpoint (no auth required)
+/**
+ * @openapi
+ * /api/public/info:
+ *   get:
+ *     summary: Public application info (no auth)
+ *     tags: [Public]
+ *     responses:
+ *       '200':
+ *         description: Public information payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name: { type: string }
+ *                 version: { type: string }
+ *                 guestMode: { type: string }
+ *                 message: { type: string }
+ *                 time: { type: string, format: date-time }
+ */
+app.get('/api/public/info', (req, res) => {
+    const pkg = require('../package.json');
+    res.json({
+        name: 'Lifeline API',
+        version: pkg.version || '1.0.0',
+        guestMode: 'local-only',
+        message: 'Guest mode data never reaches the server; authenticate to sync.',
+        time: new Date().toISOString()
+    });
+});
+
+// Secure API: checkJwt, then attachCurrentUser (excludes /api/public/* which is above)
 app.use('/api', checkJwt, attachCurrentUser);
 
 // Rate limits
@@ -355,10 +387,7 @@ app.get('/api/notifications/pending', async (req, res) => {
  *                 - type: array
  *                   items: { $ref: '#/components/schemas/Todo' }
  */
-app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.get('/api/todos', requireAuth(), async (req, res, next) => {
     try {
         const todos = await listTodos.execute(req.currentUser.id);
         res.json(todos);
@@ -395,10 +424,7 @@ app.get('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true })
  *             schema: { $ref: '#/components/schemas/Todo' }
  *       '403': { description: Free tier limit reached }
  */
-app.post('/api/todos', requireAuth({ allowGuest: true, guestModeResponse: true }), validateTodoCreate, async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.post('/api/todos', requireAuth(), validateTodoCreate, async (req, res, next) => {
     try {
         const role = req.currentUser?.role || 'free';
         const userId = req.currentUser.id;
@@ -569,10 +595,7 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
  *     responses:
  *       '200': { description: Updated todo }
  */
-app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.patch('/api/todos/:id/toggle', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const todo = await toggleTodo.execute(req.currentUser.id, id);
@@ -593,10 +616,7 @@ app.patch('/api/todos/:id/toggle', requireAuth({ allowGuest: true, guestModeResp
  *     responses:
  *       '200': { description: Updated todo }
  */
-app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.patch('/api/todos/:id/flag', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const todo = await todoRepository.findById(id, req.currentUser.id);
@@ -620,10 +640,7 @@ app.patch('/api/todos/:id/flag', requireAuth({ allowGuest: true, guestModeRespon
  *     responses:
  *       '204': { description: Deleted }
  */
-app.delete('/api/todos/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.delete('/api/todos/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         // ownership enforced by repository delete
@@ -722,10 +739,7 @@ app.use('/api/ai', requirePaid());
  *                       name: { type: string }
  *                       color: { type: string }
  */
-app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.get('/api/tags', requireAuth(), async (req, res, next) => {
     try {
         const tags = await listTags.execute(req.currentUser.id);
         res.json(tags);
@@ -753,10 +767,7 @@ app.get('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }),
  *       '201': { description: Created tag }
  *       '403': { description: Free tier max tags reached }
  */
-app.post('/api/tags', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.post('/api/tags', requireAuth(), async (req, res, next) => {
     try {
         const role = req.currentUser?.role || 'free';
         const userId = req.currentUser.id;
@@ -831,10 +842,7 @@ app.patch('/api/tags/:id', requireAuth(), async (req, res, next) => {
  *       '204': { description: Deleted }
  *       '403': { description: Forbidden or default tag }
  */
-app.delete('/api/tags/:id', requireAuth({ allowGuest: true, guestModeResponse: true }), async (req, res, next) => {
-    if (req.currentUser && req.currentUser.isGuest) {
-        return res.json({ mode: 'guest' });
-    }
+app.delete('/api/tags/:id', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         await deleteTag.execute(req.currentUser.id, id);
@@ -877,7 +885,7 @@ app.get('/api/stats', async (req, res) => {
  *     responses:
  *       '200': { description: Export file }
  */
-app.get('/api/export', async (req, res) => {
+app.get('/api/export', requireAuth(), async (req, res) => {
     try {
         const format = req.query.format || 'json'; // json or csv
         const todos = await listTodos.execute();
@@ -954,7 +962,7 @@ app.get('/api/export', async (req, res) => {
  *                 message: { type: string }
  *                 importedCount: { type: integer }
  */
-app.post('/api/import', async (req, res) => {
+app.post('/api/import', requireAuth(), async (req, res) => {
     try {
         const { data, mode } = req.body; // mode: 'merge' or 'replace'
 
@@ -1160,6 +1168,10 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start Server
-app.listen(port, () => {
-    console.log(`Backend running at http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(port, () => {
+        console.log(`Backend running at http://localhost:${port}`);
+    });
+}
+
+module.exports = app;

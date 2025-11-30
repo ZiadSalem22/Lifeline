@@ -23,8 +23,9 @@ describe('roles middleware', () => {
     expect(res.status).toBe(200);
     app = makeApp(requireAuth(), null);
     res = await request(app).get('/test');
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
     expect(res.body.status).toBe('error');
+    expect(res.body.message).toMatch(/Guest mode works only locally/);
   });
 
   it('requireRole: allows correct role, blocks others', async () => {

@@ -2,19 +2,11 @@ const { AppError } = require('../utils/errors');
 
 
 // Enhanced requireAuth: allow guest mode for todos/tags/me, block admin/paid
-function requireAuth(options = {}) {
-  // options: { allowGuest: boolean, guestModeResponse: boolean }
+function requireAuth() {
+  // Hardened: no guest allowances. Missing or null user yields 401 with friendly message.
   return function (req, res, next) {
-    const isGuest = req.currentUser && req.currentUser.isGuest;
-    // Allow guest for certain routes
-    if (isGuest && options.allowGuest) {
-      if (options.guestModeResponse) {
-        return res.json({ mode: 'guest' });
-      }
-      return next();
-    }
     if (!req.currentUser || !req.currentUser.id) {
-      return next(new AppError('Forbidden', 403));
+      return next(new AppError('Please log in to use this feature. Guest mode works only locally.', 401));
     }
     next();
   };

@@ -19,7 +19,7 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 - **Recurring Tasks:** Flexible recurrence (daily, weekly, monthly, custom)
 - **Reminders & Notifications:** Browser notifications for upcoming tasks
 - **Export/Import:** Backup and restore data (JSON/CSV, merge/replace)
-- **Guest Mode:** Full-featured localStorage-only mode (no backend/auth required)
+- **Guest Mode:** Hardened local-only mode (no backend or network calls without auth; server returns 401). Public info endpoint `/api/public/info` clarifies mode.
 - **Advanced Search:** Multi-criteria search with month preload and client fallbacks
 - **Statistics:** Server-backed insights with automatic local computation fallback
 - **User Accounts:** Auth0 login, user upsert, and profile management
@@ -103,10 +103,41 @@ Lifeline is a full-stack productivity app with a modern React/Vite frontend and 
 - **Testing:**
   - `npm test` (backend, with full coverage for RBAC, todos, recurrence, etc.)
 
-Notes:
-- Frontend dev server: `http://localhost:5173`
-- Backend API: `http://localhost:3000/api`
-- Guest Mode runs entirely client-side (no backend required)
+ Notes:
+ - Frontend dev server: `http://localhost:5173`
+ - Backend API: `http://localhost:3000/api`
+ - Guest Mode runs entirely client-side; unauthenticated requests to protected endpoints now return `401` with a friendly message.
+ - Public unauthenticated endpoint: `GET /api/public/info` (basic app/version + guest mode notice)
+ - Export/Import endpoints now require authentication.
+
+### Subpath Deployment & Routing (basename)
+
+The app can be served under a subpath (e.g. `/Lifeline/`). Configuration:
+1. `vite.config.js` sets `base: '/Lifeline/'`.
+2. `BrowserRouter` uses `basename={import.meta.env.BASE_URL || '/'}` in `main.jsx`.
+3. For alternate subpaths, set `BASE_URL` at build time:
+
+```powershell
+set BASE_URL=/YourSubpath/
+npm run build
+```
+
+Validation checklist after deployment under a subpath:
+- Visiting `/YourSubpath/` loads dashboard (no route mismatch warnings).
+- Navigating to `/YourSubpath/search` renders Advanced Search.
+- Direct load of `/YourSubpath/statistics` works without 404.
+
+If you see "No routes matched location" warnings, ensure `vite.config.js` `base` matches the deployment path and `BASE_URL` environment variable is aligned.
+
+### Hardened Guest Mode Behavior
+
+Guest sessions (no `Authorization` header) do not create surrogate users and never hit persistence. All protected endpoints (`/api/todos`, `/api/tags`, `/api/export`, `/api/import`, `/api/admin`, `/api/ai`, `/api/me`) require a valid JWT and return:
+
+```json
+{"status":"error","message":"Please log in to use this feature. Guest mode works only locally."}
+```
+
+Use `/api/public/info` to detect server availability without authentication.
 
 ---
 

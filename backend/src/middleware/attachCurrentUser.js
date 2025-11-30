@@ -10,13 +10,11 @@ const logger = require('../config/logger');
 
 async function attachCurrentUser(req, res, next) {
   try {
-    // Guest mode: No Authorization header at all
+    // Hardened guest mode: if no Authorization header, do NOT create a surrogate user
+    // and perform absolutely no DB interaction. Controllers behind requireAuth will
+    // emit a 401 with a friendly message.
     if (!req.headers.authorization) {
-      req.currentUser = {
-        id: null,
-        role: 'guest',
-        isGuest: true
-      };
+      req.currentUser = null;
       return next();
     }
     const claims = req.auth?.payload || {};

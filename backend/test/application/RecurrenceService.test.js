@@ -80,7 +80,7 @@ describe('RecurrenceService.createNextOccurrence', () => {
 
 describe('RecurrenceService.getRecurrenceText', () => {
   test('daily mode text', () => {
-    expect(RecurrenceService.getRecurrenceText({ mode: 'daily' })).toMatch(/Every day/);
+    expect(RecurrenceService.getRecurrenceText({ mode: 'daily' })).toBe('Daily');
   });
   test('dateRange mode text includes dates', () => {
     const text = RecurrenceService.getRecurrenceText({ mode: 'dateRange', startDate: '2025-11-01', endDate: '2025-11-03' });
