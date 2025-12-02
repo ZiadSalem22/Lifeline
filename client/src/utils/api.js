@@ -21,6 +21,7 @@ const NOTIFICATIONS_URL = joinUrl('/notifications');
 const STATS_URL = joinUrl('/stats');
 const EXPORT_URL = joinUrl('/export');
 const IMPORT_URL = joinUrl('/import');
+const TODOS_BATCH_URL = joinUrl('/todos/batch');
 
 const assertFetcher = (fetchWithAuth, caller) => {
     if (typeof fetchWithAuth !== 'function') {
@@ -134,6 +135,16 @@ export const deleteTodo = async (id, fetchWithAuth) => {
         method: 'DELETE',
     });
     ensureOk(response, 'Failed to delete todo', 'deleteTodo');
+};
+
+export const batchTodos = async (action, ids, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'batchTodos');
+    const response = await executeFetch(TODOS_BATCH_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, ids }),
+    });
+    ensureOk(response, 'Failed to batch update todos', 'batchTodos');
+    return response.json();
 };
 
 export const exportTodos = async (format = 'json', fetchWithAuth) => {

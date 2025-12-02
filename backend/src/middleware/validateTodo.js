@@ -60,3 +60,20 @@ module.exports = {
   validateTodoCreate: validate(todoSchemaCreate),
   validateTodoUpdate: validate(todoSchemaUpdate),
 };
+
+// Batch validation (inline to avoid circular imports)
+const batchSchema = Joi.object({
+  action: Joi.string().valid('delete', 'complete', 'uncomplete').required(),
+  ids: Joi.array().items(Joi.string().uuid().required()).min(1).required(),
+});
+
+function validateBatch(req, res, next) {
+  const { error, value } = batchSchema.validate(req.body, { abortEarly: false });
+  if (error) {
+    return next(new AppError(error.details.map(d => d.message).join('; '), 400));
+  }
+  req.body = value;
+  next();
+}
+
+module.exports.validateTodoBatch = validateBatch;

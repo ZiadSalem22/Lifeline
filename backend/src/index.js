@@ -7,7 +7,7 @@ const { checkJwt } = require('./middleware/auth0');
 const { errorHandler, notFoundHandler, AppError } = require('./middleware/errorHandler');
 const { attachCurrentUser } = require('./middleware/attachCurrentUser');
 const { createRateLimiter } = require('./middleware/rateLimit');
-const { validateTodoCreate, validateTodoUpdate } = require('./middleware/validateTodo');
+const { validateTodoCreate, validateTodoUpdate, validateTodoBatch } = require('./middleware/validateTodo');
 const { requireAuth, requireRole, requireRoleIn, requirePaid } = require('./middleware/roles');
 const logger = require('./config/logger');
 
@@ -551,6 +551,52 @@ app.post('/api/todos', requireAuth(), validateTodoCreate, async (req, res, next)
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
         const todo = await createTodo.execute(userId, title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
         res.status(201).json(todo);
+    } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /api/todos/batch:
+ *   post:
+ *     summary: Batch operations on todos (delete or mark complete/undo)
+ *     tags: [Todos]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               action: { type: string, enum: [delete, complete, uncomplete] }
+ *               ids:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *     responses:
+ *       '200': { description: Batch operation result }
+ */
+app.post('/api/todos/batch', requireAuth(), validateTodoBatch, async (req, res, next) => {
+    try {
+        const { action, ids } = req.body;
+        const userId = req.currentUser.id;
+
+        let deleted = 0;
+        let updated = 0;
+        if (action === 'delete') {
+            for (const id of ids) {
+                await todoRepository.delete(id, userId);
+                deleted += 1;
+            }
+        } else if (action === 'complete' || action === 'uncomplete') {
+            const toCompleted = action === 'complete';
+            for (const id of ids) {
+                const t = await todoRepository.findById(id, userId);
+                if (!t) continue;
+                t.isCompleted = toCompleted;
+                await todoRepository.save(t);
+                updated += 1;
+            }
+        }
+        res.json({ action, ids, deleted, updated });
     } catch (err) { next(err); }
 });
 /**
