@@ -1,3 +1,3 @@
-@import './reset.css';
-@import './variables.css';
+@import url('./reset.css');
+@import url('./variables.css');
 /* Keep base.css for now to avoid regressions; migrate gradually */
