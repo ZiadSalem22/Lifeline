@@ -107,14 +107,14 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.iconBox}>
+          <div className={styles['header-left']}>
+          <div className={styles['icon-box']}>
             <StatsIcon width={22} height={22} />
           </div>
           <h2 className={styles.title}>Statistics</h2>
         </div>
-        <div className={styles.backRow}>
-          <button onClick={onBack} className={styles.backBtn}><CloseIcon /></button>
+        <div className={styles['back-row']}>
+          <button onClick={onBack} className={styles['back-btn']}><CloseIcon /></button>
         </div>
       </div>
 
@@ -123,35 +123,35 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
 
       {!loading && !error && stats && (
         <div className={styles.stack}>
-          <div className={styles.metrics}>
-            <Metric label="Total Todos" value={total} />
-            <Metric label="Completed" value={completed} />
+          <div className={styles.metric}>
+          <div className={styles['metric-label']}>{label}</div>
+          <div className={styles['metric-value']}>{value}</div>
             <Metric label="Completion Rate" value={`${completionRate}%`} />
             <Metric label="Avg. Duration" value={`${avgDuration}m`} />
             <Metric label="Time Spent (min)" value={timeSpent} />
           </div>
 
           <section className={styles.sections}>
-            <div className={styles.perDay}>
-              <h3 className={styles.cardTitle}>Tasks Per Day (last 30 days)</h3>
-              <div className={styles.perDayBars}>
+            <div className={styles['per-day']}>
+              <h3 className={styles['card-title']}>Tasks Per Day (last 30 days)</h3>
+              <div className={styles['per-day-bars']}>
                 {tasksPerDay.map((d) => (
-                  <div key={d.day} title={`${d.day}: ${d.count}`} className={styles.barCol}>
+                  <div key={d.day} title={`${d.day}: ${d.count}`} className={styles['bar-col']}>
                     <div className={styles.bar} style={{ '--bar-height': `${Math.round((d.count / maxPerDay) * 100)}%` }} />
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className={styles.topTags}>
-              <h3 className={styles.cardTitle}>Top Tags</h3>
+            <div className={styles['top-tags']}>
+              <h3 className={styles['card-title']}>Top Tags</h3>
               {topTags.length === 0 && <div className={styles.loading}>No tags used yet</div>}
               {topTags.map(tag => (
-                <div key={tag.id} className={styles.tagRow}>
-                  <div className={styles.tagSwatch} style={{ '--swatch-color': tag.color || 'var(--color-border)' }} />
-                  <div className={styles.tagName}>{tag.name}</div>
-                  <div className={styles.tagBar}><Bar percent={Math.min(100, Math.round((tag.count / (topTags[0]?.count || 1)) * 100))} color={tag.color} /></div>
-                  <div className={styles.tagCount}>{tag.count}</div>
+                <div key={tag.id} className={styles['tag-row']}>
+                  <div className={styles['tag-swatch']} style={{ '--swatch-color': tag.color || 'var(--color-border)' }} />
+                  <div className={styles['tag-name']}>{tag.name}</div>
+                  <div className={styles['tag-bar']}><Bar percent={Math.min(100, Math.round((tag.count / (topTags[0]?.count || 1)) * 100))} color={tag.color} /></div>
+                  <div className={styles['tag-count']}>{tag.count}</div>
                 </div>
               ))}
             </div>

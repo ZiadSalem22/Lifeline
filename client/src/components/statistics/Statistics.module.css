@@ -1,26 +1,26 @@
 .root{padding:28px;max-width:1100px;margin:0 auto}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-.headerLeft{display:flex;align-items:center;gap:12px}
-.iconBox{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-primary)}
+.header-left{display:flex;align-items:center;gap:12px}
+.icon-box{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-primary)}
 .title{margin:0;font-family:var(--font-family-heading)}
-.backRow{display:flex;gap:8px}
-.backBtn{padding:8px 10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-surface)}
+.back-row{display:flex;gap:8px}
+.back-btn{padding:8px 10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-surface)}
 .loading{color:var(--color-text-muted)}
 .error{color:var(--color-danger)}
 .stack{display:flex;flex-direction:column;gap:18px}
 .metrics{display:flex;gap:12px;flex-wrap:wrap}
 .metric{display:flex;flex-direction:column;gap:6px;padding:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;min-width:140px}
-.metricLabel{font-size:.85rem;color:var(--color-text-muted)}
-.metricValue{font-size:1.25rem;font-weight:700;color:var(--color-text)}
+.metric-label{font-size:.85rem;color:var(--color-text-muted)}
+.metric-value{font-size:1.25rem;font-weight:700;color:var(--color-text)}
 .sections{display:flex;gap:18px;flex-wrap:wrap}
-.perDay{flex:1;min-width:320px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:12px}
-.cardTitle{margin:0 0 8px 0}
-.perDayBars{display:flex;gap:6px;align-items:end;height:80px}
-.barCol{width:100%;display:flex;flex-direction:column;align-items:center}
+.per-day{flex:1;min-width:320px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:12px}
+.card-title{margin:0 0 8px 0}
+.per-day-bars{display:flex;gap:6px;align-items:end;height:80px}
+.bar-col{width:100%;display:flex;flex-direction:column;align-items:center}
 .bar{width:14px;height:var(--bar-height, 0%);background:var(--color-primary);border-radius:6px 6px 0 0}
-.topTags{width:320px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:12px}
-.tagRow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.tagSwatch{width:12px;height:12px;border-radius:4px;background:var(--swatch-color, var(--color-border));border:1px solid var(--color-border)}
-.tagName{flex:1}
-.tagBar{width:100px}
-.tagCount{width:36px;text-align:right;color:var(--color-text-muted)}
+.top-tags{width:320px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:12px}
+.tag-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tag-swatch{width:12px;height:12px;border-radius:4px;background:var(--swatch-color, var(--color-border));border:1px solid var(--color-border)}
+.tag-name{flex:1}
+.tag-bar{width:100px}
+.tag-count{width:36px;text-align:right;color:var(--color-text-muted)}
