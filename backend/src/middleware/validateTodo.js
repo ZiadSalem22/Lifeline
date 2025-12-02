@@ -6,7 +6,13 @@ const todoSchemaCreate = Joi.object({
   description: Joi.string().max(2000).allow('', null).optional(),
   dueDate: Joi.alternatives(Joi.string().isoDate(), Joi.valid(null)).optional(),
   recurrence: Joi.alternatives(Joi.object(), Joi.string(), Joi.valid(null)).optional(),
-  tags: Joi.array().items(Joi.object({ id: Joi.string().required(), name: Joi.string().required(), color: Joi.string().required() })).default([]),
+  tags: Joi.array().items(
+    Joi.object({
+      id: Joi.alternatives(Joi.string(), Joi.number()).required(),
+      name: Joi.string().required(),
+      color: Joi.string().required()
+    })
+  ).default([]),
   isFlagged: Joi.boolean().optional(),
   duration: Joi.number().integer().min(0).max(1440).optional(),
   priority: Joi.string().valid('high','medium','low').optional(),
@@ -19,7 +25,13 @@ const todoSchemaUpdate = Joi.object({
   description: Joi.string().max(2000).allow('', null).optional(),
   dueDate: Joi.alternatives(Joi.string().isoDate(), Joi.valid(null)).optional(),
   recurrence: Joi.alternatives(Joi.object(), Joi.string(), Joi.valid(null)).optional(),
-  tags: Joi.array().items(Joi.object({ id: Joi.string().required(), name: Joi.string().required(), color: Joi.string().required() })).optional(),
+  tags: Joi.array().items(
+    Joi.object({
+      id: Joi.alternatives(Joi.string(), Joi.number()).required(),
+      name: Joi.string().required(),
+      color: Joi.string().required()
+    })
+  ).optional(),
   isFlagged: Joi.boolean().optional(),
   duration: Joi.number().integer().min(0).max(1440).optional(),
   priority: Joi.string().valid('high','medium','low').optional(),

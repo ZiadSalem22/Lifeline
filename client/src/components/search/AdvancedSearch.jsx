@@ -14,6 +14,7 @@ const formatDuration = (totalMinutes) => {
 const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMode, guestTodos = [], guestTags = [] }) => {
   const [allTodos, setAllTodos] = useState([]);
   const [allTags, setAllTags] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [query, setQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [priority, setPriority] = useState('any');
@@ -35,6 +36,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   const [serverLoading, setServerLoading] = useState(false);
   const [monthLoaded, setMonthLoaded] = useState(false);
   const lastTapRef = useRef(0);
+  const lastSelectedIndexRef = useRef(null);
 
   const navigateToDay = useCallback((dueDate) => {
     if (onGoToDay && dueDate) onGoToDay(dueDate);
@@ -143,6 +145,38 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     return out;
   }, [allTodos, query, selectedTags, priority, status, startDate, endDate, minDuration, maxDuration, flaggedOnly, sortBy]);
 
+  // Display list (client preview vs live)
+  const displayTodos = useMemo(() => (clientResults && clientResults.length) ? clientResults : filtered, [clientResults, filtered]);
+
+  // Clear selection when data set changes significantly (e.g., new results)
+  useEffect(() => { setSelectedIds([]); lastSelectedIndexRef.current = null; }, [displayTodos.map(t => t.id).join('|')]);
+
+  // Esc to clear selection
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedIds.length) {
+        setSelectedIds([]);
+        lastSelectedIndexRef.current = null;
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedIds.length]);
+
+  const isSelected = (id) => selectedIds.includes(id);
+  const handleRowClick = (todoId, index, evt) => {
+    if (evt && evt.shiftKey && lastSelectedIndexRef.current !== null) {
+      const start = Math.min(lastSelectedIndexRef.current, index);
+      const end = Math.max(lastSelectedIndexRef.current, index);
+      const rangeIds = displayTodos.slice(start, end + 1).map(t => t.id);
+      const merged = Array.from(new Set([...selectedIds, ...rangeIds]));
+      setSelectedIds(merged);
+    } else {
+      setSelectedIds(prev => prev.includes(todoId) ? prev.filter(x => x !== todoId) : [...prev, todoId]);
+      lastSelectedIndexRef.current = index;
+    }
+  };
+
   const handleToggleComplete = async (todo) => {
     if (!fetchWithAuth) return;
     try {
@@ -151,6 +185,30 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     } catch (err) {
       console.error('toggle complete failed', err);
     }
+  };
+
+  // Local-only batch handlers (no backend yet)
+  const handleBatchDeleteLocal = () => {
+    if (!selectedIds.length) return;
+    const ok = window.confirm(`Delete ${selectedIds.length} selected tasks? This only affects current view.`);
+    if (!ok) return;
+    setAllTodos(prev => prev.filter(t => !selectedIds.includes(t.id)));
+    // Also remove from client preview if present
+    if (clientResults && clientResults.length) {
+      try { setClientResults(prev => prev.filter(t => !selectedIds.includes(t.id))); } catch {}
+    }
+    setSelectedIds([]);
+    lastSelectedIndexRef.current = null;
+  };
+
+  const handleBatchMarkLocal = (toCompleted) => {
+    if (!selectedIds.length) return;
+    setAllTodos(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, isCompleted: !!toCompleted } : t));
+    if (clientResults && clientResults.length) {
+      try { setClientResults(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, isCompleted: !!toCompleted } : t)); } catch {}
+    }
+    setSelectedIds([]);
+    lastSelectedIndexRef.current = null;
   };
 
   // Trigger server-side search
@@ -385,21 +443,38 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           <button onClick={() => { setPriority('high'); setStatus('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>High Priority</button>
           <button onClick={() => { setStatus('active'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Active</button>
           <button onClick={() => { setStatus('completed'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Completed</button>
+          {selectedIds.length > 0 && (
+            <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+              <button onClick={handleBatchDeleteLocal} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-danger, #e5484d)', background: 'var(--color-danger, #e5484d)', color: '#fff', fontWeight: 700 }}>Delete</button>
+              {(() => {
+                const selected = displayTodos.filter(t => selectedIds.includes(t.id));
+                const allCompleted = selected.length > 0 && selected.every(t => !!t.isCompleted);
+                const label = allCompleted ? 'Mark as Undone' : 'Mark as Done';
+                return (
+                  <button onClick={() => handleBatchMarkLocal(!allCompleted)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)', fontWeight: 700 }}>{label}</button>
+                );
+              })()}
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{selectedIds.length} selected</span>
+            </div>
+          )}
           <div style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>{(clientResults && clientResults.length) ? clientResults.length : allTodos.length} results</div>
         </div>
 
         {/* Results */}
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflow: 'auto', position: 'relative', zIndex: 1000 }}>
-            {(() => {
-              const displayTodos = (clientResults && clientResults.length) ? clientResults : allTodos;
-              return displayTodos.map(todo => (
+            {displayTodos.map((todo, idx) => (
               <div
                 key={todo.id}
-                style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px', borderRadius: '10px', background: 'var(--color-surface-light)', gap: '12px', cursor: todo.dueDate ? 'pointer' : 'default' }}
+                onClick={(e) => handleRowClick(todo.id, idx, e)}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px', borderRadius: '10px',
+                  background: isSelected(todo.id) ? 'var(--color-surface-light)' : 'var(--color-surface-light)',
+                  outline: isSelected(todo.id) ? '2px solid var(--color-primary)' : '1px solid transparent',
+                  gap: '12px', cursor: 'pointer'
+                }}
                 onDoubleClick={() => navigateToDay(todo.dueDate)}
                 onTouchStart={(e) => {
-                  // Mobile emulator double-tap detection
                   const now = Date.now();
                   if (now - lastTapRef.current < 300) {
                     e.preventDefault();
@@ -409,9 +484,6 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                 }}
               >
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flex: 1 }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={!!todo.isCompleted} onChange={() => handleToggleComplete(todo)} />
-                  </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span
@@ -439,11 +511,10 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '8px' }}>
                   {todo.isFlagged && <FlagIcon filled />}
-                  <button onClick={() => onOpenTodo && onOpenTodo(todo)} title="Open/Edit" style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'transparent' }}><EditIcon /></button>
+                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'transparent' }}><EditIcon /></button>
                 </div>
               </div>
-              ));
-            })()}
+            ))}
           </div>
         </div>
       </div>
