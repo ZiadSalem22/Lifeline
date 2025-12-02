@@ -1813,7 +1813,31 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                     {allTags && allTags.map(tag => {
                       const selected = editingTags && editingTags.includes(tag.id);
                       return (
-                        <button key={tag.id} type="button" onClick={(e) => { e.stopPropagation(); setEditingTags && setEditingTags(selected ? editingTags.filter(id => id !== tag.id) : [...(editingTags||[]), tag.id]); }} style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${selected ? tag.color : 'var(--color-border)'}`, background: selected ? `${tag.color}20` : 'transparent', color: selected ? tag.color : 'var(--color-text-muted)' }}>{tag.name}</button>
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTags && setEditingTags(selected ? editingTags.filter(id => id !== tag.id) : [...(editingTags||[]), tag.id]);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 12px',
+                            borderRadius: '999px',
+                            border: selected ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                            background: selected ? `${tag.color}20` : 'transparent',
+                            color: selected ? tag.color : 'var(--color-text-muted)',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            transition: 'all 0.12s ease-out',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                          <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                        </button>
                       );
                     })}
                   </div>
