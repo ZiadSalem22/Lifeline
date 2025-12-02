@@ -4,7 +4,13 @@ const { AppError } = require('../utils/errors');
 const todoSchemaCreate = Joi.object({
   title: Joi.string().trim().min(1).max(200).required(),
   description: Joi.string().max(2000).allow('', null).optional(),
-  dueDate: Joi.alternatives(Joi.string().isoDate(), Joi.valid(null)).optional(),
+  // Accept YYYY-MM-DD (date-only), full ISO date-time, null or empty string
+  dueDate: Joi.alternatives(
+    Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    Joi.string().isoDate(),
+    Joi.valid(null),
+    Joi.string().allow('')
+  ).optional(),
   recurrence: Joi.alternatives(Joi.object(), Joi.string(), Joi.valid(null)).optional(),
   tags: Joi.array().items(
     Joi.object({
