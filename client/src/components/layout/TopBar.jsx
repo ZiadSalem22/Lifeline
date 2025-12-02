@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { SearchIcon, SettingsIcon, MenuIcon } from '../../icons/Icons';
-import './TopBar.css';
+import styles from './TopBar.module.css';
 
 const TopBar = (props) => {
     const {
@@ -43,12 +43,12 @@ const TopBar = (props) => {
     }, [open]);
 
     return (
-        <header className="top-bar">
-            <div className="top-bar-main">
+        <header className={styles['top-bar']}>
+            <div className={styles['top-bar-main']}>
                 {!isMobileSidebarOpen && (
                     <button
                         type="button"
-                        className="top-bar-menu-button"
+                        className={styles['top-bar-menu-button']}
                         onClick={onOpenSidebar}
                         aria-label="Open navigation"
                     >
@@ -56,12 +56,12 @@ const TopBar = (props) => {
                     </button>
                 )}
 
-                <div className="top-bar-title-wrap">
-                    <h2 className="top-bar-title">Lifeline</h2>
+                <div className={styles['top-bar-title-wrap']}>
+                    <h2 className={styles['top-bar-title']}>Lifeline</h2>
                 </div>
 
-                <div className="top-bar-search">
-                    <div className="search-icon">
+                <div className={styles['top-bar-search']}>
+                    <div className={styles['search-icon']}>
                         <SearchIcon />
                     </div>
                     <input
@@ -69,20 +69,20 @@ const TopBar = (props) => {
                         placeholder="Search"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="search-input"
+                        className={styles['search-input']}
                         aria-label="Search tasks and tags"
                     />
                 </div>
 
-                <div className="top-bar-actions">
+                <div className={styles['top-bar-actions']}>
                     {/* Settings icon removed; now inside identity dropdown */}
                     {guestMode && (
-                        <div className="guest-pill" ref={dropdownRef}>
+                        <div className={styles['guest-pill']} ref={dropdownRef}>
                             <span>Hello, Guest</span>
-                            <button type="button" className="guest-login" onClick={() => loginWithRedirect()}>Log in</button>
+                            <button type="button" className={styles['guest-login']} onClick={() => loginWithRedirect()}>Log in</button>
                             <button
                                 type="button"
-                                className="guest-caret-btn"
+                                className={styles['guest-caret-btn']}
                                 aria-haspopup="true"
                                 aria-expanded={open ? 'true' : 'false'}
                                 aria-label="Open guest menu"
@@ -91,7 +91,7 @@ const TopBar = (props) => {
                                 ▾
                             </button>
                             {open && (
-                                <div className="chip-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
+                                <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
                                     <button type="button" onClick={() => { close(); loginWithRedirect(); }} role="menuitem">Login</button>
                                     <button type="button" onClick={() => { close(); loginWithRedirect({ authorizationParams: { screen_hint: 'signup' } }); }} role="menuitem">Sign up</button>
                                 </div>
@@ -99,24 +99,24 @@ const TopBar = (props) => {
                         </div>
                     )}
                     {!guestMode && isAuthenticated && currentUser && (
-                        <div className="identity-chip-container" ref={dropdownRef}>
+                        <div className={styles['identity-chip-container']} ref={dropdownRef}>
                             <button
                                 type="button"
-                                className="identity-chip"
+                                className={styles['identity-chip']}
                                 onClick={toggle}
                                 aria-haspopup="true"
                                 aria-expanded={open ? 'true' : 'false'}
                                 aria-label="Open profile menu"
                             >
                                 {avatar ? (
-                                    <img src={avatar} alt={name || 'User'} className="chip-avatar" />
+                                    <img src={avatar} alt={name || 'User'} className={styles['chip-avatar']} />
                                 ) : (
-                                    <div className="chip-avatar chip-initials">{(name || 'U').substring(0,1).toUpperCase()}</div>
+                                    <div className={`${styles['chip-avatar']} ${styles['chip-initials']}`}>{(name || 'U').substring(0,1).toUpperCase()}</div>
                                 )}
-                                <div className="chip-name" title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
+                                <div className={styles['chip-name']} title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
                             </button>
                             {open && (
-                                <div className="chip-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
+                                <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
                                     <button type="button" onClick={() => { close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
                                     <button type="button" onClick={() => { close(); onOpenSettings && onOpenSettings(); }} role="menuitem">Settings</button>
                                     <button type="button" onClick={dropdownLogout} role="menuitem">Logout</button>
@@ -125,7 +125,7 @@ const TopBar = (props) => {
                         </div>
                     )}
                     {!guestMode && !isAuthenticated && (
-                        <button type="button" className="top-bar-button top-bar-login" onClick={() => loginWithRedirect()} title="Login">Login</button>
+                        <button type="button" className={`${styles['top-bar-button']} ${styles['top-bar-login']}`} onClick={() => loginWithRedirect()} title="Login">Login</button>
                     )}
                 </div>
             </div>
