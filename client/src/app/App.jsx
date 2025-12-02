@@ -3,7 +3,6 @@ import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
-import { toggleFlag as apiToggleFlag } from '../utils/api';
 import * as guestApi from '../utils/guestApi';
 import { useGuestStorage } from '../hooks/useGuestStorage';
 import { useApi } from '../hooks/useApi';
@@ -174,30 +173,14 @@ function AppInner() {
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
-      let updatedTodo;
-      if (guestMode) {
-        updatedTodo = await guestApi.updateTodo(id, updates);
-      } else {
-        try {
-          updatedTodo = await apiUpdateTodo(id, updates, fetchWithAuth);
-        } catch (authErr) {
-          console.warn('Auth update failed, falling back to local update:', authErr?.message || authErr);
-          updatedTodo = await guestApi.updateTodo(id, updates);
-        }
-      }
-      // After update (including completion that may create next recurrence), refetch to reflect new instances
-      try {
-        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
-        setTodos(refreshed);
-      } catch (refreshErr) {
-        setTodos(prev => prev.map(t => (t.id === id ? { ...t, ...updatedTodo } : t)));
-      }
-      return updatedTodo;
+      // Delegate to provider's updateTodo so normalization and state management are centralized
+      const updated = await updateTodo(id, updates);
+      return updated;
     } catch (error) {
-      console.error("Failed to update todo", error);
+      console.error('Failed to update todo', error);
       throw error;
     }
-  }, [fetchWithAuth, guestMode]);
+  }, [updateTodo]);
 
   const handleStartEdit = useCallback((todo) => {
     setEditingTodoId(todo.id);
@@ -237,32 +220,22 @@ function AppInner() {
 
   const handleToggle = useCallback(async (id) => {
     try {
-      const updatedTodo = guestMode
-        ? await guestApi.toggleTodo(id)
-        : await apiToggleTodo(id, fetchWithAuth);
-      // Refetch to ensure recurrence-created next instances are visible immediately
-      try {
-        const refreshed = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
-        setTodos(refreshed);
-      } catch (refreshErr) {
-        setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
-      }
+      // Use provider's toggleTodo to keep state handling consistent
+      await toggleTodo(id);
     } catch (error) {
-      console.error("Failed to toggle todo", error);
+      console.error('Failed to toggle todo', error);
     }
-  }, [fetchWithAuth, guestMode]);
+  }, [toggleTodo]);
 
   const handleFlag = useCallback(async (id, e) => {
     e.stopPropagation();
     try {
-      const updatedTodo = guestMode
-        ? await guestApi.toggleFlag(id)
-        : await apiToggleFlag(id, fetchWithAuth);
-      setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
+      // Use provider's toggleFlag
+      await toggleFlag(id);
     } catch (error) {
       console.error("Failed to toggle flag", error);
     }
-  }, [fetchWithAuth, guestMode]);
+  }, [toggleFlag]);
 
   const handleUpdatePriority = useCallback(async (id, newPriority) => {
     try {
@@ -313,16 +286,12 @@ function AppInner() {
 
   const handleDelete = useCallback(async (id) => {
     try {
-      if (guestMode) {
-        await guestApi.deleteTodo(id);
-      } else {
-        await apiDeleteTodo(id, fetchWithAuth);
-      }
-      setTodos(prev => prev.filter(t => t.id !== id));
+      // Delegate to provider to keep state updates centralized
+      await deleteTodo(id);
     } catch (error) {
       console.error("Failed to delete todo", error);
     }
-  }, [fetchWithAuth, guestMode]);
+  }, [deleteTodo]);
 
   const toggleTagSelection = (tag) => {
     if (selectedTags.find(t => t.id === tag.id)) {

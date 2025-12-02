@@ -6,7 +6,14 @@ if (!API_BASE_ENV) {
 
 const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
 
-const joinUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+const joinUrl = (path) => {
+    const p = path.startsWith('/') ? path : `/${path}`;
+    // Avoid duplicate '/api' if API_BASE_URL already ends with '/api' and caller passed '/api/...'
+    if (API_BASE_URL.endsWith('/api') && p.startsWith('/api')) {
+        return `${API_BASE_URL}${p.replace(/^\/api/, '')}`;
+    }
+    return `${API_BASE_URL}${p}`;
+};
 
 const TODOS_URL = joinUrl('/todos');
 const TAGS_URL = joinUrl('/tags');

@@ -8,6 +8,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export const AUTH_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE;
 export const AUTH_SCOPE = import.meta.env.VITE_AUTH0_SCOPE;
 
+let audienceWarned = false;
+
 export function createTokenOptions() {
   const authorizationParams = {};
   if (AUTH_AUDIENCE) {
@@ -36,7 +38,11 @@ const ensureAbsoluteUrl = (input) => {
   }
 
   const base = API_BASE_URL.replace(/\/$/, '');
-  const path = String(input).startsWith('/') ? String(input) : `/${input}`;
+  let path = String(input).startsWith('/') ? String(input) : `/${input}`;
+  // Prevent duplicate '/api' when API_BASE_URL already contains '/api' and caller passed '/api/...'
+  if (base.endsWith('/api') && path.startsWith('/api')) {
+    path = path.replace(/^\/api/, '');
+  }
   return `${base}${path}`;
 };
 
@@ -48,6 +54,10 @@ export function useApi() {
   const fetchWithAuth = useCallback(async (input, options = {}) => {
     let token;
     try {
+      if (!AUTH_AUDIENCE && !audienceWarned) {
+        console.warn('Auth warning: VITE_AUTH0_AUDIENCE is not set; tokens may be rejected by the API.');
+        audienceWarned = true;
+      }
       token = await getAccessTokenSilently(tokenOptions);
     } catch (err) {
       if (err) {
@@ -89,6 +99,17 @@ export function useApi() {
       headers['Content-Type'] = 'application/json';
     }
 
+    if (options.debugAuth) {
+      const tokenPreview = typeof token === 'string' ? token.slice(0, 12) + '...' : 'none';
+      console.debug('fetchWithAuth debug:', {
+        url,
+        hasToken: !!token,
+        tokenPreview,
+        hasAuthHeader: true,
+        method: options.method || 'GET'
+      });
+    }
+
     const response = await fetch(url, {
       ...options,
       headers,
@@ -96,7 +117,10 @@ export function useApi() {
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('API ERROR STATUS:', response.status, url);
+        // Allow callers to suppress noisy 401 logs for benign flows (e.g. optional settings save)
+        if (!options.quiet401) {
+          console.log('API ERROR STATUS:', response.status, url);
+        }
         const error = new Error(`Unauthorized request to ${url}`);
         error.status = 401;
         throw error;

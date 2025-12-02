@@ -339,6 +339,9 @@
 .chip-dropdown button:hover { background: var(--color-surface-hover); }
 }
 
+/* Ensure dropdown positions relative to the chip container when present */
+.identity-chip-container { position: relative; display: inline-flex; align-items: center; }
+
 .top-bar-search:focus-within {
   /* Circular/pill focus ring that follows border-radius */
   box-shadow: 0 0 0 4px var(--search-focus), 0 12px 40px rgba(0,0,0,0.18);

@@ -9,6 +9,7 @@ class TypeORMTodoRepository extends ITodoRepository {
         this.repo = AppDataSource.getRepository('Todo');
         this.tagRepo = AppDataSource.getRepository('Tag');
     }
+ 
 
     async save(todo) {
         const entity = {
@@ -66,7 +67,8 @@ class TypeORMTodoRepository extends ITodoRepository {
         } = filters;
 
         const qb = this.repo.createQueryBuilder('todo')
-            .leftJoinAndSelect('todo.tags', 'tag');
+            .leftJoinAndSelect('todo.tags', 'tag')
+            .distinct(true);
 
         qb.andWhere('ISNULL(todo.archived, 0) = 0');
         if (userId) {
@@ -91,24 +93,61 @@ class TypeORMTodoRepository extends ITodoRepository {
             qb.andWhere('todo.is_completed = 0');
         }
 
-        if (startDate) {
+        // Normalize date range: inclusive start, exclusive next-day end for correctness
+        if (startDate && endDate) {
+            let endPlusOne = endDate;
+            try {
+                const d = new Date(endDate);
+                if (!Number.isNaN(d.getTime())) {
+                    d.setDate(d.getDate() + 1);
+                    endPlusOne = d.toISOString().slice(0, 10);
+                }
+            } catch (_) { /* ignore parse issues, fallback to <= endDate below */ }
+            if (endPlusOne !== endDate) {
+                qb.andWhere('todo.due_date >= :startDate AND todo.due_date < :endPlusOne', { startDate, endPlusOne });
+            } else {
+                qb.andWhere('todo.due_date >= :startDate AND todo.due_date <= :endDate', { startDate, endDate });
+            }
+        } else if (startDate) {
             qb.andWhere('todo.due_date >= :startDate', { startDate });
+        } else if (endDate) {
+            let endPlusOne = endDate;
+            try {
+                const d = new Date(endDate);
+                if (!Number.isNaN(d.getTime())) {
+                    d.setDate(d.getDate() + 1);
+                    endPlusOne = d.toISOString().slice(0, 10);
+                }
+            } catch (_) { /* ignore */ }
+            if (endPlusOne !== endDate) {
+                qb.andWhere('todo.due_date < :endPlusOne', { endPlusOne });
+            } else {
+                qb.andWhere('todo.due_date <= :endDate', { endDate });
+            }
         }
 
-        if (endDate) {
-            qb.andWhere('todo.due_date <= :endDate', { endDate });
+        // Only apply duration filters when parsed numbers are valid
+        if (typeof minDuration !== 'undefined' && minDuration !== null && minDuration !== '') {
+            const parsedMin = parseInt(minDuration, 10);
+            if (!Number.isNaN(parsedMin)) {
+                qb.andWhere('todo.duration >= :minDuration', { minDuration: parsedMin });
+            }
         }
 
-        if (minDuration) {
-            qb.andWhere('todo.duration >= :minDuration', { minDuration: parseInt(minDuration) });
+        if (typeof maxDuration !== 'undefined' && maxDuration !== null && maxDuration !== '') {
+            const parsedMax = parseInt(maxDuration, 10);
+            if (!Number.isNaN(parsedMax)) {
+                qb.andWhere('todo.duration <= :maxDuration', { maxDuration: parsedMax });
+            }
         }
 
-        if (maxDuration) {
-            qb.andWhere('todo.duration <= :maxDuration', { maxDuration: parseInt(maxDuration) });
-        }
-
-        if (tags && Array.isArray(tags) && tags.length > 0) {
-            qb.andWhere('tag.id IN (:...tagIds)', { tagIds: tags });
+        if (tags && Array.isArray(tags)) {
+            const tagIds = tags
+                .map(t => (t != null ? String(t) : null))
+                .filter(t => t && t.trim().length > 0);
+            if (tagIds.length > 0) {
+                qb.andWhere('tag.id IN (:...tagIds)', { tagIds });
+            }
         }
 
         if (sortBy === 'priority') {
@@ -117,10 +156,12 @@ class TypeORMTodoRepository extends ITodoRepository {
             qb.orderBy('todo.duration', 'DESC');
         } else if (sortBy === 'name') {
             qb.orderBy('todo.title', 'ASC');
-        } else {
-            qb.orderBy('todo.due_date IS NULL', 'ASC')
-              .addOrderBy('todo.due_date', 'ASC');
-        }
+                } else {
+                        // SQL Server compatible nulls-last ordering using a computed select alias
+                        qb.addSelect("CASE WHEN todo.due_date IS NULL THEN 1 ELSE 0 END", 'due_date_nulls')
+                            .orderBy('due_date_nulls', 'ASC')
+                            .addOrderBy('todo.due_date', 'ASC');
+                }
 
         const [rows, total] = await qb.skip(offset).take(limit).getManyAndCount();
         const todos = rows.map(row => this._mapRowToDomain(row));
@@ -145,6 +186,114 @@ class TypeORMTodoRepository extends ITodoRepository {
 
     async countByUser(userId) {
         return await this.repo.count({ where: { user_id: userId, archived: 0 } });
+    }
+
+    async getExportStatsForUser(userId) {
+        // Use raw queries for aggregation for performance
+        const dialect = (AppDataSource.options && AppDataSource.options.type) || 'mssql';
+
+        if (dialect === 'sqlite') {
+            // SQLite-friendly SQL (use ? placeholders)
+            const params = [userId];
+            const totalRow = await AppDataSource.manager.query(
+                'SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed FROM todos WHERE user_id = ? AND COALESCE(archived,0) = 0',
+                params
+            );
+            const total = totalRow && totalRow[0] ? parseInt(totalRow[0].total || 0, 10) : 0;
+            const completedCount = totalRow && totalRow[0] ? parseInt(totalRow[0].completed || 0, 10) : 0;
+
+            const avgRow = await AppDataSource.manager.query(
+                'SELECT AVG(NULLIF(duration,0)) as avgDur FROM todos WHERE user_id = ? AND COALESCE(archived,0) = 0',
+                params
+            );
+            const avgDuration = avgRow && avgRow[0] && avgRow[0].avgDur ? Math.round(avgRow[0].avgDur) : 0;
+
+            const topTagsRows = await AppDataSource.manager.query(
+                `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+                 FROM todo_tags tt
+                 JOIN tags t ON t.id = tt.tag_id
+                 JOIN todos on todos.id = tt.todo_id
+                 WHERE todos.user_id = ?
+                 GROUP BY t.id, t.name, t.color
+                 ORDER BY cnt DESC
+                 LIMIT 10`,
+                params
+            );
+            const topTags = (topTagsRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+
+            const today = new Date();
+            const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const start = new Date(end.getTime() - (29 * 24 * 60 * 60 * 1000));
+            const startStr = start.toISOString().slice(0,10);
+            const endStr = end.toISOString().slice(0,10);
+
+            const perDayRows = await AppDataSource.manager.query(
+                `SELECT strftime('%Y-%m-%d', due_date) as day, COUNT(*) as cnt
+                 FROM todos
+                 WHERE user_id = ? AND due_date BETWEEN ? AND ? AND COALESCE(archived,0) = 0
+                 GROUP BY day
+                 ORDER BY day ASC`,
+                [userId, startStr, endStr]
+            );
+            const map = {};
+            (perDayRows || []).forEach(r => { if (r.day) map[r.day] = r.cnt; });
+            const tasksPerDay = [];
+            for (let i = 0; i < 30; i++) {
+                const d = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000));
+                const key = d.toISOString().slice(0,10);
+                tasksPerDay.push({ day: key, count: map[key] || 0 });
+            }
+
+            return { totalTodos: total, completedCount, completionRate: total>0?Math.round((completedCount/total)*100):0, avgDuration, topTags, tasksPerDay };
+        }
+
+        // Default: MSSQL-style SQL (existing path)
+        const params = [userId];
+        // total and completed
+        const totalRow = await AppDataSource.manager.query('SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed FROM todos WHERE user_id = @0 AND ISNULL(archived,0) = 0', params);
+        const total = totalRow && totalRow[0] ? parseInt(totalRow[0].total || 0, 10) : 0;
+        const completedCount = totalRow && totalRow[0] ? parseInt(totalRow[0].completed || 0, 10) : 0;
+
+        // avg duration (minutes) for duration > 0
+        const avgRow = await AppDataSource.manager.query('SELECT AVG(CASE WHEN duration > 0 THEN duration ELSE NULL END) as avgDur FROM todos WHERE user_id = @0 AND ISNULL(archived,0) = 0', params);
+        const avgDuration = avgRow && avgRow[0] && avgRow[0].avgDur ? Math.round(avgRow[0].avgDur) : 0;
+
+        // top tags (join todo_tags -> tags)
+        const topTagsRows = await AppDataSource.manager.query(`
+            SELECT t.id, t.name, t.color, COUNT(*) as cnt
+            FROM todo_tags tt
+            JOIN tags t ON t.id = tt.tag_id
+            JOIN todos on todos.id = tt.todo_id
+            WHERE todos.user_id = @0 AND ISNULL(t.is_default,0) IN (0,1) AND ISNULL(t.user_id, todos.user_id) IS NOT NULL
+            GROUP BY t.id, t.name, t.color
+            ORDER BY cnt DESC
+            OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
+        `, params);
+        const topTags = (topTagsRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+
+        // tasks per day last 30 days by due_date
+        const today = new Date();
+        const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const start = new Date(end.getTime() - (29 * 24 * 60 * 60 * 1000));
+        const startStr = start.toISOString().slice(0,10);
+        const endStr = end.toISOString().slice(0,10);
+        const perDayRows = await AppDataSource.manager.query(`
+            SELECT CONVERT(varchar(10), due_date, 23) as day, COUNT(*) as cnt
+            FROM todos
+            WHERE user_id = @0 AND due_date BETWEEN @1 AND @2 AND ISNULL(archived,0) = 0
+            GROUP BY CONVERT(varchar(10), due_date, 23)
+            ORDER BY day ASC
+        `, [userId, startStr, endStr]);
+        const map = {};
+        (perDayRows || []).forEach(r => { if (r.day) map[r.day] = r.cnt; });
+        const tasksPerDay = [];
+        for (let i = 0; i < 30; i++) {
+            const d = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000));
+            const key = d.toISOString().slice(0,10);
+            tasksPerDay.push({ day: key, count: map[key] || 0 });
+        }
+
+        return { totalTodos: total, completedCount, completionRate: total>0?Math.round((completedCount/total)*100):0, avgDuration, topTags, tasksPerDay };
     }
 
     _mapRowToDomain(row) {

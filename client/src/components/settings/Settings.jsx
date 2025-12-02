@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExportDataModal from './ExportDataModal';
 import { createTag, deleteTag, updateTag } from '../../utils/api';
 import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
 
@@ -8,6 +9,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
     const [newTagColor, setNewTagColor] = useState('#6366f1');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState('tags');
+    const [showExportModal, setShowExportModal] = useState(false);
     const [editingTagId, setEditingTagId] = useState(null);
     const [editTagName, setEditTagName] = useState('');
     const [editTagColor, setEditTagColor] = useState('');
@@ -215,7 +217,28 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                             >
                                 About
                             </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setActiveTab('export')}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: activeTab === 'export' ? 'var(--color-primary)' : 'transparent',
+                                    color: activeTab === 'export' ? 'var(--color-bg)' : 'var(--color-text-muted)',
+                                    fontWeight: '500',
+                                    fontSize: '0.875rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s'
+                                }}
+                            >
+                                Export
+                            </motion.button>
                         </div>
+                        {showExportModal && (
+                            <ExportDataModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} />
+                        )}
 
                         {/* Content */}
                         <div style={{ padding: '24px' }}>
@@ -528,6 +551,17 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                     </AnimatePresence>
                                                                 </div>
                             </div>
+                            )}
+
+                            {/* Export Tab */}
+                            {activeTab === 'export' && (
+                                <div>
+                                    <h3 style={{ fontFamily: 'var(--font-family-heading)', fontSize: '1.125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '16px' }}>Export</h3>
+                                    <p style={{ color: 'var(--color-text-muted)', marginBottom: '12px' }}>Export your data (tasks, tags, and preferences). Use the button below to open the export dialog.</p>
+                                    <div>
+                                        <button onClick={() => setShowExportModal(true)} style={{ padding: '10px 14px', background: 'var(--color-primary)', color: 'var(--color-bg)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Open Export Dialog</button>
+                                    </div>
+                                </div>
                             )}
 
                             {/* Appearance Tab */}

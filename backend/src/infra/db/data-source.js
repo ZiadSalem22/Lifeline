@@ -18,11 +18,12 @@ const AppDataSource = new DataSource({
         require('./entities/TagEntity'),
         require('./entities/TodoTagEntity'),
         require('./entities/UserEntity'),
-        require('./entities/UserProfileEntity')
+        require('./entities/UserProfileEntity'),
+        require('./entities/UserSettingsEntity')
     ],
 
     synchronize: false,
-    logging: false,
+    logging: true,
 
     options: {
         encrypt: false,

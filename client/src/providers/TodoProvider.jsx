@@ -21,6 +21,22 @@ export function TodoProvider({ children }) {
 
   const guestFallbackAppliedRef = useRef(false);
 
+  const normalize = (t) => {
+    if (!t) return t;
+    try {
+      if (!t.dueDate) return { ...t, dueDate: null };
+      // if already YYYY-MM-DD, keep as is
+      if (typeof t.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate)) return { ...t, dueDate: t.dueDate };
+      const d = new Date(t.dueDate);
+      if (isNaN(d.getTime())) return { ...t, dueDate: String(t.dueDate).slice(0,10) };
+      return { ...t, dueDate: d.toISOString().slice(0,10) };
+    } catch (_) {
+      return { ...t, dueDate: t && t.dueDate ? String(t.dueDate).slice(0,10) : null };
+    }
+  };
+
+  const normalizeSingle = normalize;
+
   const loadTodos = useCallback(async () => {
     if (guestFallbackAppliedRef.current && guestMode) {
       // Already in guest fallback; avoid redundant auth attempts
@@ -28,12 +44,13 @@ export function TodoProvider({ children }) {
       setTodos(Array.isArray(data) ? data : []);
       return;
     }
+    // Normalize todos to ensure consistent dueDate format (YYYY-MM-DD or null)
     try {
       let data = guestMode ? await guestApi.fetchTodos() : await apiFetchTodos(fetchWithAuth);
       if (data && data.mode === 'guest') {
         data = await guestApi.fetchTodos();
       }
-      setTodos(Array.isArray(data) ? data : []);
+      setTodos(Array.isArray(data) ? data.map(normalize) : []);
     } catch (e) {
       const msg = e?.message || '';
       const shouldFallback = !guestMode && (e?.status === 401 || /Missing Refresh Token/i.test(msg) || /login_required/i.test(msg));
@@ -114,7 +131,7 @@ export function TodoProvider({ children }) {
       let newTodo = guestMode
         ? await guestApi.createTodo(title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence)
         : await apiCreateTodo(title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence, fetchWithAuth);
-      setTodos(prev => [newTodo, ...prev]);
+      setTodos(prev => [normalizeSingle(newTodo), ...prev]);
       return newTodo;
     } catch (e) { setError(e.message || 'Create failed'); throw e; }
   }, [guestMode, fetchWithAuth]);
@@ -122,7 +139,7 @@ export function TodoProvider({ children }) {
   const updateTodo = useCallback(async (id, updates) => {
     try {
       let updated = guestMode ? await guestApi.updateTodo(id, updates) : await apiUpdateTodo(id, updates, fetchWithAuth);
-      setTodos(prev => prev.map(t => t.id === id ? updated : t));
+      setTodos(prev => prev.map(t => t.id === id ? normalizeSingle(updated) : t));
       return updated;
     } catch (e) { setError(e.message || 'Update failed'); throw e; }
   }, [guestMode, fetchWithAuth]);
@@ -130,7 +147,7 @@ export function TodoProvider({ children }) {
   const toggleTodo = useCallback(async (id) => {
     try {
       let toggled = guestMode ? await guestApi.toggleTodo(id) : await apiToggleTodo(id, fetchWithAuth);
-      setTodos(prev => prev.map(t => t.id === id ? toggled : t));
+      setTodos(prev => prev.map(t => t.id === id ? normalizeSingle(toggled) : t));
       return toggled;
     } catch (e) { setError(e.message || 'Toggle failed'); throw e; }
   }, [guestMode, fetchWithAuth]);
@@ -138,7 +155,7 @@ export function TodoProvider({ children }) {
   const toggleFlag = useCallback(async (id) => {
     try {
       let updated = guestMode ? await guestApi.toggleFlag(id) : await apiToggleFlag(id, fetchWithAuth);
-      setTodos(prev => prev.map(t => t.id === id ? updated : t));
+      setTodos(prev => prev.map(t => t.id === id ? normalizeSingle(updated) : t));
       return updated;
     } catch (e) { setError(e.message || 'Flag toggle failed'); throw e; }
   }, [guestMode, fetchWithAuth]);

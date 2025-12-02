@@ -5,7 +5,10 @@ const logger = require('../config/logger');
 // AUTH0_DOMAIN should be just the domain (without protocol or trailing slash)
 // AUTH0_AUDIENCE should match the access token's aud claim (API identifier or client id)
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN?.replace(/^https?:\/\//, '').replace(/\/$/, '') || 'dev-1b4upl01bjz8l8li.us.auth0.com';
-const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE || '5THMMyQGm2mIbpLnCVW1RpXGIyd1G9jr';
+// Support multiple audiences via comma-separated list or AUTH0_AUDIENCE_ALT
+const audRaw = (process.env.AUTH0_AUDIENCE || '5THMMyQGm2mIbpLnCVW1RpXGIyd1G9jr').split(',');
+const audAlt = (process.env.AUTH0_AUDIENCE_ALT || '').split(',');
+const AUTH0_AUDIENCE = [...audRaw, ...audAlt].map(a => a.trim()).filter(Boolean);
 
 // Build issuer URL for library (must include protocol, trailing slash optional but consistent)
 const issuerBaseURL = `https://${AUTH0_DOMAIN}`; // library will normalize
@@ -13,7 +16,8 @@ const issuerBaseURL = `https://${AUTH0_DOMAIN}`; // library will normalize
 // Strict audience: prefer single audience match to avoid accidental acceptance
 const checkJwt = auth({
   issuerBaseURL,
-  audience: AUTH0_AUDIENCE,
+  // express-oauth2-jwt-bearer accepts string or array for audience
+  audience: AUTH0_AUDIENCE.length <= 1 ? AUTH0_AUDIENCE[0] : AUTH0_AUDIENCE,
   tokenSigningAlg: 'RS256',
 });
 

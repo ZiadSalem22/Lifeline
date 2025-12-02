@@ -136,7 +136,7 @@ class SQLiteTodoRepository extends ITodoRepository {
             maxDuration,
             flagged,
             sortBy,
-            limit = 30,
+            limit = 20,
             offset = 0
         } = filters;
 

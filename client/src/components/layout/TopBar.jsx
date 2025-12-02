@@ -99,13 +99,22 @@ const TopBar = (props) => {
                         </div>
                     )}
                     {!guestMode && isAuthenticated && currentUser && (
-                        <button type="button" className="identity-chip" ref={dropdownRef} onClick={toggle} aria-haspopup="true" aria-expanded={open ? 'true' : 'false'} aria-label="Open profile menu">
-                            {avatar ? (
-                                <img src={avatar} alt={name || 'User'} className="chip-avatar" />
-                            ) : (
-                                <div className="chip-avatar chip-initials">{(name || 'U').substring(0,1).toUpperCase()}</div>
-                            )}
-                            <div className="chip-name" title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
+                        <div className="identity-chip-container" ref={dropdownRef}>
+                            <button
+                                type="button"
+                                className="identity-chip"
+                                onClick={toggle}
+                                aria-haspopup="true"
+                                aria-expanded={open ? 'true' : 'false'}
+                                aria-label="Open profile menu"
+                            >
+                                {avatar ? (
+                                    <img src={avatar} alt={name || 'User'} className="chip-avatar" />
+                                ) : (
+                                    <div className="chip-avatar chip-initials">{(name || 'U').substring(0,1).toUpperCase()}</div>
+                                )}
+                                <div className="chip-name" title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
+                            </button>
                             {open && (
                                 <div className="chip-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
                                     <button type="button" onClick={() => { close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
@@ -113,7 +122,7 @@ const TopBar = (props) => {
                                     <button type="button" onClick={dropdownLogout} role="menuitem">Logout</button>
                                 </div>
                             )}
-                        </button>
+                        </div>
                     )}
                     {!guestMode && !isAuthenticated && (
                         <button type="button" className="top-bar-button top-bar-login" onClick={() => loginWithRedirect()} title="Login">Login</button>

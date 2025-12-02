@@ -13,6 +13,7 @@ const logger = require('./config/logger');
 
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
 const TypeORMTagRepository = require('./infrastructure/TypeORMTagRepository');
+const TypeORMUserSettingsRepository = require('./infrastructure/TypeORMUserSettingsRepository');
 const { AppDataSource } = require('./infra/db/data-source');
 const NotificationService = require('./application/NotificationService');
 const CreateTodo = require('./application/CreateTodo');
@@ -103,6 +104,43 @@ app.get('/api/health/db', async (req, res) => {
         });
     }
 });
+
+// Save or update user settings
+/**
+ * @openapi
+ * /api/settings:
+ *   post:
+ *     summary: Save or update user settings (theme, locale, layout)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               theme: { type: string }
+ *               locale: { type: string }
+ *               layout: { type: object }
+ *     responses:
+ *       '200': { description: Saved settings }
+ */
+app.post('/api/settings', checkJwt, attachCurrentUser, requireAuth(), async (req, res) => {
+    try {
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        const { theme = null, locale = null, layout = null } = req.body || {};
+        const saved = await TypeORMUserSettingsRepository.saveOrUpdate(userId, { theme, locale, layout });
+        if (!saved) {
+            logger.error('[settings] save failed', { userId, body: req.body });
+            return res.status(500).json({ error: 'Failed to save settings' });
+        }
+        res.json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // INTERNAL: Schema validation endpoint for ExpressSQL (not public API, for debugging only)
 /**
@@ -653,9 +691,13 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
         const limit = parseInt(req.query.limit || req.query.pageSize || '30', 10) || 30;
         const offset = (page - 1) * limit;
         const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset };
+        logger.info('[GET /api/todos/search] executing', { userId: req.currentUser.id, filters });
         const results = await searchTodos.execute(req.currentUser.id, filters);
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
-    } catch (err) { next(err); }
+    } catch (err) {
+        logger.error('[GET /api/todos/search] failed', { error: err.message, stack: err.stack });
+        next(err);
+    }
 });
 /**
  * @openapi
@@ -938,11 +980,24 @@ app.delete('/api/tags/:id', requireAuth(), async (req, res, next) => {
  *     responses:
  *       '200': { description: Statistics payload }
  */
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', requireAuth(), async (req, res) => {
     try {
-        const stats = await getStatistics.execute();
-        res.json(stats);
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        // Prefer repository aggregation (MSSQL-optimized). Fallback to in-memory.
+        let stats;
+        try {
+            stats = await todoRepository.getExportStatsForUser(userId);
+        } catch (e) {
+            const todos = await listTodos.execute(userId) || [];
+            const total = todos.length;
+            const completedCount = todos.filter(t => t.isCompleted).length;
+            const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+            stats = { totalTodos: total, completedCount, completionRate };
+        }
+        res.json(stats || { totalTodos: 0, completedCount: 0, completionRate: 0 });
     } catch (err) {
+        logger.error('[GET /api/stats] failed', { error: err.message, stack: err.stack });
         res.status(500).json({ error: err.message });
     }
 });
@@ -964,47 +1019,72 @@ app.get('/api/stats', async (req, res) => {
 app.get('/api/export', requireAuth(), async (req, res) => {
     try {
         const format = req.query.format || 'json'; // json or csv
-        const todos = await listTodos.execute();
-        const tags = await listTags.execute();
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        // Load scoped data for this user only
+        const todos = await listTodos.execute(userId) || [];
+        const tags = await listTags.execute(userId) || [];
 
         if (format === 'csv') {
-            // Export as CSV
+            // Export as CSV (scoped to user)
             let csv = 'id,title,description,dueDate,dueTime,isCompleted,isFlagged,priority,duration,tags,subtasks,recurrence\n';
             todos.forEach(todo => {
                 const tagsStr = (todo.tags || []).map(t => t.name).join(';');
                 const subtasksStr = (todo.subtasks || []).map(s => `${s.title}(${s.isCompleted ? 'done' : 'pending'})`).join(';');
                 const recurrenceStr = todo.recurrence ? JSON.stringify(todo.recurrence).replace(/"/g, '\\"') : '';
-                csv += `"${todo.id}","${todo.title.replace(/"/g, '\\"')}","${(todo.description || '').replace(/"/g, '\\"')}","${todo.dueDate || ''}","${todo.dueTime || ''}",${todo.isCompleted ? 1 : 0},${todo.isFlagged ? 1 : 0},"${todo.priority}",${todo.duration},"${tagsStr}","${subtasksStr}","${recurrenceStr}"\n`;
+                csv += `"${todo.id}","${(todo.title || '').replace(/"/g, '\\"')}","${((todo.description || '')).replace(/"/g, '\\"')}","${todo.dueDate || ''}","${todo.dueTime || ''}",${todo.isCompleted ? 1 : 0},${todo.isFlagged ? 1 : 0},"${todo.priority}",${todo.duration || 0},"${tagsStr}","${subtasksStr}","${recurrenceStr}"\n`;
             });
             res.header('Content-Type', 'text/csv');
             res.header('Content-Disposition', 'attachment; filename="todos_export.csv"');
             res.send(csv);
-        } else {
-            // Export as JSON (default)
-            const exportData = {
-                version: 1,
-                exportDate: new Date().toISOString(),
-                todos: todos.map(todo => ({
-                    id: todo.id,
-                    title: todo.title,
-                    description: todo.description,
-                    dueDate: todo.dueDate,
-                    dueTime: todo.dueTime,
-                    isCompleted: todo.isCompleted,
-                    isFlagged: todo.isFlagged,
-                    priority: todo.priority,
-                    duration: todo.duration,
-                    tags: todo.tags.map(t => ({ id: t.id, name: t.name, color: t.color })),
-                    subtasks: todo.subtasks,
-                    recurrence: todo.recurrence,
-                    originalId: todo.originalId
-                })),
-                tags: tags.map(tag => ({ id: tag.id, name: tag.name, color: tag.color }))
-            };
-            res.header('Content-Type', 'application/json');
-            res.header('Content-Disposition', 'attachment; filename="todos_export.json"');
-            res.send(JSON.stringify(exportData, null, 2));
+            return;
         }
+
+        // Delegate stats calculation to repository for performance
+        let stats = { totalTodos: todos.length, completedCount: todos.filter(t=>t.isCompleted).length, completionRate: 0 };
+        try {
+            const repoStats = await todoRepository.getExportStatsForUser(userId);
+            if (repoStats) stats = repoStats;
+        } catch (e) {
+            // Fallback to in-memory stats if repository aggregation fails
+            const total = todos.length;
+            const completedCount = todos.filter(t => t.isCompleted).length;
+            const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+            stats = { totalTodos: total, completedCount, completionRate };
+        }
+
+        // Build export JSON structure per spec
+        const exportPayload = {
+            exported_at: new Date().toISOString(),
+            user: {
+                id: req.currentUser.id,
+                email: req.currentUser.email || null,
+                profile: req.currentUser.profile || null,
+                settings: req.currentUser.settings || null
+            },
+            todos: todos.map(todo => ({
+                id: todo.id,
+                title: todo.title,
+                description: todo.description,
+                dueDate: todo.dueDate,
+                dueTime: todo.dueTime,
+                isCompleted: todo.isCompleted,
+                isFlagged: todo.isFlagged,
+                priority: todo.priority,
+                duration: todo.duration,
+                tags: (todo.tags || []).map(t => ({ id: t.id, name: t.name, color: t.color })),
+                subtasks: todo.subtasks || [],
+                recurrence: todo.recurrence || null,
+                originalId: todo.originalId || null
+            })),
+            tags: (tags || []).map(tag => ({ id: tag.id, name: tag.name, color: tag.color, isDefault: !!tag.isDefault })),
+            stats
+        };
+
+        res.header('Content-Type', 'application/json');
+        res.header('Content-Disposition', 'attachment; filename="todos_export.json"');
+        res.send(JSON.stringify(exportPayload, null, 2));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1040,6 +1120,9 @@ app.get('/api/export', requireAuth(), async (req, res) => {
  */
 app.post('/api/import', requireAuth(), async (req, res) => {
     try {
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
         const { data, mode } = req.body; // mode: 'merge' or 'replace'
 
         if (!data || typeof data !== 'string') {
@@ -1057,24 +1140,54 @@ app.post('/api/import', requireAuth(), async (req, res) => {
             return res.status(400).json({ error: 'Invalid import format: missing todos array' });
         }
 
-        // If mode is 'replace', clear existing data
+        // If mode is 'replace', clear existing data for THIS user only
         if (mode === 'replace') {
-            // Clear existing data using TypeORM (MSSQL)
-            await AppDataSource.manager.query('DELETE FROM todo_tags');
-            await AppDataSource.manager.query('DELETE FROM todos');
-            await AppDataSource.manager.query('DELETE FROM tags');
+            try {
+                // Delete tag relations for this user's todos
+                await AppDataSource.manager.query(`
+                    DELETE tt
+                    FROM todo_tags tt
+                    JOIN todos t ON tt.todo_id = t.id
+                    WHERE t.user_id = @0
+                `, [userId]);
+            } catch (_) {}
+            await AppDataSource.manager.query('DELETE FROM todos WHERE user_id = @0', [userId]);
+            // Delete only this user's custom tags (keep defaults)
+            await AppDataSource.manager.query('DELETE FROM tags WHERE user_id = @0', [userId]);
         }
 
-        // Import tags first
-        const tagMap = {}; // Map old tag IDs to new ones
+        // Build existing tag maps (default + user custom)
+        const existingTags = await listTags.execute(userId);
+        const defaultByName = {};
+        const customByName = {};
+        (existingTags || []).forEach(t => {
+            if (t.isDefault) defaultByName[(t.name || '').toLowerCase()] = t;
+            else if (t.userId === userId) customByName[(t.name || '').toLowerCase()] = t;
+        });
+
+        // Import tags first and map old -> new ids
+        const tagIdMap = {};
         if (importedData.tags && Array.isArray(importedData.tags)) {
             for (const tag of importedData.tags) {
-                const existingTag = await tagRepository.findByName(tag.name);
-                if (existingTag) {
-                    tagMap[tag.id] = existingTag.id;
-                } else {
-                    const newTag = await createTag.execute(tag.name, tag.color);
-                    tagMap[tag.id] = newTag.id;
+                const nameKey = (tag.name || '').toLowerCase();
+                if (tag.isDefault) {
+                    const match = defaultByName[nameKey] || null;
+                    if (match) tagIdMap[tag.id] = match.id;
+                    continue;
+                }
+                // custom tag: prefer existing user's tag by name
+                let target = customByName[nameKey] || null;
+                if (!target) {
+                    // create a new custom tag for this user
+                    try {
+                        target = await createTag.execute(userId, tag.name, tag.color);
+                        customByName[nameKey] = target;
+                    } catch (_) {
+                        target = null;
+                    }
+                }
+                if (target) {
+                    tagIdMap[tag.id] = target.id;
                 }
             }
         }
@@ -1084,13 +1197,11 @@ app.post('/api/import', requireAuth(), async (req, res) => {
         for (const todoData of importedData.todos) {
             const Todo = require('./domain/Todo');
             const mappedTags = (todoData.tags || []).map(tag => {
-                if (typeof tag === 'string') {
-                    // If tag is just an ID string, try to find it
-                    return tagMap[tag] ? { id: tagMap[tag], name: '', color: '' } : null;
-                }
-                // If tag is an object, map its ID
-                return tagMap[tag.id] ? { id: tagMap[tag.id], name: tag.name, color: tag.color } : null;
-            }).filter(t => t !== null);
+                if (!tag) return null;
+                const oldId = typeof tag === 'string' ? tag : tag.id;
+                const newId = tagIdMap[oldId];
+                return newId ? { id: newId, name: tag.name || '', color: tag.color || '' } : null;
+            }).filter(Boolean);
 
             const todo = new Todo(
                 todoData.id || require('uuid').v4(),
@@ -1107,7 +1218,8 @@ app.post('/api/import', requireAuth(), async (req, res) => {
                 todoData.description || '',
                 todoData.recurrence || null,
                 todoData.nextRecurrenceDue || null,
-                todoData.originalId || null
+                todoData.originalId || null,
+                userId
             );
 
             await todoRepository.save(todo);

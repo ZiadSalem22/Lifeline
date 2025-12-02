@@ -6,7 +6,13 @@ if (!API_BASE_ENV) {
 
 const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
 
-const joinUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+const joinUrl = (path) => {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (API_BASE_URL.endsWith('/api') && p.startsWith('/api')) {
+    return `${API_BASE_URL}${p.replace(/^\/api/, '')}`;
+  }
+  return `${API_BASE_URL}${p}`;
+};
 
 export function createApiClient(fetchWithAuth) {
   if (typeof fetchWithAuth !== 'function') {

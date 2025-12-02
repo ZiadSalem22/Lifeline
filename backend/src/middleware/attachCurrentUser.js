@@ -5,6 +5,7 @@
 
 const userRepo = require('../infrastructure/TypeORMUserRepository');
 const userProfileRepo = require('../infrastructure/TypeORMUserProfileRepository');
+const userSettingsRepo = require('../infrastructure/TypeORMUserSettingsRepository');
 const logger = require('../config/logger');
 
 
@@ -46,6 +47,15 @@ async function attachCurrentUser(req, res, next) {
     } catch (e) {
       logger.warn('[attachCurrentUser] failed to load user profile', { userId: user.id, error: e.message });
     }
+
+    // Load user settings if available
+    let settings = null;
+    try {
+      settings = await userSettingsRepo.findByUserId(user.id);
+    } catch (e) {
+      logger.warn('[attachCurrentUser] failed to load user settings', { userId: user.id, error: e.message });
+    }
+
     req.currentUser = {
       id: user.id,
       email: user.email,
@@ -64,6 +74,8 @@ async function attachCurrentUser(req, res, next) {
             onboarding_completed: !!profile.onboarding_completed
           }
         : { onboarding_completed: false }
+      ,
+      settings: settings || null
     };
     return next();
   } catch (err) {
