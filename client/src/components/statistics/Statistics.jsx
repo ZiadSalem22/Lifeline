@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import { fetchStats } from '../../utils/api';
 import { CloseIcon, StatsIcon } from '../../icons/Icons';
+import styles from './Statistics.module.css';
 
 const Metric = ({ label, value }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', minWidth: '140px' }}>
-    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{label}</div>
-    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>{value}</div>
+  <div className={styles.metric}>
+    <div className={styles.metricLabel}>{label}</div>
+    <div className={styles.metricValue}>{value}</div>
   </div>
 );
 
@@ -104,25 +105,25 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
   const maxPerDay = useMemo(() => tasksPerDay.reduce((m, d) => Math.max(m, d.count), 0) || 1, [tasksPerDay]);
 
   return (
-    <div style={{ padding: '28px', maxWidth: '1100px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.iconBox}>
             <StatsIcon width={22} height={22} />
           </div>
-          <h2 style={{ margin: 0, fontFamily: 'var(--font-family-heading)' }}>Statistics</h2>
+          <h2 className={styles.title}>Statistics</h2>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={onBack} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}><CloseIcon /></button>
+        <div className={styles.backRow}>
+          <button onClick={onBack} className={styles.backBtn}><CloseIcon /></button>
         </div>
       </div>
 
-      {loading && <div style={{ color: 'var(--color-text-muted)' }}>Loading statistics...</div>}
-      {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
+      {loading && <div className={styles.loading}>Loading statistics...</div>}
+      {error && <div className={styles.error}>{error}</div>}
 
       {!loading && !error && stats && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className={styles.stack}>
+          <div className={styles.metrics}>
             <Metric label="Total Todos" value={total} />
             <Metric label="Completed" value={completed} />
             <Metric label="Completion Rate" value={`${completionRate}%`} />
@@ -130,27 +131,27 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
             <Metric label="Time Spent (min)" value={timeSpent} />
           </div>
 
-          <section style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '320px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '12px' }}>
-              <h3 style={{ margin: '0 0 8px 0' }}>Tasks Per Day (last 30 days)</h3>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'end', height: '80px' }}>
+          <section className={styles.sections}>
+            <div className={styles.perDay}>
+              <h3 className={styles.cardTitle}>Tasks Per Day (last 30 days)</h3>
+              <div className={styles.perDayBars}>
                 {tasksPerDay.map((d) => (
-                  <div key={d.day} title={`${d.day}: ${d.count}`} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ width: '14px', height: `${Math.round((d.count / maxPerDay) * 100)}%`, background: 'var(--color-primary)', borderRadius: '6px 6px 0 0' }} />
+                  <div key={d.day} title={`${d.day}: ${d.count}`} className={styles.barCol}>
+                    <div className={styles.bar} style={{ '--bar-height': `${Math.round((d.count / maxPerDay) * 100)}%` }} />
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ width: '320px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '12px' }}>
-              <h3 style={{ margin: '0 0 8px 0' }}>Top Tags</h3>
-              {topTags.length === 0 && <div style={{ color: 'var(--color-text-muted)' }}>No tags used yet</div>}
+            <div className={styles.topTags}>
+              <h3 className={styles.cardTitle}>Top Tags</h3>
+              {topTags.length === 0 && <div className={styles.loading}>No tags used yet</div>}
               {topTags.map(tag => (
-                <div key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: tag.color || 'var(--color-border)', border: '1px solid var(--color-border)' }} />
-                  <div style={{ flex: 1 }}>{tag.name}</div>
-                  <div style={{ width: '100px' }}><Bar percent={Math.min(100, Math.round((tag.count / (topTags[0]?.count || 1)) * 100))} color={tag.color} /></div>
-                  <div style={{ width: '36px', textAlign: 'right', color: 'var(--color-text-muted)' }}>{tag.count}</div>
+                <div key={tag.id} className={styles.tagRow}>
+                  <div className={styles.tagSwatch} style={{ '--swatch-color': tag.color || 'var(--color-border)' }} />
+                  <div className={styles.tagName}>{tag.name}</div>
+                  <div className={styles.tagBar}><Bar percent={Math.min(100, Math.round((tag.count / (topTags[0]?.count || 1)) * 100))} color={tag.color} /></div>
+                  <div className={styles.tagCount}>{tag.count}</div>
                 </div>
               ))}
             </div>
