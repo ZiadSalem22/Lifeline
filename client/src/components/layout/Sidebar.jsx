@@ -5,23 +5,13 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { SunIcon, MoonIcon, SearchIcon, CloseIcon, StatsIcon, HomeIcon, SettingsIcon } from '../../icons/Icons';
 import ModernCalendar from '../calendar/ModernCalendar';
 import { format, addDays } from 'date-fns';
+import styles from './Sidebar.module.css';
 
 const SlimButton = ({ active, onClick, children, title }) => (
     <button
         onClick={onClick}
         title={title}
-        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            border: active ? '1px solid var(--color-primary)' : '1px solid transparent',
-            background: active ? 'var(--color-surface)' : 'transparent',
-            color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            cursor: 'pointer'
-        }}
+        className={`${styles.slimButton} ${active ? styles.slimButtonActive : ''}`}
     >
         {children}
     </button>
@@ -76,46 +66,46 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
     const portal = (
         <>
             <div
-                className={`sidebar-overlay ${isOpen ? 'open' : ''}`}
+                className={`${styles.sidebarOverlay} ${isOpen ? 'open' : ''}`}
                 onClick={onClose}
                 aria-hidden={!isOpen}
             />
             <aside
-                className={`sidebar ${isOpen ? 'open' : ''}`}
+                className={`${styles.sidebar} ${isOpen ? 'open' : ''}`}
                 role="navigation"
                 aria-label="Primary"
                 data-open={isOpen ? 'true' : 'false'}
             >
-                                {isMobile && (
-                                        <>
-                                        <button
-                                                className="mobile-close-button"
-                                                onClick={onClose}
-                                                aria-label="Close sidebar"
-                                        >
-                                                <CloseIcon />
-                                        </button>
+                {isMobile && (
+                    <>
+                        <button
+                            className={styles.mobileCloseButton}
+                            onClick={onClose}
+                            aria-label="Close sidebar"
+                        >
+                            <CloseIcon />
+                        </button>
 
-                                        {/* Mobile: surface the search input inside the sidebar */}
-                                        <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-                                            <div className="sidebar-search-mobile">
-                                                <div className="search-icon"><SearchIcon /></div>
-                                                <input
-                                                    className="search-input"
-                                                    type="text"
-                                                    placeholder="Search"
-                                                    value={searchQuery || ''}
-                                                    onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                        </>
-                                )}
+                        {/* Mobile: surface the search input inside the sidebar */}
+                        <div className={styles.searchMobileWrap}>
+                            <div className={styles.sidebarSearchMobile}>
+                                <div className={styles.searchIcon}><SearchIcon /></div>
+                                <input
+                                    className={styles.searchInput}
+                                    type="text"
+                                    placeholder="Search"
+                                    value={searchQuery || ''}
+                                    onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'stretch', width: '100%' }}>
+                <div className={styles.contentCol}>
                     {/* Quick actions row (no settings) - moved above calendar */}
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <NavLink to="/" style={({ isActive }) => ({ textDecoration: 'none' })} end>
+                    <div className={styles.quickRow}>
+                        <NavLink to="/" style={() => ({ textDecoration: 'none' })} end>
                             {({ isActive }) => (
                                 <SlimButton title="Home" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <HomeIcon />
@@ -123,7 +113,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                             )}
                         </NavLink>
 
-                        <NavLink to="/search" style={({ isActive }) => ({ textDecoration: 'none' })}>
+                        <NavLink to="/search" style={() => ({ textDecoration: 'none' })}>
                             {({ isActive }) => (
                                 <SlimButton title="Advanced Search" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <SearchIcon />
@@ -131,7 +121,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                             )}
                         </NavLink>
 
-                        <NavLink to="/statistics" style={({ isActive }) => ({ textDecoration: 'none' })}>
+                        <NavLink to="/statistics" style={() => ({ textDecoration: 'none' })}>
                             {({ isActive }) => (
                                 <SlimButton title="Statistics" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <StatsIcon width={16} height={16} />
@@ -174,92 +164,49 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                     </div>
 
                     {/* Calendar (original, cleaner layout) */}
-                    <div style={{ marginBottom: '8px', flexShrink: 0 }}>
+                    <div className={styles.calendarWrap}>
                         <ModernCalendar selectedDate={selectedDate} onSelectDate={onSelectDate} />
                     </div>
 
                     {/* Prev / Today / Next - single row (compact) */}
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', marginTop: '4px', width: '100%' }}>
+                    <div className={styles.dayNavRow}>
                         <button
+                            className={styles.btnPrev}
                             onClick={() => pickDay(prev)}
                             title="Previous day"
-                            style={{
-                                padding: '2px 0',
-                                borderRadius: '7px',
-                                border: '1px solid var(--color-border)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '0.68rem',
-                                color: 'var(--color-text)',
-                                minWidth: '54px',
-                                width: '54px',
-                                textAlign: 'center',
-                                height: '26px',
-                                lineHeight: '1'
-                            }}
                         >
                             Previous
                         </button>
                         <button
+                            className={styles.btnToday}
                             onClick={() => pickDay(todayStr)}
                             title="Today"
-                            style={{
-                                padding: '2px 0',
-                                borderRadius: '7px',
-                                border: '1.5px solid var(--color-primary)',
-                                background: 'var(--color-surface)',
-                                color: 'var(--color-primary)',
-                                fontWeight: 700,
-                                fontSize: '0.82rem',
-                                minWidth: '54px',
-                                width: '54px',
-                                height: '26px',
-                                textAlign: 'center',
-                                lineHeight: '1',
-                                margin: '0 1px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
                         >
                             Today
                         </button>
                         <button
+                            className={styles.btnNext}
                             onClick={() => pickDay(next)}
                             title="Next day"
-                            style={{
-                                padding: '2px 0',
-                                borderRadius: '7px',
-                                border: '1px solid var(--color-border)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '0.68rem',
-                                color: 'var(--color-text)',
-                                minWidth: '54px',
-                                width: '54px',
-                                textAlign: 'center',
-                                height: '26px',
-                                lineHeight: '1'
-                            }}
                         >
                             Next
                         </button>
                     </div>
                 </div>
 
-                                {/* lower calendar removed to avoid duplication */}
+                {/* lower calendar removed to avoid duplication */}
 
-                                <div style={{ flex: 1 }} />
-                                <footer style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                                        {isMobile && (
-                                            <button className="sidebar-footer-login" onClick={() => { onOpenLogin && onOpenLogin(); onClose && onClose(); }}>
-                                                Login
-                                            </button>
-                                        )}
-                                        <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                                                v{(import.meta.env.REACT_APP_VERSION || import.meta.env.VITE_APP_VERSION || '1.0')}
-                                        </div>
-                                </footer>
+                <div className={styles.spacer} />
+                <footer className={styles.footer}>
+                    {isMobile && (
+                        <button className={styles.sidebarFooterLogin} onClick={() => { onOpenLogin && onOpenLogin(); onClose && onClose(); }}>
+                            Login
+                        </button>
+                    )}
+                    <div className={styles.version}>
+                        v{(import.meta.env.REACT_APP_VERSION || import.meta.env.VITE_APP_VERSION || '1.0')}
+                    </div>
+                </footer>
             </aside>
         </>
     );

@@ -1,0 +1,26 @@
+.sidebarOverlay{display:none}
+.sidebar{width:var(--sidebar-width);background:var(--color-bg);backdrop-filter:saturate(160%) blur(12px);padding:32px 32px 40px;display:flex;flex-direction:column;position:fixed;height:calc(100vh - 69px);left:0;top:69px;z-index:10;transition:left .3s ease,width .3s ease,background .3s ease,transform .3s ease;overflow-y:auto;border-right:1px solid var(--color-border)}
+.mobileCloseButton{display:flex;position:absolute;top:16px;right:16px;z-index:101;width:48px;height:48px;border-radius:12px;background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text);cursor:pointer;align-items:center;justify-content:center}
+.contentCol{display:flex;flex-direction:column;gap:20px;align-items:stretch;width:100%}
+.quickRow{display:flex;gap:4px;align-items:center;justify-content:space-between;width:100%}
+.slimButton{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--color-text-muted);cursor:pointer}
+.slimButtonActive{border:1px solid var(--color-primary);background:var(--color-surface);color:var(--color-primary)}
+.searchMobileWrap{margin:8px 0}
+.sidebarSearchMobile{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:10px;background:var(--color-surface);border:1px solid var(--color-border)}
+.searchIcon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;color:var(--color-text-muted)}
+.searchInput{background:transparent;border:none;outline:none;color:var(--color-text);width:100%}
+.calendarWrap{margin-bottom:8px;flex-shrink:0}
+.dayNavRow{display:flex;gap:4px;align-items:center;justify-content:center;margin-top:4px;width:100%}
+.btnPrev,.btnNext{padding:2px 0;border-radius:7px;border:1px solid var(--color-border);background:transparent;cursor:pointer;font-size:.68rem;color:var(--color-text);min-width:54px;width:54px;text-align:center;height:26px;line-height:1}
+.btnToday{padding:2px 0;border-radius:7px;border:1.5px solid var(--color-primary);background:var(--color-surface);color:var(--color-primary);font-weight:700;font-size:.82rem;min-width:54px;width:54px;height:26px;text-align:center;line-height:1;margin:0 1px;display:flex;align-items:center;justify-content:center}
+.spacer{flex:1}
+.footer{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px}
+.sidebarFooterLogin{width:72%;max-width:220px;padding:10px 14px;background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text);border-radius:999px;cursor:pointer;font-weight:700;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,0.18)}
+.version{font-size:10px;color:var(--color-text-muted);text-align:center}
+
+@media (max-width: 768px){
+  .sidebarOverlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);z-index:9;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .sidebarOverlay.open{opacity:1;pointer-events:auto}
+  .sidebar{transform:translateX(-100%);top:0;height:100vh;padding:24px}
+  .sidebar.open{transform:translateX(0)}
+}
