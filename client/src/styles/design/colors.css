@@ -1,0 +1,10 @@
+:root {
+  /* Aliases mapping to existing theme vars */
+  --brand-primary: var(--color-primary);
+  --brand-text: var(--color-text);
+  --brand-text-muted: var(--color-text-muted);
+  --brand-surface: var(--color-surface);
+  --brand-surface-light: var(--color-surface-light);
+  --brand-border: var(--color-border);
+  --brand-danger: var(--color-danger);
+}

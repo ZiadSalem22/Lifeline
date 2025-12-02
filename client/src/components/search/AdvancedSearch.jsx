@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth, batchTodos } from '../../utils/api';
 import { FlagIcon, EditIcon, CalendarIcon } from '../../icons/Icons';
 import { parseISO, format, isValid, isToday, isTomorrow, isYesterday, isSameYear } from 'date-fns';
+import styles from './AdvancedSearch.module.css';
 
 const formatDuration = (totalMinutes) => {
   if (!totalMinutes) return '';
@@ -392,39 +393,30 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, performSearch, query, selectedTags, sortBy, startDate, status, endDate, priority]);
 
   return (
-    <div style={{ padding: '28px', minHeight: '80vh', maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1000 }}>
-      <style>{`
-        /* Match Statistics page container behavior and prevent sidebar overlay */
-        @media (max-width: 1300px) {
-          .adv-search-grid { grid-template-columns: 1fr !important; }
-          .adv-search-aside { order: 2; }
-        }
-        .adv-search-container { position: relative; z-index: 1000; }
-      `}</style>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button onClick={onBack} style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontWeight: 600 }}>Back</button>
-          <h2 style={{ margin: 0, fontFamily: 'var(--font-family-heading)', color: 'var(--color-text)' }}>Advanced Search</h2>
-          <div style={{ marginLeft: '10px', color: 'var(--color-text-muted)', fontSize: '0.95rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <button onClick={onBack} className={styles.backBtn}>Back</button>
+          <h2 className={styles.title}>Advanced Search</h2>
+          <div className={styles.modeInfo}>
             <span>{(clientResults && clientResults.length) ? clientResults.length : allTodos.length} results</span>
-            <span style={{ fontSize: '0.78rem', padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)' }}>{clientResults && clientResults.length ? (serverLoading ? 'Preview' : 'Preview') : (serverLoading ? 'Live — searching' : 'Live')}</span>
+            <span className={styles.modeBadge}>{clientResults && clientResults.length ? (serverLoading ? 'Preview' : 'Preview') : (serverLoading ? 'Live — searching' : 'Live')}</span>
           </div>
         </div>
       </div>
 
-      <div className="adv-search-container" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '12px' }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)' }} />
-            <button onClick={() => { setQuery(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-muted)' }}>Clear</button>
-            <button onClick={performSearch} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-primary)', background: 'var(--color-primary)', color: 'var(--color-bg)', marginLeft: '8px' }}>Search</button>
+      <div className={styles.container}>
+        <section className={styles.card}>
+          <div className={styles.controlsRow}>
+            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" className={`${styles.input} ${styles.searchInput}`} />
+            <button onClick={() => { setQuery(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} className={styles.clearBtn}>Clear</button>
+            <button onClick={performSearch} className={styles.searchBtn}>Search</button>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <div className={styles.gridRow}>
             <div style={{ minWidth: '160px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Priority</label>
-              <select value={priority} onChange={e=>setPriority(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+              <label className={styles.label}>Priority</label>
+              <select value={priority} onChange={e=>setPriority(e.target.value)} className={styles.select}>
                 <option value="any">Any</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -433,8 +425,8 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             </div>
 
             <div style={{ minWidth: '160px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Status</label>
-              <select value={status} onChange={e=>setStatus(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+              <label className={styles.label}>Status</label>
+              <select value={status} onChange={e=>setStatus(e.target.value)} className={styles.select}>
                 <option value="any">Any</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
@@ -442,7 +434,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             </div>
 
             <div style={{ minWidth: '160px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Flagged</label>
+              <label className={styles.label}>Flagged</label>
               <div>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={flaggedOnly} onChange={e=>setFlaggedOnly(e.target.checked)} />
@@ -452,29 +444,29 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <div className={styles.gridRow}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Start Date</label>
-              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }} />
+              <label className={styles.label}>Start Date</label>
+              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className={styles.select} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>End Date</label>
-              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }} />
+              <label className={styles.label}>End Date</label>
+              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className={styles.select} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <div className={styles.gridRow}>
             <div style={{ minWidth: '120px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Min Duration (min)</label>
-              <input type="number" value={minDuration} onChange={e=>setMinDuration(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }} />
+              <label className={styles.label}>Min Duration (min)</label>
+              <input type="number" value={minDuration} onChange={e=>setMinDuration(e.target.value)} className={styles.select} />
             </div>
             <div style={{ minWidth: '120px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Max Duration (min)</label>
-              <input type="number" value={maxDuration} onChange={e=>setMaxDuration(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }} />
+              <label className={styles.label}>Max Duration (min)</label>
+              <input type="number" value={maxDuration} onChange={e=>setMaxDuration(e.target.value)} className={styles.select} />
             </div>
             <div style={{ minWidth: '160px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>Sort</label>
-              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+              <label className={styles.label}>Sort</label>
+              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className={styles.select}>
                 <option value="date">Date</option>
                 <option value="priority">Priority</option>
                 <option value="duration">Duration</option>
@@ -484,26 +476,16 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           </div>
 
           <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Tags</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <label className={styles.label}>Tags</label>
+            <div className={styles.tagsWrap}>
               {allTags.map(tag => (
                 <button
                   key={tag.id}
                   onClick={() => toggleTag(tag.id)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '6px 10px',
-                    borderRadius: '999px',
-                    border: selectedTags.includes(tag.id) ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
-                    background: selectedTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
-                    color: selectedTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
+                  className={`${styles.tag} ${selectedTags.includes(tag.id) ? styles.tagSelected : ''}`}
+                  style={selectedTags.includes(tag.id) ? { '--tag-color': tag.color } : undefined}
                 >
-                  <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                  <span className={styles.tagDot} style={{ background: tag.color }} />
                   <span style={{ lineHeight: 1 }}>{tag.name}</span>
                 </button>
               ))}
@@ -512,12 +494,12 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         </section>
 
         {/* Quick filters row */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className={styles.quickRow}>
           <button onClick={() => { setPriority('high'); setStatus('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>High Priority</button>
           <button onClick={() => { setStatus('active'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Active</button>
           <button onClick={() => { setStatus('completed'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Completed</button>
           {selectedIds.length > 0 && (
-            <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+            <div className={styles.batchButtons}>
               <button onClick={handleBatchDelete} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-danger, #e5484d)', background: 'var(--color-danger, #e5484d)', color: '#fff', fontWeight: 700 }}>Delete</button>
               {(() => {
                 const selected = displayTodos.filter(t => selectedIds.includes(t.id));
@@ -534,18 +516,13 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         </div>
 
         {/* Results */}
-        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1000 }}>
+        <div className={styles.resultsCard}>
+          <div className={styles.list}>
             {pageTodos.map((todo, idx) => (
               <div
                 key={todo.id}
                 onClick={(e) => handleRowClick(todo.id, idx, e)}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px', borderRadius: '10px',
-                  background: isSelected(todo.id) ? 'var(--color-surface-light)' : 'var(--color-surface-light)',
-                  outline: isSelected(todo.id) ? '2px solid var(--color-primary)' : '1px solid transparent',
-                  gap: '12px', cursor: 'pointer'
-                }}
+                className={`${styles.row} ${isSelected(todo.id) ? styles.rowSelected : ''}`}
                 onDoubleClick={() => navigateToDay(todo.dueDate)}
                 onTouchStart={(e) => {
                   const now = Date.now();
@@ -556,52 +533,35 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                   lastTapRef.current = now;
                 }}
               >
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flex: 1 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div className={styles.rowLeft}>
+                  <div className={styles.stack}>
+                    <div className={styles.titleRow}>
                       <span
                         onDoubleClick={() => navigateToDay(todo.dueDate)}
                         title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
-                        style={{
-                          fontWeight: 700,
-                          color: 'var(--color-text)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
+                        className={styles.todoTitle}
                       >
                         {todo.title}
                       </span>
                       <div
                         title={todo.dueDate || 'No date'}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '4px 8px',
-                          borderRadius: 999,
-                          border: '1px solid var(--color-border)',
-                          background: 'var(--color-surface)',
-                          color: 'var(--color-text-muted)',
-                          fontSize: '0.78rem',
-                          marginLeft: 6
-                        }}
+                        className={styles.datePill}
                       >
                         <CalendarIcon />
                         <span style={{ lineHeight: 1 }}>{formatDueDate(todo.dueDate)}</span>
                       </div>
                     </div>
-                    {todo.description && <div style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{todo.description}</div>}
+                    {todo.description && <div className={styles.desc}>{todo.description}</div>}
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       {(todo.tags || []).map(t => (
-                        <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', borderRadius: 999, fontSize: '0.78rem', background: `${t.color}15`, color: t.color, border: `1px solid ${t.color}30` }}>{t.name}</span>
+                        <span key={t.id} className={styles.tagChip} style={{ '--tag-color': t.color, '--tag-color-bg': `${t.color}15`, '--tag-color-border': `${t.color}30` }}>{t.name}</span>
                       ))}
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '8px' }}>
+                <div className={styles.actions}>
                   {todo.isFlagged && <FlagIcon filled />}
-                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'transparent' }}><EditIcon /></button>
+                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" className={styles.iconBtn}><EditIcon /></button>
                 </div>
               </div>
             ))}
@@ -609,7 +569,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         </div>
       </div>
       {/* Pagination controls */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className={styles.pager}>
         <button
           onClick={() => {
             if (page > 1) {
@@ -617,10 +577,10 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             }
           }}
           disabled={page <= 1}
-          style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+          className="btn"
         >Prev</button>
-        <div style={{ color: 'var(--color-text-muted)' }}>Page {page} of {Math.max(1, Math.ceil((displayTotal || 0) / limit))}</div>
-        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
+        <div className={styles.pagerInfo}>Page {page} of {Math.max(1, Math.ceil((displayTotal || 0) / limit))}</div>
+        <div className={styles.pagerInfo} style={{ fontSize: '.9rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
         <button
           onClick={() => {
             const hasMore = (page * limit) < displayTotal;
@@ -629,7 +589,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             }
           }}
           disabled={(page * limit) >= displayTotal}
-          style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+          className="btn"
         >Next</button>
       </div>
     </div>

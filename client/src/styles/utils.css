@@ -1,0 +1,9 @@
+.flexCenter{display:flex;align-items:center;justify-content:center}
+.flexBetween{display:flex;align-items:center;justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid var(--brand-border);background:var(--brand-surface);font-size:.85rem;color:var(--brand-text-muted)}
+.btn{padding:6px 10px;border-radius:8px;border:1px solid var(--brand-border);background:var(--brand-surface);color:var(--brand-text);cursor:pointer}
+.btn-primary{border-color:var(--brand-primary);background:var(--brand-primary);color:var(--color-bg)}
+.btn-secondary{border-color:var(--brand-border);background:transparent;color:var(--brand-text-muted)}
+.input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--brand-border);background:var(--brand-surface-light);color:var(--brand-text)}
+.card{background:var(--brand-surface);border:1px solid var(--brand-border);border-radius:12px}
+.scrollY{overflow:auto}
