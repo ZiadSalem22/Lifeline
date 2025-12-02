@@ -365,6 +365,17 @@ function AppInner() {
   const durationString = useMemo(() => formatDuration(totalDurationMinutes), [totalDurationMinutes]);
   const progress = useMemo(() => filteredTodos.length > 0 ? (completedCount / filteredTodos.length) * 100 : 0, [filteredTodos.length, completedCount]);
 
+  // Ensure incomplete tasks appear before completed ones on Home
+  const orderedTodos = useMemo(() => {
+    // Preserve current sort within each group; just group by completion
+    const incomplete = [];
+    const complete = [];
+    for (const t of filteredTodos) {
+      (t.isCompleted ? complete : incomplete).push(t);
+    }
+    return [...incomplete, ...complete];
+  }, [filteredTodos]);
+
   const sidebarProps = {
     selectedDate,
     onSelectDate: handleSelectDate,
@@ -662,7 +673,7 @@ function AppInner() {
                   </div>
                 )}
 
-                {filteredTodos.map((todo, index) => (
+                {orderedTodos.map((todo, index) => (
                   <TaskCard
                     key={todo.id}
                     todo={todo}
@@ -1580,7 +1591,7 @@ function AppInner() {
                   </div>
                 )}
 
-                {filteredTodos.map((todo, index) => (
+                {orderedTodos.map((todo, index) => (
                   <TaskCard
                     key={todo.id}
                     todo={todo}

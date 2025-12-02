@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth } from '../../utils/api';
-import { FlagIcon, EditIcon } from '../../icons/Icons';
+import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth, batchTodos } from '../../utils/api';
+import { FlagIcon, EditIcon, CalendarIcon } from '../../icons/Icons';
+import { parseISO, format, isValid, isToday, isTomorrow, isYesterday, isSameYear } from 'date-fns';
 
 const formatDuration = (totalMinutes) => {
   if (!totalMinutes) return '';
@@ -26,7 +27,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(30);
+  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [monthTodos, setMonthTodos] = useState([]);
   const [clientResults, setClientResults] = useState([]);
@@ -37,6 +38,26 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   const [monthLoaded, setMonthLoaded] = useState(false);
   const lastTapRef = useRef(0);
   const lastSelectedIndexRef = useRef(null);
+
+  const formatDueDate = (dateStr) => {
+    if (!dateStr) return 'No date';
+    let d;
+    try {
+      if (typeof dateStr === 'string') {
+        d = dateStr.includes('T') ? parseISO(dateStr) : new Date(`${dateStr}T00:00:00`);
+      } else {
+        d = new Date(dateStr);
+      }
+    } catch {
+      d = new Date(dateStr);
+    }
+    if (!isValid(d)) return 'No date';
+    if (isToday(d)) return 'Today';
+    if (isTomorrow(d)) return 'Tomorrow';
+    if (isYesterday(d)) return 'Yesterday';
+    const fmt = isSameYear(d, new Date()) ? 'MMM d' : 'MMM d, yyyy';
+    return format(d, fmt);
+  };
 
   const navigateToDay = useCallback((dueDate) => {
     if (onGoToDay && dueDate) onGoToDay(dueDate);
@@ -148,6 +169,36 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   // Display list (client preview vs live)
   const displayTodos = useMemo(() => (clientResults && clientResults.length) ? clientResults : filtered, [clientResults, filtered]);
 
+  const hasFilters = useMemo(() => (
+    (query && query.trim().length > 0) ||
+    selectedTags.length > 0 ||
+    priority !== 'any' ||
+    status !== 'any' ||
+    flaggedOnly ||
+    startDate ||
+    endDate ||
+    minDuration ||
+    maxDuration
+  ), [query, selectedTags, priority, status, flaggedOnly, startDate, endDate, minDuration, maxDuration]);
+
+  const isPreview = (clientResults && clientResults.length) > 0;
+  const isServerMode = !!fetchWithAuth && !guestMode && hasFilters && !isPreview;
+  const displayTotal = isPreview ? clientResults.length : (total || filtered.length);
+
+  const startIdx = (page - 1) * limit;
+  const pageTodos = useMemo(() => {
+    if (isServerMode) return displayTodos; // server already paginated by limit
+    return displayTodos.slice(startIdx, startIdx + limit);
+  }, [displayTodos, isServerMode, startIdx, limit]);
+
+  useEffect(() => {
+    if (!isServerMode) {
+      // Reset to first page when client-side dataset changes
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayTodos.map(t => t.id).join('|'), isServerMode]);
+
   // Clear selection when data set changes significantly (e.g., new results)
   useEffect(() => { setSelectedIds([]); lastSelectedIndexRef.current = null; }, [displayTodos.map(t => t.id).join('|')]);
 
@@ -187,7 +238,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     }
   };
 
-  // Local-only batch handlers (no backend yet)
+  // Batch handlers
   const handleBatchDeleteLocal = () => {
     if (!selectedIds.length) return;
     const ok = window.confirm(`Delete ${selectedIds.length} selected tasks? This only affects current view.`);
@@ -209,6 +260,28 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     }
     setSelectedIds([]);
     lastSelectedIndexRef.current = null;
+  };
+
+  const handleBatchDelete = async () => {
+    if (!selectedIds.length) return;
+    if (guestMode) return handleBatchDeleteLocal();
+    try {
+      await batchTodos('delete', selectedIds, fetchWithAuth);
+      handleBatchDeleteLocal();
+    } catch (e) {
+      console.error('Batch delete failed', e);
+    }
+  };
+
+  const handleBatchMark = async (toCompleted) => {
+    if (!selectedIds.length) return;
+    if (guestMode) return handleBatchMarkLocal(toCompleted);
+    try {
+      await batchTodos(toCompleted ? 'complete' : 'uncomplete', selectedIds, fetchWithAuth);
+      handleBatchMarkLocal(toCompleted);
+    } catch (e) {
+      console.error('Batch mark failed', e);
+    }
   };
 
   // Trigger server-side search
@@ -445,25 +518,25 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           <button onClick={() => { setStatus('completed'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Completed</button>
           {selectedIds.length > 0 && (
             <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
-              <button onClick={handleBatchDeleteLocal} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-danger, #e5484d)', background: 'var(--color-danger, #e5484d)', color: '#fff', fontWeight: 700 }}>Delete</button>
+              <button onClick={handleBatchDelete} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-danger, #e5484d)', background: 'var(--color-danger, #e5484d)', color: '#fff', fontWeight: 700 }}>Delete</button>
               {(() => {
                 const selected = displayTodos.filter(t => selectedIds.includes(t.id));
                 const allCompleted = selected.length > 0 && selected.every(t => !!t.isCompleted);
                 const label = allCompleted ? 'Mark as Undone' : 'Mark as Done';
                 return (
-                  <button onClick={() => handleBatchMarkLocal(!allCompleted)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)', fontWeight: 700 }}>{label}</button>
+                  <button onClick={() => handleBatchMark(!allCompleted)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)', fontWeight: 700 }}>{label}</button>
                 );
               })()}
               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{selectedIds.length} selected</span>
             </div>
           )}
-          <div style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>{(clientResults && clientResults.length) ? clientResults.length : allTodos.length} results</div>
+          <div style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
         </div>
 
         {/* Results */}
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflow: 'auto', position: 'relative', zIndex: 1000 }}>
-            {displayTodos.map((todo, idx) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1000 }}>
+            {pageTodos.map((todo, idx) => (
               <div
                 key={todo.id}
                 onClick={(e) => handleRowClick(todo.id, idx, e)}
@@ -499,7 +572,24 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                       >
                         {todo.title}
                       </span>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>{todo.dueDate ? todo.dueDate : 'No date'}</div>
+                      <div
+                        title={todo.dueDate || 'No date'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '4px 8px',
+                          borderRadius: 999,
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          color: 'var(--color-text-muted)',
+                          fontSize: '0.78rem',
+                          marginLeft: 6
+                        }}
+                      >
+                        <CalendarIcon />
+                        <span style={{ lineHeight: 1 }}>{formatDueDate(todo.dueDate)}</span>
+                      </div>
                     </div>
                     {todo.description && <div style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{todo.description}</div>}
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -519,10 +609,28 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         </div>
       </div>
       {/* Pagination controls */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '12px', alignItems: 'center' }}>
-        <button onClick={() => { if (page > 1) { performSearch(page - 1); } }} disabled={page <= 1} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Prev</button>
-        <div style={{ color: 'var(--color-text-muted)' }}>Page {page} of {Math.max(1, Math.ceil((total || 0) / limit))}</div>
-        <button onClick={() => { if ((page * limit) < total) { performSearch(page + 1); } }} disabled={(page * limit) >= total} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Next</button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => {
+            if (page > 1) {
+              if (isServerMode) performSearch(page - 1); else setPage(p => Math.max(1, p - 1));
+            }
+          }}
+          disabled={page <= 1}
+          style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+        >Prev</button>
+        <div style={{ color: 'var(--color-text-muted)' }}>Page {page} of {Math.max(1, Math.ceil((displayTotal || 0) / limit))}</div>
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
+        <button
+          onClick={() => {
+            const hasMore = (page * limit) < displayTotal;
+            if (hasMore) {
+              if (isServerMode) performSearch(page + 1); else setPage(p => p + 1);
+            }
+          }}
+          disabled={(page * limit) >= displayTotal}
+          style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+        >Next</button>
       </div>
     </div>
   );
