@@ -699,6 +699,8 @@ function AppInner() {
                     isExpanded={expandedTodoId === todo.id}
                     onToggleExpand={() => toggleExpand(todo.id)}
                     setTodos={setTodos}
+                    selectedFilterTags={selectedFilterTags}
+                    setSelectedFilterTags={setSelectedFilterTags}
                   />
                 ))}
 
@@ -1377,28 +1379,34 @@ function AppInner() {
                       </svg>
                     </button>
                     {/* Tag buttons */}
-                    {tags.map((tag, i) => (
-                      <button
-                        key={tag.id}
-                        className="tag-button-fade-in-scale"
-                        type="button"
-                        onClick={() => toggleTagSelection(tag)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          border: `1px solid ${tag.color}`,
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                          transition: 'all 0.1s ease-out',
-                          background: selectedTags.find(t => t.id === tag.id) ? 'var(--color-surface-hover)' : 'transparent',
-                          color: selectedTags.find(t => t.id === tag.id) ? tag.color : 'var(--color-text-muted)',
-                          cursor: 'pointer',
-                          boxShadow: selectedTags.find(t => t.id === tag.id) ? '0 10px 15px -3px var(--shadow-dark)' : 'none'
-                        }}
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
+                    {tags.map((tag, i) => {
+                      const active = !!selectedTags.find(t => t.id === tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          className="tag-button-fade-in-scale"
+                          type="button"
+                          onClick={() => toggleTagSelection(tag)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 12px',
+                            borderRadius: '999px',
+                            border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                            background: active ? `${tag.color}20` : 'transparent',
+                            color: active ? tag.color : 'var(--color-text-muted)',
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                            transition: 'all 0.12s ease-out',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                          <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                        </button>
+                      );
+                    })}
                     {tags.length === 0 && (
                       <p style={{
                         fontSize: '0.875rem',
@@ -1609,6 +1617,8 @@ function AppInner() {
                     isExpanded={expandedTodoId === todo.id}
                     onToggleExpand={() => toggleExpand(todo.id)}
                     setTodos={setTodos}
+                    selectedFilterTags={selectedFilterTags}
+                    setSelectedFilterTags={setSelectedFilterTags}
                   />
                 ))}
 
@@ -1643,7 +1653,7 @@ const ChevronIcon = ({ size = 14, color = 'currentColor' }) => (
     <path d="M6 9l6 6 6-6" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration, showDate, onGoToDay, isEditing, editingTitle, editingDescription, editingTags, setEditingTags, editingSubtasks, setEditingSubtasks, editingPriority, setEditingPriority, editingDuration, setEditingDuration, allTags, onStartEdit, onSaveEdit, onCancelEdit, setEditingTitle, setEditingDescription, onUpdatePriority, onUpdateTodo, onDragStart, onDragOver, onDrop, isExpanded, onToggleExpand, setTodos }) => {
+const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration, showDate, onGoToDay, isEditing, editingTitle, editingDescription, editingTags, setEditingTags, editingSubtasks, setEditingSubtasks, editingPriority, setEditingPriority, editingDuration, setEditingDuration, allTags, onStartEdit, onSaveEdit, onCancelEdit, setEditingTitle, setEditingDescription, onUpdatePriority, onUpdateTodo, onDragStart, onDragOver, onDrop, isExpanded, onToggleExpand, setTodos, selectedFilterTags, setSelectedFilterTags }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [subtaskEditingId, setSubtaskEditingId] = useState(null);
   const [subtaskEditingText, setSubtaskEditingText] = useState('');
@@ -1944,22 +1954,36 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
           </div>
           {!isEditing && todo.tags && todo.tags.length > 0 && (
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {todo.tags.map((tag, i) => (
-                <span
-                  key={tag.id}
-                  className="tag-fade-in-slide-right"
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    border: `1px solid ${tag.color}`,
-                    color: tag.color,
-                    opacity: 0.7
-                  }}
-                >
-                  {tag.name}
-                </span>
-              ))}
+              {todo.tags.map((tag, i) => {
+                const active = Array.isArray(selectedFilterTags) && selectedFilterTags.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="tag-fade-in-slide-right"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!setSelectedFilterTags) return;
+                      setSelectedFilterTags(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                    }}
+                    title={active ? 'Remove filter' : 'Filter by tag'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.78rem',
+                      padding: '4px 8px',
+                      borderRadius: 999,
+                      border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                      background: active ? `${tag.color}20` : 'transparent',
+                      color: active ? tag.color : 'var(--color-text-muted)'
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: 8, background: tag.color, display: 'inline-block' }} />
+                    <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                  </button>
+                );
+              })}
               {!isEditing && todo.recurrence && (
                 <span
                   style={{
