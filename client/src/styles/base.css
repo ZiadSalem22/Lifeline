@@ -1309,6 +1309,14 @@ input[type="checkbox"]:focus {
     margin-left: auto;
     margin-right: auto;
   }
+
+  /* Task cards: 15% narrower, centered; heights unchanged */
+  .task-card,
+  .task-card-enter-exit {
+    width: 85%;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 /* Global mobile scale for iPhone widths: visually shrink to 85% */
