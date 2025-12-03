@@ -328,6 +328,155 @@ class SQLiteTodoRepository extends ITodoRepository {
         });
     }
 
+    /**
+     * Aggregated statistics for a user by period: 'day' | 'week' | 'month' | 'year'
+     * Returns { totalTodos, completedCount, completionRate, groups: Array<{ period: string, count: number }> }
+     */
+    getStatisticsAggregated(userId, period = 'day') {
+        return new Promise((resolve, reject) => {
+            try {
+                const fmtMap = {
+                    day: "%Y-%m-%d",
+                    week: "%Y-%W",
+                    month: "%Y-%m",
+                    year: "%Y",
+                };
+                const fmt = fmtMap[period] || fmtMap.day;
+                // Select a reasonable recent window for each period to keep payload compact
+                const windowMapDays = {
+                    day: 30,      // last 30 days
+                    week: 84,     // ~12 weeks
+                    month: 365,   // last 12 months
+                    year: 1825,   // last 5 years
+                };
+                const daysWindow = windowMapDays[period] || windowMapDays.day;
+                const windowFilter = `AND due_date >= DATE('now', '-${daysWindow} day')`;
+
+                const groupsSql = `SELECT strftime('${fmt}', due_date) AS bucket, COUNT(*) as cnt FROM todos WHERE user_id = ? AND due_date IS NOT NULL ${windowFilter} GROUP BY bucket ORDER BY bucket ASC`;
+
+                const totalSql = 'SELECT COUNT(*) as cnt FROM todos WHERE user_id = ?';
+                const completedSql = 'SELECT COUNT(*) as cnt FROM todos WHERE user_id = ? AND is_completed = 1';
+                const periodTotalSql = `SELECT COUNT(*) as cnt FROM todos WHERE user_id = ? AND due_date IS NOT NULL ${windowFilter}`;
+                const periodCompletedSql = `SELECT COUNT(*) as cnt FROM todos WHERE user_id = ? AND is_completed = 1 AND due_date IS NOT NULL ${windowFilter}`;
+                const avgDurationSql = `SELECT AVG(duration) as avgDur FROM todos WHERE user_id = ? AND duration > 0 AND due_date IS NOT NULL ${windowFilter}`;
+                const timeSpentSql = `SELECT SUM(duration) as sumDur FROM todos WHERE user_id = ? AND is_completed = 1 AND due_date IS NOT NULL ${windowFilter}`;
+                const topTagsSql = `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+                                    FROM tags t
+                                    JOIN todo_tags tt ON t.id = tt.tag_id
+                                    JOIN todos td ON td.id = tt.todo_id
+                                    WHERE td.user_id = ? AND td.due_date IS NOT NULL ${windowFilter}
+                                    GROUP BY t.id
+                                    ORDER BY cnt DESC
+                                    LIMIT 10`;
+
+                const result = { totalTodos: 0, completedCount: 0, completionRate: 0, groups: [], periodTotals: {}, topTagsInPeriod: [] };
+                this.db.get(totalSql, [userId], (tErr, tRow) => {
+                    if (tErr) return reject(tErr);
+                    result.totalTodos = tRow ? tRow.cnt : 0;
+                    this.db.get(completedSql, [userId], (cErr, cRow) => {
+                        if (cErr) return reject(cErr);
+                        result.completedCount = cRow ? cRow.cnt : 0;
+                        result.completionRate = result.totalTodos > 0 ? Math.round((result.completedCount / result.totalTodos) * 100) : 0;
+                        // Compute period totals and top tags within window
+                        this.db.get(periodTotalSql, [userId], (ptErr, ptRow) => {
+                            if (ptErr) return reject(ptErr);
+                            const totalP = ptRow ? ptRow.cnt : 0;
+                            this.db.get(periodCompletedSql, [userId], (pcErr, pcRow) => {
+                                if (pcErr) return reject(pcErr);
+                                const completedP = pcRow ? pcRow.cnt : 0;
+                                this.db.get(avgDurationSql, [userId], (adErr, adRow) => {
+                                    if (adErr) return reject(adErr);
+                                    const avgDurP = adRow && adRow.avgDur ? Math.round(adRow.avgDur) : 0;
+                                    this.db.get(timeSpentSql, [userId], (tsErr, tsRow) => {
+                                        if (tsErr) return reject(tsErr);
+                                        const sumDurP = tsRow && tsRow.sumDur ? tsRow.sumDur : 0;
+                                        result.periodTotals = {
+                                            totalTodos: totalP,
+                                            completedCount: completedP,
+                                            completionRate: totalP > 0 ? Math.round((completedP / totalP) * 100) : 0,
+                                            avgDuration: avgDurP,
+                                            timeSpentTotal: sumDurP,
+                                        };
+                                        this.db.all(topTagsSql, [userId], (ttErr, ttRows) => {
+                                            if (ttErr) return reject(ttErr);
+                                            result.topTagsInPeriod = (ttRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+                                            // Finally groups
+                                            this.db.all(groupsSql, [userId], (gErr, gRows) => {
+                                                if (gErr) return reject(gErr);
+                                                result.groups = (gRows || []).filter(r => r.bucket).map(r => ({ period: r.bucket, count: r.cnt }));
+                                                resolve(result);
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    /**
+     * Statistics for a specific date range [startDate, endDate] inclusive (YYYY-MM-DD strings).
+     * Returns { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal, topTags, groups }
+     */
+    getStatisticsForUserInRange(userId, startDate, endDate) {
+        return new Promise((resolve, reject) => {
+            try {
+                const stats = { totalTodos: 0, completedCount: 0, completionRate: 0, avgDuration: 0, timeSpentTotal: 0, topTags: [], groups: [] };
+                const rangeFilter = 'AND due_date BETWEEN ? AND ?';
+                const params = [userId, startDate, endDate];
+
+                // totals in range
+                const totalSql = `SELECT COUNT(*) as cnt FROM todos WHERE user_id = ? AND due_date IS NOT NULL ${rangeFilter}`;
+                const completedSql = `SELECT COUNT(*) as cnt FROM todos WHERE user_id = ? AND is_completed = 1 AND due_date IS NOT NULL ${rangeFilter}`;
+                const avgDurationSql = `SELECT AVG(duration) as avgDur FROM todos WHERE user_id = ? AND duration > 0 AND due_date IS NOT NULL ${rangeFilter}`;
+                const timeSpentSql = `SELECT SUM(duration) as sumDur FROM todos WHERE user_id = ? AND is_completed = 1 AND due_date IS NOT NULL ${rangeFilter}`;
+                const topTagsSql = `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+                                    FROM tags t
+                                    JOIN todo_tags tt ON t.id = tt.tag_id
+                                    JOIN todos td ON td.id = tt.todo_id
+                                    WHERE td.user_id = ? AND td.due_date IS NOT NULL ${rangeFilter}
+                                    GROUP BY t.id
+                                    ORDER BY cnt DESC
+                                    LIMIT 10`;
+                const groupsSql = `SELECT due_date as day, COUNT(*) as cnt FROM todos WHERE user_id = ? AND due_date IS NOT NULL ${rangeFilter} GROUP BY due_date ORDER BY due_date ASC`;
+
+                this.db.get(totalSql, params, (tErr, tRow) => {
+                    if (tErr) return reject(tErr);
+                    stats.totalTodos = tRow ? tRow.cnt : 0;
+                    this.db.get(completedSql, params, (cErr, cRow) => {
+                        if (cErr) return reject(cErr);
+                        stats.completedCount = cRow ? cRow.cnt : 0;
+                        stats.completionRate = stats.totalTodos > 0 ? Math.round((stats.completedCount / stats.totalTodos) * 100) : 0;
+                        this.db.get(avgDurationSql, params, (aErr, aRow) => {
+                            if (aErr) return reject(aErr);
+                            stats.avgDuration = aRow && aRow.avgDur ? Math.round(aRow.avgDur) : 0;
+                            this.db.get(timeSpentSql, params, (sErr, sRow) => {
+                                if (sErr) return reject(sErr);
+                                stats.timeSpentTotal = sRow && sRow.sumDur ? sRow.sumDur : 0;
+                                this.db.all(topTagsSql, params, (ttErr, ttRows) => {
+                                    if (ttErr) return reject(ttErr);
+                                    stats.topTags = (ttRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+                                    this.db.all(groupsSql, params, (gErr, gRows) => {
+                                        if (gErr) return reject(gErr);
+                                        stats.groups = (gRows || []).map(r => ({ period: r.day, count: r.cnt }));
+                                        resolve(stats);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
     delete(id) {
         // Delete todo and its todo_tags in a transaction
         return new Promise((resolve, reject) => {

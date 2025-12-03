@@ -1,14 +1,15 @@
 import React from 'react';
 import TopBar from './TopBar';
 import Sidebar from './Sidebar';
+import styles from './AppLayout.module.css';
 
 const AppLayout = ({ children, sidebarProps = {}, topBarProps = {} }) => {
   return (
-    <div className="app-root" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className={styles['app-root']}>
       <Sidebar {...sidebarProps} />
-      <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className={styles['main-content']}>
         <TopBar {...topBarProps} />
-        <main style={{ padding: '28px', flex: 1 }}>{children}</main>
+        <main className={styles.main}>{children}</main>
       </div>
     </div>
   );

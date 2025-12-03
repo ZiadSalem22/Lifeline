@@ -35,7 +35,7 @@ const config = {
         path: process.env.DB_PATH || './data/todos_v4.db',
     },
     cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        origin: process.env.CORS_ORIGIN || 'http://localhost:5173'||'https://192.168.1.153:5173'
     },
     logging: {
         level: process.env.LOG_LEVEL || 'info',

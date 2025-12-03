@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { downloadExport, importTodos } from '../../utils/api';
+import styles from './ExportImport.module.css';
 
 // Settings-adjacent dialog responsible for exporting and importing workspace data safely.
 const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
@@ -66,78 +67,27 @@ const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        backdropFilter: 'blur(4px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '16px',
-          padding: '24px',
-          maxWidth: '500px',
-          width: '90%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: '20px' }}>
-          Export / Import
-        </h2>
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.title}>Export / Import</h2>
 
         {/* Export Section */}
-        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--color-border)' }}>
-          <h3 style={{ color: 'var(--color-text)', fontSize: '1rem', marginBottom: '12px' }}>
+        <div className={styles.section}>
+          <h3>
             Export Your Tasks
           </h3>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+          <div className={styles.row}>
             <select
               value={exportFormat}
               onChange={(e) => setExportFormat(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                background: 'var(--color-surface-light)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
+              className={styles.select}
             >
               <option value="json">JSON Format</option>
               <option value="csv">CSV Format</option>
             </select>
             <button
               onClick={handleExport}
-              style={{
-                padding: '8px 16px',
-                background: 'var(--color-primary)',
-                color: 'var(--color-bg)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.875rem',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.9';
-                e.currentTarget.style.transform = 'scale(1.02)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
+              className={styles["primary-btn"]}
             >
               Download
             </button>
@@ -150,48 +100,22 @@ const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
         </div>
 
         {/* Import Section */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ color: 'var(--color-text)', fontSize: '1rem', marginBottom: '12px' }}>
+        <div className={styles.section} style={{ borderBottom: 'none' }}>
+          <h3>
             Import Tasks
           </h3>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+          <div className={styles.row}>
             <select
               value={importMode}
               onChange={(e) => setImportMode(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                background: 'var(--color-surface-light)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
+              className={styles.select}
             >
               <option value="merge">Merge (Keep existing)</option>
               <option value="replace">Replace (Clear all)</option>
             </select>
             <button
               onClick={handleImportClick}
-              style={{
-                padding: '8px 16px',
-                background: 'var(--color-primary)',
-                color: 'var(--color-bg)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.875rem',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.9';
-                e.currentTarget.style.transform = 'scale(1.02)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
+              className={styles["primary-btn"]}
             >
               Select File
             </button>
@@ -212,61 +136,15 @@ const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
 
         {/* Messages */}
         {importMessage && (
-          <div
-            style={{
-              padding: '12px',
-              background: 'var(--color-primary)20',
-              border: '1px solid var(--color-primary)',
-              color: 'var(--color-primary)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              marginBottom: '12px',
-            }}
-          >
-            {importMessage}
-          </div>
+          <div className={styles.message}>{importMessage}</div>
         )}
 
         {importError && (
-          <div
-            style={{
-              padding: '12px',
-              background: 'var(--color-danger)20',
-              border: '1px solid var(--color-danger)',
-              color: 'var(--color-danger)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              marginBottom: '12px',
-            }}
-          >
-            {importError}
-          </div>
+          <div className={styles.error}>{importError}</div>
         )}
 
         {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            width: '100%',
-            padding: '10px',
-            background: 'var(--color-surface-light)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '8px',
-            color: 'var(--color-text)',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.875rem',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-surface-hover)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--color-surface-light)';
-          }}
-        >
-          Close
-        </button>
+        <button onClick={onClose} className={styles['close-btn']}>Close</button>
       </div>
     </div>
   );

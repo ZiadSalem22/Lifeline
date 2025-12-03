@@ -11,6 +11,20 @@ const logger = require('../config/logger');
 
 async function attachCurrentUser(req, res, next) {
   try {
+    // Dev bypass: when AUTH_DISABLED=1, attach a deterministic local guest user
+    if (process.env.AUTH_DISABLED === '1') {
+      req.currentUser = {
+        id: 'guest-local',
+        email: null,
+        name: 'Local Guest',
+        role: 'free',
+        roles: ['free'],
+        subscription_status: null,
+        profile: { onboarding_completed: false },
+        settings: null,
+      };
+      return next();
+    }
     // Hardened guest mode: if no Authorization header, do NOT create a surrogate user
     // and perform absolutely no DB interaction. Controllers behind requireAuth will
     // emit a 401 with a friendly message.

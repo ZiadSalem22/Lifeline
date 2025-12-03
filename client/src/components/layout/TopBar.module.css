@@ -1,7 +1,3 @@
-[data-theme='white'] .sidebar-search-mobile {
-  background: rgba(0,0,0,0.02);
-}
-
 .sidebar-search-mobile {
   display: flex;
   align-items: center;
@@ -11,6 +7,10 @@
   border-radius: 10px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+}
+
+[data-theme='white'] .sidebar-search-mobile {
+  background: rgb(0 0 0 / 2%);
 }
 
 .sidebar-search-mobile .search-icon {
@@ -55,7 +55,7 @@
   cursor: pointer;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 20px rgba(0 0 0 / 18%);
 }
 
 .sidebar-footer-login:active { transform: translateY(1px); }
@@ -69,12 +69,16 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px 20px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
   background: var(--color-top-bar-bg);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--color-border);
   z-index: 60;
+
   /* ensure relative positioning for centered pill */
-  position: fixed;
+
+  /* duplicate removed */
 }
 
 .top-bar-main {
@@ -114,7 +118,7 @@
   border: 1px solid var(--color-border);
   border-radius: 999px;
   padding: 8px 14px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+  box-shadow: 0 12px 32px rgba(0 0 0 / 14%);
   flex: 1 1 480px; /* preferred width */
   min-width: 240px;
   max-width: 600px;
@@ -137,6 +141,25 @@
   color: var(--color-text);
   width: 100%;
 }
+
+/* Identity chip dropdown (placed before user-identity dropdown to satisfy selector order) */
+.chip-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 12px 24px rgba(0 0 0 / 30%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  z-index: 200;
+}
+
+/* button rules moved below .user-identity-dropdown for selector order */
 
 /* User identity dropdown */
 .user-identity {
@@ -183,8 +206,72 @@
   border-radius: 10px;
   padding: 8px 0;
   width: 180px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+  box-shadow: 0 12px 32px rgba(0 0 0 / 25%);
   z-index: 200;
+}
+
+/* Responsive: compact top bar for mobile */
+@media (--md) {
+  .top-bar {
+    gap: 8px;
+    padding: 10px 12px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .top-bar-main {
+    gap: 8px;
+  }
+
+  .top-bar-title {
+    text-align: center;
+    flex: 1 1 auto;
+    max-width: none;
+    font-size: 1rem;
+  }
+
+  .top-bar-actions {
+    gap: 8px;
+  }
+
+  /* Collapse center search into full-width row below */
+  .top-bar-search {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    padding: 8px 12px;
+  }
+}
+
+/* iPhone 15/15 Pro portrait: 393x852 */
+@media (max-width: 393px) {
+  .top-bar {
+    padding-left: calc(12px + env(safe-area-inset-left));
+    padding-right: calc(12px + env(safe-area-inset-right));
+  }
+
+  .top-bar-title {
+    font-size: 0.9rem;
+  }
+
+  .top-bar-search {
+    padding: 7px 10px;
+    min-width: 0;
+    flex-basis: 100%;
+    margin: 0;
+  }
+}
+
+/* iPhone 15 Pro Max portrait: 430x932 */
+/* Remove special-casing for 430px; rely on fluid rules above */
+
+/* Landscape safe-area handling for iPhone 15 family */
+@media (max-height: 430px) {
+  .top-bar {
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
 }
 
 .user-identity-dropdown button {
@@ -199,7 +286,21 @@
   color: var(--color-text);
 }
 
+.chip-dropdown button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
 .user-identity-dropdown button:hover {
+  background: var(--color-surface-hover);
+}
+
+.chip-dropdown button:hover {
   background: var(--color-surface-hover);
 }
 
@@ -301,7 +402,11 @@
   color: var(--color-text);
   z-index: 1;
 }
-.identity-chip:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+
+.identity-chip:hover {
+  box-shadow: 0 8px 20px rgba(0 0 0 / 18%);
+}
+
 .chip-avatar {
   width: 32px;
   height: 32px;
@@ -309,7 +414,15 @@
   object-fit: cover;
   border: 2px solid var(--color-border);
 }
-.chip-initials { display:flex; align-items:center; justify-content:center; background:#333; color:#fff; font-size:0.8rem; }
+.chip-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #333;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
 .chip-name {
   max-width: 120px;
   overflow: hidden;
@@ -318,69 +431,89 @@
   font-weight: 600;
   color: inherit;
 }
-.chip-chevron { background:transparent; border:none; color:var(--color-text); cursor:pointer; font-size:14px; padding:0 4px; }
-.chip-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 180px;
-  z-index: 200;
+.chip-chevron {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
 }
-.chip-dropdown button { background:transparent; border:none; text-align:left; padding:6px 8px; border-radius:6px; cursor:pointer; color:var(--color-text); }
-.chip-dropdown button:hover { background: var(--color-surface-hover); }
+
+/* Removed duplicate chip-dropdown rules (moved above user-identity section) */
 
 /* Ensure dropdown positions relative to the chip container when present */
-.identity-chip-container { position: relative; display: inline-flex; align-items: center; }
+
+.identity-chip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
 
 .top-bar-search:focus-within {
   /* Circular/pill focus ring that follows border-radius */
-  box-shadow: 0 0 0 4px var(--search-focus), 0 12px 40px rgba(0,0,0,0.18);
+  box-shadow: 0 0 0 4px var(--search-focus), 0 12px 40px rgba(0 0 0 / 18%);
   border-color: var(--color-primary);
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .search-input:focus { outline: none; }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .top-bar {
     padding: 10px 16px 14px;
   }
+
   .top-bar-menu-button {
     display: inline-flex;
   }
-  .chip-name { max-width: 90px; }
-  .identity-chip { max-width: 200px; }
+
+  .chip-name {
+    max-width: 90px;
+  }
+
+  .identity-chip {
+    max-width: 200px;
+  }
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .top-bar-controls {
     flex-direction: row;
     align-items: stretch;
   }
 
   /* ensure menu button visible by 900px as well; keep here for safety */
-  .top-bar-menu-button { display: inline-flex; width: 44px; height: 44px; }
+  .top-bar-menu-button {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+  }
 
   .top-bar-actions {
     width: 100%;
     justify-content: flex-end;
   }
 
-  .guest-pill { max-width: 100%; font-size: 0.7rem; }
-  .chip-name { max-width: 72px; }
-  .identity-chip { max-width: 180px; }
+  .guest-pill {
+    max-width: 100%;
+    font-size: 0.7rem;
+  }
+
+  .chip-name {
+    max-width: 72px;
+  }
+
+  .identity-chip {
+    max-width: 60%;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
 
   /* Mobile: hide search completely to save space */
-  .top-bar-search { display: none !important; }
-  .identity-chip { max-width: 60%; min-height: 44px; padding: 8px 12px; }
+  .top-bar-search {
+    display: none !important;
+  }
 
   /* Center the title horizontally in the header on small screens while keeping
      the menu (left) and login (right) in their places. The title is absolutely
@@ -402,6 +535,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     text-align: center;
+
     /* ensure it doesn't visually overflow into controls: reserve some space
        for menu + actions; it will still be perfectly centered */
     max-width: calc(100% - 140px);
@@ -409,9 +543,11 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (width <= 520px) {
   .top-bar {
     padding: 8px 12px 10px;
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
     gap: 8px;
   }
 
@@ -435,16 +571,28 @@
     gap: 10px;
   }
 
-  .top-bar-menu-button { width: 44px; height: 44px; }
+  .top-bar-menu-button {
+    width: 44px;
+    height: 44px;
+  }
 
-  .top-bar-search { position: static; width: 100%; padding: 8px 10px; border-radius: 12px; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border: 1px solid var(--color-border); }
-  .identity-chip { min-height: 44px; padding: 8px 12px; }
+  .top-bar-search {
+    position: static;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 12px;
+    backdrop-filter: none;
+    box-shadow: none;
+    border: 1px solid var(--color-border);
+  }
 }
 
 /* Extra small screens (iPhone SE and similar) */
-@media (max-width: 420px) {
+@media (width <= 420px) {
   .top-bar {
     padding: 6px 12px 8px;
+    padding-top: calc(6px + env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
   .top-bar-main {
@@ -471,22 +619,30 @@
   }
 
   /* Slightly reduce menu button size */
-  .top-bar-menu-button { width: 44px; height: 44px; border-radius: 12px; }
+  .top-bar-menu-button {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
 
   .top-bar-title {
     font-size: 1.05rem;
   }
-  .identity-chip { min-height: 44px; padding: 8px 12px; }
+  .identity-chip {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
 }
 
 /* Light theme adjustments for pill contrast */
+
 [data-theme='white'] .top-bar-search {
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  background: rgba(255 255 255 / 92%);
+  border: 1px solid rgba(0 0 0 / 6%);
+  box-shadow: 0 8px 24px rgba(0 0 0 / 6%);
 }
 
 [data-theme='white'] .top-bar-search::before {
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+  background: linear-gradient(180deg, rgba(255 255 255 / 90%), rgba(255 255 255 / 70%));
   opacity: 0.6;
 }

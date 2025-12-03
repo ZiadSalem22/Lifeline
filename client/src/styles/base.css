@@ -361,6 +361,18 @@ body {
   animation: fadeInSlideDown 0.3s ease-out forwards;
 }
 
+/* Mobile: pull hero block slightly closer to Top Bar */
+@media (max-width: 420px) {
+  .fade-in-slide-down {
+    margin-top: -8px;
+  }
+}
+@media (max-width: 393px) {
+  .fade-in-slide-down {
+    margin-top: -12px;
+  }
+}
+
 .scale-in {
   animation: scaleIn 0.2s ease-out forwards;
 }
@@ -562,6 +574,211 @@ body {
 /* Progress Bar Fill Animation */
 .progress-bar-fill {
   transition: width 0.5s ease-out;
+}
+
+/* Home dashboard hero */
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.header-content {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.35rem);
+}
+
+.duration-pill {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.home-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.home-progress-text {
+  color: var(--color-text-muted);
+  font-family: var(--font-family-base);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.home-progress-meter {
+  flex: 1;
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.home-progress-track {
+  height: 6px;
+  background: var(--color-surface);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.home-filters-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.home-filter-label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.home-filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.home-filter-chip {
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.home-filter-chip--active {
+  border-color: var(--chip-color, var(--color-primary));
+  background: color-mix(in srgb, var(--chip-color, var(--color-primary)) 18%, transparent);
+  color: var(--chip-color, var(--color-primary));
+}
+
+.home-sort-select {
+  padding: 6px 12px;
+  padding-right: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  outline: none;
+}
+
+@media (--md) {
+  .home-progress-meter {
+    min-width: 0;
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  .home-progress-row {
+    align-items: flex-start;
+  }
+
+  .home-filters-row {
+    align-items: flex-start;
+  }
+}
+
+@media (--sm) {
+  .home-hero {
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .duration-pill {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+  }
+
+  .home-progress-text {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .home-hero {
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+
+  .home-progress-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .home-progress-meter {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .home-progress-text {
+    font-size: 0.85rem;
+  }
+
+  .home-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .home-filter-chips {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .home-filter-label {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .home-filter-chip {
+    flex: 1 1 calc(50% - 6px);
+    min-width: calc(50% - 6px);
+    text-align: center;
+    font-size: 0.82rem;
+    padding: 6px 10px;
+  }
+
+  .home-sort-select {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+
+  .duration-pill {
+    font-size: 0.78rem;
+  }
+
+  .add-task-form {
+    padding: 24px 18px 20px;
+    border-radius: 16px;
+  }
 }
 
 /* Button Hover Scale Animation */
@@ -1025,6 +1242,74 @@ input[type="checkbox"]:focus {
   }
 }
 
+@media (max-width: 420px) {
+  .main-content {
+    padding: 78px 14px 60px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .header-title {
+    font-size: 1.65rem;
+    line-height: 1.2;
+  }
+}
+
+/* Fine-tuned breakpoint for iPhone width (393px) */
+@media (max-width: 393px) {
+  :root {
+    /* Scale down typographic tokens ~91.3% from 430 → 393 */
+    --font-size-heading: calc(var(--font-size-heading, 1.65rem) * 0.913);
+    --font-size-subheading: calc(var(--font-size-subheading, 0.9rem) * 0.913);
+    --font-size-base: calc(var(--font-size-base, 0.85rem) * 0.913);
+    --gap-page-mobile: calc(var(--gap-page-mobile) * 0.913);
+    --sidebar-width: calc(var(--sidebar-width) * 0.913);
+  }
+
+  .main-content {
+    /* Slightly tighter padding to fit 393px width */
+    padding: 72px 12px 56px;
+  }
+
+  .header-content {
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .header-title {
+    font-size: var(--font-size-heading);
+  }
+
+  /* Common micro-adjustments for compact mobile width */
+  .home-hero { gap: 5px; margin-bottom: 24px; }
+  .home-progress-row { gap: 8px; }
+  .home-filter-chips { gap: 5px; }
+  .home-filter-chip { font-size: calc(0.82rem * 0.913); padding: 5px 9px; }
+  .duration-pill { font-size: calc(0.78rem * 0.913); }
+  .add-task-form { padding: 22px 16px 18px; }
+  .mobile-menu-button, .mobile-close-button { width: 44px; height: 44px; }
+}
+
+/* Global mobile scale for iPhone widths: visually shrink to 85% */
+@media (max-width: 430px) {
+  #root {
+    transform: scale(0.85);
+    transform-origin: top left;
+    width: calc(100% / 0.85);
+    height: calc(100% / 0.85);
+  }
+}
+
+/* Only apply this top offset in the 394–430px range to avoid overriding tighter rules below 393px */
+@media (min-width: 394px) and (max-width: 430px) {
+  .main-content { padding-top: 96px; }
+}
+
 /* Sidebar */
 .sidebar {
   width: var(--sidebar-width);
@@ -1109,7 +1394,7 @@ input[type="checkbox"]:focus {
 @media (max-width: 768px) {
   .sidebar {
     left: -100%;
-    width: clamp(240px, 80vw, 300px);
+    width: min(calc(var(--sidebar-width) * 2), 90vw);
     /* Mobile: ensure drawer spans full viewport from the very top */
     top: 0;
     height: 100vh;
@@ -1144,12 +1429,12 @@ input[type="checkbox"]:focus {
   /* When sidebar is open, optionally push the page content to the right
      to mimic an iOS-style full-height drawer that moves content aside. */
   .has-open-sidebar .main-content {
-    transform: translateX(clamp(240px, 80vw, 300px));
+    transform: translateX(min(calc(var(--sidebar-width) * 2), 90vw));
     transition: transform 0.3s ease;
   }
 
   .has-open-sidebar .top-bar {
-    transform: translateX(clamp(240px, 80vw, 300px));
+    transform: translateX(min(calc(var(--sidebar-width) * 2), 90vw));
     transition: transform 0.3s ease;
   }
 

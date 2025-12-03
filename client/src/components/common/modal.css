@@ -1,0 +1,18 @@
+.modal-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:2000;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.modal-card{width:min(720px,94%);background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{margin:0 0 12px;color:var(--color-text)}
+.modal-body{padding-bottom:0}
+
+@media (--md){
+  .modal-card{width:min(640px,95%);padding:18px}
+}
+
+@media (--sm){
+  .modal-overlay{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  .modal-card{width:100%;max-width:none;border-radius:0;padding:16px}
+}
+
+/* iPhone 15 family landscape heights */
+@media (max-height: 430px){
+  .modal-card{padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+}

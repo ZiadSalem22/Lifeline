@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, addDays } from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../icons/Icons';
+import styles from './ModernCalendar.module.css';
 
 const ModernCalendar = ({ selectedDate, onSelectDate }) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -53,84 +54,39 @@ const ModernCalendar = ({ selectedDate, onSelectDate }) => {
     }, [selectedDate]);
 
     return (
-        <div style={{ width: '100%' }}>
+        <div className={styles.wrap}>
             {/* Month Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+            <div className={styles.nav}>
                 <button
                     onClick={handlePrevMonth}
-                    style={{
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '8px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--color-text-muted)',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-surface-hover)';
-                        e.currentTarget.style.color = 'var(--color-text)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'var(--color-text-muted)';
-                    }}
+                    className={styles['nav-btn']}
                 >
                     <ChevronLeftIcon />
                 </button>
-                <h3 style={{
-                    fontFamily: 'var(--font-family-heading)',
-                    fontSize: '1.125rem',
-                    fontWeight: '600',
-                    color: 'var(--color-text)'
-                }}>
+                <h3 className={styles.title}>
                     {format(currentMonth, 'MMMM yyyy')}
                 </h3>
                 <button
                     onClick={handleNextMonth}
-                    style={{
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '8px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--color-text-muted)',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-surface-hover)';
-                        e.currentTarget.style.color = 'var(--color-text)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'var(--color-text-muted)';
-                    }}
+                    className={styles['nav-btn']}
                 >
                     <ChevronRightIcon />
                 </button>
             </div>
 
             {/* Week Days */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
+            <div className={styles.week}>
                 {weekDays.map((day, i) => (
-                    <div key={i} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: '500', color: 'var(--color-text-muted)', padding: '8px 0' }}>
+                    <div key={i} className={styles['week-day']}>
                         {day}
                     </div>
                 ))}
             </div>
 
             {/* Calendar Days */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+            <div className={styles.grid}>
                 {emptyDays.map((_, i) => (
-                    <div key={`empty-${i}`} style={{ aspectRatio: '1' }} />
+                    <div key={`empty-${i}`} className={styles.empty} />
                 ))}
                 {daysInMonth.map((date, i) => {
                     const selected = isSelected(date);
@@ -142,30 +98,7 @@ const ModernCalendar = ({ selectedDate, onSelectDate }) => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleDateClick(date)}
-                            style={{
-                                aspectRatio: '1',
-                                borderRadius: '8px',
-                                fontSize: '0.875rem',
-                                fontWeight: '500',
-                                transition: 'all 0.3s',
-                                border: today && !selected ? '1px solid var(--color-primary)' : 'none',
-                                background: selected ? 'var(--color-primary)' : today ? 'var(--color-surface-hover)' : 'transparent',
-                                color: selected ? '#000000' : today ? 'var(--color-text)' : 'var(--color-text-muted)',
-                                boxShadow: selected ? 'var(--shadow-primary)' : 'none',
-                                cursor: 'pointer'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!selected) {
-                                    e.currentTarget.style.background = 'var(--color-surface-hover)';
-                                    e.currentTarget.style.color = 'var(--color-text)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!selected) {
-                                    e.currentTarget.style.background = today ? 'var(--color-surface-hover)' : 'transparent';
-                                    e.currentTarget.style.color = today ? 'var(--color-text)' : 'var(--color-text-muted)';
-                                }
-                            }}
+                            className={`${styles.tile} ${today && !selected ? styles['tile-today'] : ''} ${selected ? styles['tile-selected'] : ''}`}
                         >
                             {format(date, 'd')}
                         </motion.button>

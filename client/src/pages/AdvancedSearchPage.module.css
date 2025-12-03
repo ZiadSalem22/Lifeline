@@ -1,0 +1,30 @@
+/* Responsive layout wrapper for Advanced Search page */
+.page{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  min-height:100%;
+  padding:24px;
+  padding-top: calc(24px + env(safe-area-inset-top));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.container{
+  width:100%;
+  max-width:900px;
+  margin:0 auto;
+}
+
+@media (width <= 900px){
+  .page{ padding:20px; padding-top: calc(20px + env(safe-area-inset-top)); padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .container{ max-width:760px; }
+}
+
+@media (width <= 768px){
+  .page{ padding:16px; padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .container{ max-width:100%; }
+}
+
+@media (width <= 480px){
+  .page{ padding:12px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

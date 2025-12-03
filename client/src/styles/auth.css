@@ -5,12 +5,18 @@
   min-height: 70vh;
 }
 .auth-card {
-  width: 420px;
+  width: min(92vw, 420px);
   padding: 28px;
   border-radius: 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+}
+.auth-page{ padding: 12px }
+
+@media (max-width: 393px){
+  .auth-card{ width: 95vw; padding: 24px }
+  .auth-actions{ flex-wrap: wrap }
 }
 .auth-header { text-align: center; margin-bottom: 12px; }
 .auth-tabs { display:flex; gap:8px; justify-content:center; margin-bottom:8px }

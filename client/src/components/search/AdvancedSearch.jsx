@@ -42,16 +42,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
 
   const formatDueDate = (dateStr) => {
     if (!dateStr) return 'No date';
-    let d;
-    try {
-      if (typeof dateStr === 'string') {
-        d = dateStr.includes('T') ? parseISO(dateStr) : new Date(`${dateStr}T00:00:00`);
-      } else {
-        d = new Date(dateStr);
-      }
-    } catch {
-      d = new Date(dateStr);
-    }
+    const d = typeof dateStr === 'string' ? parseISO(dateStr) : new Date(dateStr);
     if (!isValid(d)) return 'No date';
     if (isToday(d)) return 'Today';
     if (isTomorrow(d)) return 'Tomorrow';
@@ -92,7 +83,6 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         setMonthLoaded(true);
       } catch (err) {
         console.debug('Month preload failed', err.message || err);
-        // Fallback to locally available todos passed from parent
         setMonthTodos(guestTodos || []);
         setMonthLoaded(true);
       }
@@ -114,8 +104,9 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         maxDuration
       );
       if (!hasFilters) {
-        setAllTodos(monthTodos || []);
-        setTotal((monthTodos || []).length);
+        const list = monthTodos || [];
+        setAllTodos(list);
+        setTotal(list.length);
         setPage(1);
       }
     }
@@ -132,9 +123,8 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
       out = out.filter(t => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q));
     }
     if (selectedTags.length) {
-      out = out.filter(t => t.tags && t.tags.some(tag => selectedTags.includes(tag.id)));
+      out = out.filter(t => (t.tags || []).some(tag => selectedTags.includes(tag.id)));
     }
-    if (priority !== 'any') out = out.filter(t => (t.priority || 'medium') === priority);
     if (status !== 'any') out = out.filter(t => status === 'completed' ? t.isCompleted : !t.isCompleted);
     if (flaggedOnly) out = out.filter(t => t.isFlagged || t.flagged);
     if (startDate) out = out.filter(t => t.dueDate && t.dueDate >= startDate);
@@ -395,25 +385,25 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button onClick={onBack} className={styles.backBtn}>Back</button>
+        <div className={styles["header-left"]}>
+          <button onClick={onBack} className={styles["back-btn"]}>Back</button>
           <h2 className={styles.title}>Advanced Search</h2>
-          <div className={styles.modeInfo}>
+          <div className={styles["mode-info"]}>
             <span>{(clientResults && clientResults.length) ? clientResults.length : allTodos.length} results</span>
-            <span className={styles.modeBadge}>{clientResults && clientResults.length ? (serverLoading ? 'Preview' : 'Preview') : (serverLoading ? 'Live — searching' : 'Live')}</span>
+            <span className={styles["mode-badge"]}>{clientResults && clientResults.length ? (serverLoading ? 'Preview' : 'Preview') : (serverLoading ? 'Live — searching' : 'Live')}</span>
           </div>
         </div>
       </div>
 
       <div className={styles.container}>
         <section className={styles.card}>
-          <div className={styles.controlsRow}>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" className={`${styles.input} ${styles.searchInput}`} />
-            <button onClick={() => { setQuery(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} className={styles.clearBtn}>Clear</button>
-            <button onClick={performSearch} className={styles.searchBtn}>Search</button>
+          <div className={styles["controls-row"]}>
+            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" className={`${styles.input} ${styles["search-input"]}`} />
+            <button onClick={() => { setQuery(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} className={styles["clear-btn"]}>Clear</button>
+            <button onClick={performSearch} className={styles["search-btn"]}>Search</button>
           </div>
 
-          <div className={styles.gridRow}>
+          <div className={styles["grid-row"]}>
             <div style={{ minWidth: '160px' }}>
               <label className={styles.label}>Priority</label>
               <select value={priority} onChange={e=>setPriority(e.target.value)} className={styles.select}>
@@ -444,7 +434,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             </div>
           </div>
 
-          <div className={styles.gridRow}>
+          <div className={styles["grid-row"]}>
             <div style={{ flex: 1 }}>
               <label className={styles.label}>Start Date</label>
               <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className={styles.select} />
@@ -455,7 +445,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
             </div>
           </div>
 
-          <div className={styles.gridRow}>
+          <div className={styles["grid-row"]}>
             <div style={{ minWidth: '120px' }}>
               <label className={styles.label}>Min Duration (min)</label>
               <input type="number" value={minDuration} onChange={e=>setMinDuration(e.target.value)} className={styles.select} />
@@ -477,15 +467,15 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
 
           <div style={{ marginBottom: '12px' }}>
             <label className={styles.label}>Tags</label>
-            <div className={styles.tagsWrap}>
+            <div className={styles["tags-wrap"]}>
               {allTags.map(tag => (
                 <button
                   key={tag.id}
                   onClick={() => toggleTag(tag.id)}
-                  className={`${styles.tag} ${selectedTags.includes(tag.id) ? styles.tagSelected : ''}`}
+                      className={`${styles.tag} ${selectedTags.includes(tag.id) ? styles["tag-selected"] : ''}`}
                   style={selectedTags.includes(tag.id) ? { '--tag-color': tag.color } : undefined}
                 >
-                  <span className={styles.tagDot} style={{ background: tag.color }} />
+                      <span className={styles["tag-dot"]} style={{ background: tag.color }} />
                   <span style={{ lineHeight: 1 }}>{tag.name}</span>
                 </button>
               ))}
@@ -494,35 +484,35 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         </section>
 
         {/* Quick filters row */}
-        <div className={styles.quickRow}>
-          <button onClick={() => { setPriority('high'); setStatus('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>High Priority</button>
-          <button onClick={() => { setStatus('active'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Active</button>
-          <button onClick={() => { setStatus('completed'); setPriority('any'); }} style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>Completed</button>
+        <div className={styles["quick-row"]}>
+          <button onClick={() => { setPriority('high'); setStatus('any'); }} className={styles['quick-btn']}>High Priority</button>
+          <button onClick={() => { setStatus('active'); setPriority('any'); }} className={styles['quick-btn']}>Active</button>
+          <button onClick={() => { setStatus('completed'); setPriority('any'); }} className={styles['quick-btn']}>Completed</button>
           {selectedIds.length > 0 && (
-            <div className={styles.batchButtons}>
-              <button onClick={handleBatchDelete} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-danger, #e5484d)', background: 'var(--color-danger, #e5484d)', color: '#fff', fontWeight: 700 }}>Delete</button>
+            <div className={styles["batch-buttons"]}>
+              <button onClick={handleBatchDelete} className={styles['batch-delete']}>Delete</button>
               {(() => {
                 const selected = displayTodos.filter(t => selectedIds.includes(t.id));
                 const allCompleted = selected.length > 0 && selected.every(t => !!t.isCompleted);
                 const label = allCompleted ? 'Mark as Undone' : 'Mark as Done';
                 return (
-                  <button onClick={() => handleBatchMark(!allCompleted)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)', fontWeight: 700 }}>{label}</button>
+                  <button onClick={() => handleBatchMark(!allCompleted)} className={styles['batch-mark']}>{label}</button>
                 );
               })()}
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{selectedIds.length} selected</span>
+              <span className={styles['batch-meta']}>{selectedIds.length} selected</span>
             </div>
           )}
-          <div style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
+          <div className={styles['quick-meta']}>Showing {pageTodos.length} of {displayTotal}</div>
         </div>
 
         {/* Results */}
-        <div className={styles.resultsCard}>
+        <div className={styles["results-card"]}>
           <div className={styles.list}>
             {pageTodos.map((todo, idx) => (
               <div
                 key={todo.id}
                 onClick={(e) => handleRowClick(todo.id, idx, e)}
-                className={`${styles.row} ${isSelected(todo.id) ? styles.rowSelected : ''}`}
+                className={`${styles.row} ${isSelected(todo.id) ? styles["row-selected"] : ''}`}
                 onDoubleClick={() => navigateToDay(todo.dueDate)}
                 onTouchStart={(e) => {
                   const now = Date.now();
@@ -533,19 +523,19 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                   lastTapRef.current = now;
                 }}
               >
-                <div className={styles.rowLeft}>
+                <div className={styles["row-left"]}>
                   <div className={styles.stack}>
-                    <div className={styles.titleRow}>
+                    <div className={styles["title-row"]}>
                       <span
                         onDoubleClick={() => navigateToDay(todo.dueDate)}
                         title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
-                        className={styles.todoTitle}
+                        className={styles["todo-title"]}
                       >
                         {todo.title}
                       </span>
                       <div
                         title={todo.dueDate || 'No date'}
-                        className={styles.datePill}
+                        className={styles["date-pill"]}
                       >
                         <CalendarIcon />
                         <span style={{ lineHeight: 1 }}>{formatDueDate(todo.dueDate)}</span>
@@ -554,14 +544,14 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                     {todo.description && <div className={styles.desc}>{todo.description}</div>}
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       {(todo.tags || []).map(t => (
-                        <span key={t.id} className={styles.tagChip} style={{ '--tag-color': t.color, '--tag-color-bg': `${t.color}15`, '--tag-color-border': `${t.color}30` }}>{t.name}</span>
+                        <span key={t.id} className={styles["tag-chip"]} style={{ '--tag-color': t.color, '--tag-color-bg': `${t.color}15`, '--tag-color-border': `${t.color}30` }}>{t.name}</span>
                       ))}
                     </div>
                   </div>
                 </div>
                 <div className={styles.actions}>
                   {todo.isFlagged && <FlagIcon filled />}
-                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" className={styles.iconBtn}><EditIcon /></button>
+                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" className={styles["icon-btn"]}><EditIcon /></button>
                 </div>
               </div>
             ))}
@@ -579,8 +569,8 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           disabled={page <= 1}
           className="btn"
         >Prev</button>
-        <div className={styles.pagerInfo}>Page {page} of {Math.max(1, Math.ceil((displayTotal || 0) / limit))}</div>
-        <div className={styles.pagerInfo} style={{ fontSize: '.9rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
+        <div className={styles["pager-info"]}>Page {page} of {Math.max(1, Math.ceil((displayTotal || 0) / limit))}</div>
+        <div className={styles["pager-info"]} style={{ fontSize: '.9rem' }}>Showing {pageTodos.length} of {displayTotal}</div>
         <button
           onClick={() => {
             const hasMore = (page * limit) < displayTotal;

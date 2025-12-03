@@ -22,6 +22,7 @@ const STATS_URL = joinUrl('/stats');
 const EXPORT_URL = joinUrl('/export');
 const IMPORT_URL = joinUrl('/import');
 const TODOS_BATCH_URL = joinUrl('/todos/batch');
+const SETTINGS_URL = joinUrl('/settings');
 
 const assertFetcher = (fetchWithAuth, caller) => {
     if (typeof fetchWithAuth !== 'function') {
@@ -222,10 +223,35 @@ export const fetchTags = async (fetchWithAuth) => {
     return response.json();
 };
 
-export const fetchStats = async (fetchWithAuth) => {
+export const fetchStats = async (fetchWithAuth, period) => {
     const executeFetch = assertFetcher(fetchWithAuth, 'fetchStats');
-    const response = await executeFetch(STATS_URL);
+    const url = period ? `${STATS_URL}?period=${encodeURIComponent(period)}` : STATS_URL;
+    const response = await executeFetch(url);
     ensureOk(response, 'Failed to fetch stats', 'fetchStats');
+    return response.json();
+};
+
+export const fetchStatsRange = async (fetchWithAuth, startDate, endDate) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'fetchStatsRange');
+    const url = `${STATS_URL}?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    const response = await executeFetch(url);
+    ensureOk(response, 'Failed to fetch stats for range', 'fetchStatsRange');
+    return response.json();
+};
+
+export const saveSettings = async (settings, fetchWithAuth, options = {}) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'saveSettings');
+    const response = await executeFetch(SETTINGS_URL, {
+        method: 'POST',
+        body: JSON.stringify(settings || {}),
+        // Allow silent failures if user not authenticated
+        quiet401: options.quiet401 ?? true,
+    });
+    if (response.status === 401 && (options.quiet401 ?? true)) {
+        // In guest mode or unauthenticated, just return settings back
+        return settings;
+    }
+    ensureOk(response, 'Failed to save settings', 'saveSettings');
     return response.json();
 };
 

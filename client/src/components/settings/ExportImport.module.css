@@ -1,0 +1,27 @@
+/* Responsive styles for ExportImport modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal{background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:24px;max-width:500px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.title{color:var(--color-text);margin:0 0 20px}
+.section{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--color-border)}
+.section h3{color:var(--color-text);font-size:1rem;margin-bottom:12px}
+.row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.select{padding:8px 12px;background:var(--color-surface-light);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text);font-size:.875rem;cursor:pointer}
+.primary-btn{padding:8px 16px;background:var(--color-primary);color:var(--color-bg);border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:.875rem}
+.message{padding:12px;background:color-mix(in oklab, var(--color-primary) 20%, transparent);border:1px solid var(--color-primary);color:var(--color-primary);border-radius:8px;font-size:.875rem;margin-bottom:12px}
+.error{padding:12px;background:color-mix(in oklab, var(--color-danger) 20%, transparent);border:1px solid var(--color-danger);color:var(--color-danger);border-radius:8px;font-size:.875rem;margin-bottom:12px}
+.close-btn{width:100%;padding:10px;background:var(--color-surface-light);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text);cursor:pointer;font-weight:600;font-size:.875rem}
+
+@media (--md){
+  .modal{width:92%;max-width:520px;padding:20px}
+  .row{flex-wrap:wrap}
+}
+
+@media (--sm){
+  .modal{width:100%;max-width:none;border-radius:0;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  .overlay{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+}
+
+/* iPhone 15 family landscape height */
+@media (max-height: 430px){
+  .modal{padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+}

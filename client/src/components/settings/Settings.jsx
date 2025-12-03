@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ExportDataModal from './ExportDataModal';
 import { createTag, deleteTag, updateTag } from '../../utils/api';
 import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
+import styles from './Settings.module.css';
 
 const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, font, fonts, setFont, fetchWithAuth }) => {
     const [newTagName, setNewTagName] = useState('');
@@ -18,25 +19,16 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
         e.preventDefault();
         if (!newTagName.trim() || isSubmitting) return;
 
-        setIsSubmitting(true);
         try {
-            const newTag = await createTag(newTagName, newTagColor, fetchWithAuth);
-            setTags([...tags, newTag]);
+            setIsSubmitting(true);
+            const created = await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
+            setTags([...tags, created]);
             setNewTagName('');
             setNewTagColor('#6366f1');
         } catch (error) {
-            console.error("Failed to create tag", error);
+            console.error('Failed to create tag', error);
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-    const handleDeleteTag = async (id) => {
-        try {
-            await deleteTag(id, fetchWithAuth);
-            setTags(tags.filter(t => t.id !== id));
-        } catch (error) {
-            console.error("Failed to delete tag", error);
         }
     };
 
@@ -52,6 +44,14 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
         setEditTagColor('');
     };
 
+    const handleDeleteTag = async (id) => {
+        try {
+            await deleteTag(id, fetchWithAuth);
+            setTags(tags.filter(t => t.id !== id));
+        } catch (error) {
+            console.error('Failed to delete tag', error);
+        }
+    };
     const handleSaveEdit = async (id) => {
         if (!editTagName.trim()) return;
         try {
@@ -70,17 +70,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'var(--shadow-dark)',
-                        backdropFilter: 'blur(4px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        padding: '16px'
-                    }}
+                    className={styles.overlay}
                     onClick={onClose}
                 >
                     <motion.div
@@ -88,58 +78,19 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        style={{
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '16px',
-                            width: '100%',
-                            maxWidth: '512px',
-                            boxShadow: '0 25px 50px -12px var(--shadow-dark)'
-                        }}
-                        onClick={e => e.stopPropagation()}
+                        className={styles.modal}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Header */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '24px',
-                            borderBottom: '1px solid var(--color-border)'
-                        }}>
+                        <div className={styles.header}>
                             <div>
-                                <h2 style={{
-                                    fontFamily: 'var(--font-family-heading)',
-                                    fontSize: '1.5rem',
-                                    fontWeight: 'bold',
-                                    color: 'var(--color-text)'
-                                }}>
-                                    Settings
-                                </h2>
-                                <p style={{
-                                    fontSize: '0.875rem',
-                                    color: 'var(--color-text-muted)',
-                                    marginTop: '4px'
-                                }}>
-                                    Manage your tags and preferences
-                                </p>
+                                <h2 className={styles.title}>Settings</h2>
+                                <p className={styles.subtitle}>Manage your tags and preferences</p>
                             </div>
                             <motion.button
                                 whileHover={{ scale: 1.1, rotate: 90 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={onClose}
-                                style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: '12px',
-                                    color: 'var(--color-text-muted)',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                }}
+                                className={styles['close-btn']}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.color = 'var(--color-text)';
                                     e.currentTarget.style.background = 'var(--color-surface-hover)';
@@ -153,31 +104,15 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                     <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                 </svg>
                             </motion.button>
-                                                </div>
+                        </div>
 
                         {/* Tabs Navigation */}
-                        <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            padding: '12px 24px',
-                            borderBottom: '1px solid var(--color-border)',
-                            background: 'var(--color-surface-light)'
-                        }}>
+                        <div className={styles.tabs}>
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setActiveTab('tags')}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === 'tags' ? 'var(--color-primary)' : 'transparent',
-                                    color: activeTab === 'tags' ? 'var(--color-bg)' : 'var(--color-text-muted)',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                }}
+                                className={activeTab === 'tags' ? styles['tab-active'] : styles.tab}
                             >
                                 Tags
                             </motion.button>
@@ -185,17 +120,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setActiveTab('appearance')}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === 'appearance' ? 'var(--color-primary)' : 'transparent',
-                                    color: activeTab === 'appearance' ? 'var(--color-bg)' : 'var(--color-text-muted)',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                }}
+                                className={activeTab === 'appearance' ? styles['tab-active'] : styles.tab}
                             >
                                 Appearance
                             </motion.button>
@@ -203,17 +128,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setActiveTab('about')}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === 'about' ? 'var(--color-primary)' : 'transparent',
-                                    color: activeTab === 'about' ? 'var(--color-bg)' : 'var(--color-text-muted)',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                }}
+                                className={activeTab === 'about' ? styles['tab-active'] : styles.tab}
                             >
                                 About
                             </motion.button>
@@ -221,17 +136,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setActiveTab('export')}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === 'export' ? 'var(--color-primary)' : 'transparent',
-                                    color: activeTab === 'export' ? 'var(--color-bg)' : 'var(--color-text-muted)',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                }}
+                                className={activeTab === 'export' ? styles['tab-active'] : styles.tab}
                             >
                                 Export
                             </motion.button>
@@ -241,10 +146,10 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                         )}
 
                         {/* Content */}
-                        <div style={{ padding: '24px' }}>
+                        <div className={styles['body']}>
                             {/* Tags Tab */}
                             {activeTab === 'tags' && (
-                            <div style={{ marginBottom: '24px' }}>
+                            <div className={styles['section']}>
                                 <h3 style={{
                                     fontFamily: 'var(--font-family-heading)',
                                     fontSize: '1.125rem',
@@ -256,41 +161,22 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                 </h3>
 
                                 {/* Add Tag Form */}
-                                <form onSubmit={handleAddTag} style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                                <form onSubmit={handleAddTag} className={styles['form-inline']}>
                                     <input
                                         type="text"
                                         placeholder="Tag name"
                                         value={newTagName}
                                         onChange={e => setNewTagName(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            background: 'var(--color-surface-light)',
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: '12px',
-                                            padding: '10px 16px',
-                                            color: 'var(--color-text)',
-                                            fontFamily: 'var(--font-family-base)',
-                                            outline: 'none',
-                                            transition: 'border-color 0.3s'
-                                        }}
+                                        className={styles['text-input']}
                                         onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                                         onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                     />
-                                    <div style={{ position: 'relative' }}>
+                                    <div className={styles['relative']}>
                                         <input
                                             type="color"
                                             value={newTagColor}
                                             onChange={e => setNewTagColor(e.target.value)}
-                                            style={{
-                                                width: '48px',
-                                                height: '100%',
-                                                borderRadius: '12px',
-                                                cursor: 'pointer',
-                                                border: '2px solid var(--color-border)',
-                                                transition: 'border-color 0.3s',
-                                                padding: 0,
-                                                background: 'transparent'
-                                            }}
+                                            className={styles['color-input']}
                                             onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                                             onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                         />
@@ -300,19 +186,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                         disabled={isSubmitting}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        style={{
-                                            padding: '10px 24px',
-                                            background: 'var(--color-primary)',
-                                            borderRadius: '12px',
-                                            color: 'var(--color-bg)',
-                                            fontWeight: '500',
-                                            fontSize: '0.875rem',
-                                            border: 'none',
-                                            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                                            transition: 'all 0.3s',
-                                            boxShadow: '0 10px 15px -3px var(--shadow-primary)',
-                                            opacity: isSubmitting ? 0.5 : 1
-                                        }}
+                                        className={styles['submit-btn']}
                                         onMouseEnter={(e) => {
                                             if (!isSubmitting) e.currentTarget.style.background = 'var(--color-primary-dark)';
                                         }}
@@ -320,45 +194,24 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                             if (!isSubmitting) e.currentTarget.style.background = 'var(--color-primary)';
                                         }}
                                     >
-                                        {isSubmitting ? (
-                                            <div style={{
-                                                width: '20px',
-                                                height: '20px',
-                                                border: '2px solid var(--color-surface)',
-                                                borderTopColor: 'var(--color-bg)',
-                                                borderRadius: '50%',
-                                                animation: 'spin 1s linear infinite'
-                                            }} />
-                                        ) : (
-                                            'Add'
-                                        )}
+                                        {isSubmitting ? (<div className={styles.spinner} />) : ('Add')}
                                     </motion.button>
                                 </form>
 
                                 {/* Tags List */}
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '8px',
-                                    maxHeight: '256px',
-                                    overflowY: 'auto',
-                                    paddingRight: '8px'
-                                }} className="custom-scrollbar">
+                                <div className={`${styles.list} custom-scrollbar`}>
                                     <AnimatePresence mode="popLayout">
                                         {tags.length === 0 ? (
                                             <motion.div
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                style={{
-                                                    textAlign: 'center',
-                                                    padding: '32px 0'
-                                                }}
+                                                className={styles.empty}
                                             >
-                                                <div style={{ fontSize: '2.25rem', marginBottom: '8px', color: 'var(--color-text-muted)' }}>
+                                                <div className={styles['empty-icon']}>
                                                     <TagIcon />
                                                 </div>
-                                                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                                <p className={styles['empty-text']}>
                                                     No tags yet. Create your first one!
                                                 </p>
                                             </motion.div>
@@ -371,53 +224,24 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                     animate={{ opacity: 1, x: 0 }}
                                                     exit={{ opacity: 0, x: 20, height: 0 }}
                                                     transition={{ delay: index * 0.05 }}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        padding: '12px',
-                                                        background: 'var(--color-surface-light)',
-                                                        borderRadius: '12px',
-                                                        border: '1px solid var(--color-border)',
-                                                        transition: 'border-color 0.3s',
-                                                        gap: '8px'
-                                                    }}
+                                                    className={styles['tag-item-surface']}
                                                     onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-border-hover)'}
                                                     onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                                 >
                                                     {editingTagId === tag.id ? (
                                                         <>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                                            <div className={styles['edit-row']}>
                                                                 <input
                                                                     type="color"
                                                                     value={editTagColor}
                                                                     onChange={(e) => setEditTagColor(e.target.value)}
-                                                                    style={{
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        borderRadius: '8px',
-                                                                        cursor: 'pointer',
-                                                                        border: '2px solid var(--color-border)',
-                                                                        padding: 0,
-                                                                        background: 'transparent'
-                                                                    }}
+                                                                    className={styles['color-input']}
                                                                 />
                                                                 <input
                                                                     type="text"
                                                                     value={editTagName}
                                                                     onChange={(e) => setEditTagName(e.target.value)}
-                                                                    style={{
-                                                                        flex: 1,
-                                                                        background: 'var(--color-surface)',
-                                                                        border: '1px solid var(--color-border)',
-                                                                        borderRadius: '8px',
-                                                                        padding: '8px 12px',
-                                                                        color: 'var(--color-text)',
-                                                                        fontFamily: 'var(--font-family-base)',
-                                                                        fontSize: '0.875rem',
-                                                                        outline: 'none',
-                                                                        transition: 'border-color 0.3s'
-                                                                    }}
+                                                                    className={styles['text-input']}
                                                                     onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                                                                     onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                                                     onKeyDown={(e) => {
@@ -434,15 +258,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                                 whileHover={{ scale: 1.1 }}
                                                                 whileTap={{ scale: 0.9 }}
                                                                 onClick={() => handleSaveEdit(tag.id)}
-                                                                style={{
-                                                                    padding: '8px',
-                                                                    color: 'var(--color-primary)',
-                                                                    background: 'transparent',
-                                                                    border: 'none',
-                                                                    borderRadius: '8px',
-                                                                    cursor: 'pointer',
-                                                                    transition: 'color 0.3s'
-                                                                }}
+                                                                className={styles.btn}
                                                                 onMouseEnter={(e) => {
                                                                     e.currentTarget.style.background = 'var(--color-surface-hover)';
                                                                 }}
@@ -456,15 +272,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                                 whileHover={{ scale: 1.1 }}
                                                                 whileTap={{ scale: 0.9 }}
                                                                 onClick={handleCancelEdit}
-                                                                style={{
-                                                                    padding: '8px',
-                                                                    color: 'var(--color-text-muted)',
-                                                                    background: 'transparent',
-                                                                    border: 'none',
-                                                                    borderRadius: '8px',
-                                                                    cursor: 'pointer',
-                                                                    transition: 'color 0.3s'
-                                                                }}
+                                                                className={styles.btn}
                                                                 onMouseEnter={(e) => {
                                                                     e.currentTarget.style.color = 'var(--color-text)';
                                                                     e.currentTarget.style.background = 'var(--color-surface-hover)';
@@ -479,38 +287,20 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                                                                <div
-                                                                    style={{
-                                                                        width: '16px',
-                                                                        height: '16px',
-                                                                        borderRadius: '50%',
-                                                                        border: '2px solid var(--color-border)',
-                                                                        backgroundColor: tag.color
-                                                                    }}
-                                                                />
-                                                                <span style={{
-                                                                    fontFamily: 'var(--font-family-base)',
-                                                                    color: 'var(--color-text)',
-                                                                    fontWeight: '500'
-                                                                }}>
+                                                            <div className={styles.row}>
+                                                                <div className={styles.swatch}>
+                                                                    <div className={styles['swatch-color']} style={{ backgroundColor: tag.color }} />
+                                                                </div>
+                                                                <span className={styles['tag-name']}>
                                                                     {tag.name}
                                                                 </span>
                                                             </div>
-                                                            <div style={{ display: 'flex', gap: '4px', opacity: 0 }} className="tag-actions">
+                                                            <div className={`tag-actions ${styles.actions}`}>
                                                                 <motion.button
                                                                     whileHover={{ scale: 1.1 }}
                                                                     whileTap={{ scale: 0.9 }}
                                                                     onClick={() => handleStartEdit(tag)}
-                                                                    style={{
-                                                                        padding: '8px',
-                                                                        color: 'var(--color-text-muted)',
-                                                                        background: 'transparent',
-                                                                        border: 'none',
-                                                                        borderRadius: '8px',
-                                                                        cursor: 'pointer',
-                                                                        transition: 'color 0.3s'
-                                                                    }}
+                                                                    className={styles.btn}
                                                                     onMouseEnter={(e) => {
                                                                         e.currentTarget.style.color = 'var(--color-primary)';
                                                                     }}
@@ -524,15 +314,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                                     whileHover={{ scale: 1.1 }}
                                                                     whileTap={{ scale: 0.9 }}
                                                                     onClick={() => handleDeleteTag(tag.id)}
-                                                                    style={{
-                                                                        padding: '8px',
-                                                                        color: 'var(--color-text-muted)',
-                                                                        background: 'transparent',
-                                                                        border: 'none',
-                                                                        borderRadius: '8px',
-                                                                        cursor: 'pointer',
-                                                                        transition: 'color 0.3s'
-                                                                    }}
+                                                                    className={styles.btn}
                                                                     onMouseEnter={(e) => {
                                                                         e.currentTarget.style.color = 'var(--color-danger)';
                                                                     }}
@@ -555,125 +337,60 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
 
                             {/* Export Tab */}
                             {activeTab === 'export' && (
-                                <div>
-                                    <h3 style={{ fontFamily: 'var(--font-family-heading)', fontSize: '1.125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '16px' }}>Export</h3>
-                                    <p style={{ color: 'var(--color-text-muted)', marginBottom: '12px' }}>Export your data (tasks, tags, and preferences). Use the button below to open the export dialog.</p>
+                                <div className={styles.section}>
+                                    <h3 className={styles['section-title']}>Export</h3>
+                                    <p className={styles['section-subtitle']}>Export your data (tasks, tags, and preferences). Use the button below to open the export dialog.</p>
                                     <div>
-                                        <button onClick={() => setShowExportModal(true)} style={{ padding: '10px 14px', background: 'var(--color-primary)', color: 'var(--color-bg)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Open Export Dialog</button>
+                                        <button onClick={() => setShowExportModal(true)} className={styles['submit-btn']}>Open Export Dialog</button>
                                     </div>
                                 </div>
                             )}
 
                             {/* Appearance Tab */}
                             {activeTab === 'appearance' && (
-                                <div style={{ marginBottom: '24px' }}>
-                                    <h3 style={{
-                                        fontFamily: 'var(--font-family-heading)',
-                                        fontSize: '1.125rem',
-                                        fontWeight: '600',
-                                        color: 'var(--color-text)',
-                                        marginBottom: '16px'
-                                    }}>
-                                        Appearance
-                                    </h3>
-                                    <div style={{
-                                        padding: '16px',
-                                        background: 'var(--color-surface-light)',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--color-border)'
-                                    }}>
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <label style={{
-                                                display: 'block',
-                                                fontSize: '0.875rem',
-                                                fontWeight: '500',
-                                                color: 'var(--color-text)',
-                                                marginBottom: '8px'
-                                            }}>
-                                                Theme
-                                            </label>
+                                <div className={styles.section}>
+                                    <h3 className={styles['section-title']}>Appearance</h3>
+                                    <div className={styles.panel}>
+                                        <div className={styles['form-group']}>
+                                            <label className={styles.label}>Theme</label>
                                             <select
                                                 value={theme}
                                                 onChange={(e) => setTheme(e.target.value)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '10px 16px',
-                                                    paddingRight: '32px',
-                                                    background: 'var(--color-surface)',
-                                                    border: '1px solid var(--color-border)',
-                                                    borderRadius: '8px',
-                                                    color: 'var(--color-text)',
-                                                    fontSize: '0.875rem',
-                                                    cursor: 'pointer',
-                                                    outline: 'none',
-                                                    transition: 'border-color 0.3s'
-                                                }}
+                                                className={styles.select}
                                                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                                                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                             >
                                                 {themes && themes.map((themeName) => (
-                                                    <option key={themeName} value={themeName} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>
+                                                    <option key={themeName} value={themeName}>
                                                         {themeName.charAt(0).toUpperCase() + themeName.slice(1)}
                                                     </option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <label style={{
-                                                display: 'block',
-                                                fontSize: '0.875rem',
-                                                fontWeight: '500',
-                                                color: 'var(--color-text)',
-                                                marginBottom: '8px'
-                                            }}>
-                                                Font
-                                            </label>
+                                        <div className={styles['form-group']}>
+                                            <label className={styles.label}>Font</label>
                                             <select
                                                 value={font}
                                                 onChange={(e) => setFont(e.target.value)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '10px 16px',
-                                                    paddingRight: '32px',
-                                                    background: 'var(--color-surface)',
-                                                    border: '1px solid var(--color-border)',
-                                                    borderRadius: '8px',
-                                                    color: 'var(--color-text)',
-                                                    fontSize: '0.875rem',
-                                                    cursor: 'pointer',
-                                                    outline: 'none',
-                                                    transition: 'border-color 0.3s',
-                                                    fontFamily: font
-                                                }}
+                                                className={styles.select}
                                                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                                                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                                             >
                                                 {fonts && fonts.map((fontOption) => (
-                                                    <option key={fontOption.value} value={fontOption.value} style={{ background: 'var(--color-surface)', borderRadius: '8px', fontFamily: fontOption.value }}>
+                                                    <option key={fontOption.value} value={fontOption.value} style={{ fontFamily: fontOption.value }}>
                                                         {fontOption.name}
                                                     </option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <div>
-                                            <label style={{
-                                                display: 'block',
-                                                fontSize: '0.875rem',
-                                                fontWeight: '500',
-                                                color: 'var(--color-text)',
-                                                marginBottom: '8px'
-                                            }}>
-                                                Font Size
-                                            </label>
+                                        <div className={styles['form-group']}>
+                                            <label className={styles.label}>Font Size</label>
                                             <input
                                                 type="range"
                                                 min="12"
                                                 max="20"
                                                 defaultValue="16"
-                                                style={{
-                                                    width: '100%',
-                                                    cursor: 'pointer'
-                                                }}
+                                                className={styles.range}
                                             />
                                         </div>
                                     </div>
@@ -682,55 +399,18 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
 
                             {/* About Tab */}
                             {activeTab === 'about' && (
-                                <div style={{ marginBottom: '24px' }}>
-                                    <h3 style={{
-                                        fontFamily: 'var(--font-family-heading)',
-                                        fontSize: '1.125rem',
-                                        fontWeight: '600',
-                                        color: 'var(--color-text)',
-                                        marginBottom: '16px'
-                                    }}>
-                                        About
-                                    </h3>
-                                    <div style={{
-                                        padding: '16px',
-                                        background: 'var(--color-surface-light)',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--color-border)'
-                                    }}>
+                                <div className={styles.section}>
+                                    <h3 className={styles['section-title']}>About</h3>
+                                    <div className={styles.panel}>
                                         <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                                            <h4 style={{
-                                                fontSize: '1.25rem',
-                                                fontWeight: 'bold',
-                                                color: 'var(--color-text)',
-                                                marginBottom: '8px'
-                                            }}>
-                                                Todo App
-                                            </h4>
-                                            <p style={{
-                                                fontSize: '0.875rem',
-                                                color: 'var(--color-text-muted)',
-                                                marginBottom: '16px'
-                                            }}>
-                                                Version 1.0.0
-                                            </p>
-                                            <p style={{
-                                                fontSize: '0.875rem',
-                                                color: 'var(--color-text-muted)',
-                                                lineHeight: '1.5'
-                                            }}>
+                                            <h4 className={styles.h3}>Todo App</h4>
+                                            <p className={styles['section-subtitle']}>Version 1.0.0</p>
+                                            <p className={styles['section-subtitle']}>
                                                 A beautiful and functional todo application built with React and Node.js.
                                                 Organize your tasks efficiently with tags and priorities.
                                             </p>
-                                            <div style={{
-                                                marginTop: '24px',
-                                                paddingTop: '24px',
-                                                borderTop: '1px solid var(--color-border)'
-                                            }}>
-                                                <p style={{
-                                                    fontSize: '0.75rem',
-                                                    color: 'var(--color-text-muted)'
-                                                }}>
+                                            <div className={styles['section-border']} style={{ marginTop: '24px', paddingTop: '24px' }}>
+                                                <p className={styles['section-subtitle']}>
                                                     © 2024 Todo App. All rights reserved.
                                                 </p>
                                             </div>
@@ -740,36 +420,14 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                             )}
 
                             {/* Footer */}
-                            <div style={{
-                                paddingTop: '16px',
-                                borderTop: '1px solid var(--color-border)'
-                            }}>
-                                <p style={{
-                                    fontSize: '0.75rem',
-                                    color: 'var(--color-text-muted)',
-                                    textAlign: 'center'
-                                }}>
-                                    Press <kbd style={{
-                                        padding: '4px 8px',
-                                        background: 'var(--color-surface-light)',
-                                        borderRadius: '4px',
-                                        fontSize: '0.75rem',
-                                        border: '1px solid var(--color-border)',
-                                        fontFamily: 'inherit'
-                                    }}>Esc</kbd> to close
+                            <div className={styles['section-border']} style={{ paddingTop: '16px' }}>
+                                <p className={styles['section-subtitle']} style={{ textAlign: 'center' }}>
+                                    Press <kbd className={styles.kbd}>Esc</kbd> to close
                                 </p>
                             </div>
                         </div>
 
-                                                <style>{`
-                            .tag-actions {
-                                opacity: 0 !important;
-                            }
-                            .tag-actions:hover,
-                            div:hover .tag-actions {
-                                opacity: 1 !important;
-                            }
-                        `}</style>
+                        
                     </motion.div>
                 </motion.div>
             )}

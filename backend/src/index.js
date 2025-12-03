@@ -28,12 +28,19 @@ const app = express();
 const port = 3000;
 
 
-// CORS configuration: allow Vite dev origin and Authorization header
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+// CORS configuration: allow Vite dev origin (HTTP/HTTPS) and Authorization header
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173,https://localhost:5173,https://192.168.1.153:5173/')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 app.use(
     cors({
-        origin: FRONTEND_ORIGIN,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true); // non-browser or same-origin
+            if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
+            return callback(new Error(`CORS blocked for origin ${origin}`));
+        },
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: [
             'Authorization',
@@ -763,6 +770,7 @@ app.patch('/api/todos/:id/toggle', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
         const todo = await toggleTodo.execute(req.currentUser.id, id);
+        if (!todo) return next(new AppError('Todo not found', 404));
         res.json(todo);
     } catch (err) { next(err); }
 });
@@ -1030,18 +1038,42 @@ app.get('/api/stats', requireAuth(), async (req, res) => {
     try {
         const userId = req.currentUser && req.currentUser.id;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-        // Prefer repository aggregation (MSSQL-optimized). Fallback to in-memory.
+        const { period, startDate, endDate } = req.query; // period OR explicit date range
+        // Use SQLite aggregation when available; fallback to in-memory grouping
         let stats;
-        try {
-            stats = await todoRepository.getExportStatsForUser(userId);
-        } catch (e) {
+        if (startDate && endDate && typeof todoRepository.getStatisticsForUserInRange === 'function') {
+            stats = await todoRepository.getStatisticsForUserInRange(userId, startDate, endDate);
+        } else if (typeof todoRepository.getStatisticsAggregated === 'function') {
+            stats = await todoRepository.getStatisticsAggregated(userId, period);
+        } else {
             const todos = await listTodos.execute(userId) || [];
             const total = todos.length;
             const completedCount = todos.filter(t => t.isCompleted).length;
             const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
-            stats = { totalTodos: total, completedCount, completionRate };
+            // naive grouping by dueDate string
+            const format = (d) => {
+                const date = new Date(d);
+                if (period === 'year') return `${date.getFullYear()}`;
+                if (period === 'month') return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+                if (period === 'week') {
+                    const onejan = new Date(date.getFullYear(),0,1);
+                    const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay()+1) / 7);
+                    return `${date.getFullYear()}-${String(week).padStart(2,'0')}`;
+                }
+                return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+            };
+            const map = {};
+            todos.forEach(t => {
+                if (!t.dueDate) return;
+                const key = format(t.dueDate);
+                map[key] = (map[key] || 0) + 1;
+            });
+            const groups = Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([period, count]) => ({ period, count }));
+            // naive period totals equal overall totals (fallback)
+            const periodTotals = { totalTodos: total, completedCount, completionRate, avgDuration: 0, timeSpentTotal: 0 };
+            stats = { totalTodos: total, completedCount, completionRate, groups, periodTotals, topTagsInPeriod: [] };
         }
-        res.json(stats || { totalTodos: 0, completedCount: 0, completionRate: 0 });
+        res.json(stats || { totalTodos: 0, completedCount: 0, completionRate: 0, groups: [], periodTotals: { totalTodos: 0, completedCount: 0, completionRate: 0, avgDuration: 0, timeSpentTotal: 0 }, topTagsInPeriod: [] });
     } catch (err) {
         logger.error('[GET /api/stats] failed', { error: err.message, stack: err.stack });
         res.status(500).json({ error: err.message });

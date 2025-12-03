@@ -1,3 +1,5 @@
+/* stylelint-disable */
+/* Legacy stylesheet (superseded by TopBar.module.css). Kept for reference. */
 [data-theme='white'] .sidebar-search-mobile {
   background: rgba(0,0,0,0.02);
 }
@@ -259,8 +261,6 @@
 .top-bar-button:hover {
   z-index: 2; /* keep above background but below modal dropdowns */
   transform: translateY(-1px);
-.identity-chip { z-index: 1; }
-.chip-dropdown { z-index: 200; }
 }
 
 .top-bar-login {
@@ -301,6 +301,7 @@
   cursor: pointer;
   max-width: 240px;
   color: var(--color-text);
+  z-index: 1;
 }
 .identity-chip:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
 .chip-avatar {
@@ -337,7 +338,6 @@
 }
 .chip-dropdown button { background:transparent; border:none; text-align:left; padding:6px 8px; border-radius:6px; cursor:pointer; color:var(--color-text); }
 .chip-dropdown button:hover { background: var(--color-surface-hover); }
-}
 
 /* Ensure dropdown positions relative to the chip container when present */
 .identity-chip-container { position: relative; display: inline-flex; align-items: center; }

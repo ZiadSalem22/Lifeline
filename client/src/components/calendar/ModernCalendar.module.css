@@ -1,0 +1,35 @@
+.wrap{width:100%}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.nav-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:none;color:var(--color-text-muted);cursor:pointer;transition:all .3s}
+.nav-btn:hover{background:var(--color-surface-hover);color:var(--color-text)}
+.title{font-family:var(--font-family-heading);font-size:1.125rem;font-weight:600;color:var(--color-text);margin:0}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.week-day{text-align:center;font-size:.75rem;font-weight:500;color:var(--color-text-muted);padding:8px 0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.empty{aspect-ratio:1}
+.tile{aspect-ratio:1;border-radius:8px;font-size:1rem;font-weight:500;transition:all .3s;border:1px solid transparent;background:var(--color-bg);color:var(--color-text-muted);box-shadow:none;cursor:pointer;outline:none}
+.tile-today{border:1px solid var(--color-primary);background:var(--color-surface-hover);color:var(--color-text)}
+.tile-selected{background:var(--color-primary);color:#fff}
+[data-theme="dark"] .tile-selected{color:#000}
+.tile:hover{background:var(--color-surface-hover);color:var(--color-text)}
+
+/* Responsive: ensure readable sizes and touch targets */
+@media (--md){
+	.nav{margin-bottom:16px}
+	.nav-btn{width:40px;height:40px}
+	.title{font-size:1.15rem}
+	.week-day{padding:6px 0;font-size:.85rem}
+	.tile{font-size:1.2rem;border-radius:12px}
+}
+
+@media (--sm){
+	.grid{gap:6px}
+	.tile{border-radius:10px}
+	.nav-btn{width:44px;height:44px} /* min tappable size */
+	.week{gap:6px}
+}
+
+/* iPhone 15 family landscape heights */
+@media (max-height: 430px){
+	.nav{margin-bottom:12px}
+}

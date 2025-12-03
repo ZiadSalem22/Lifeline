@@ -11,13 +11,14 @@ const SlimButton = ({ active, onClick, children, title }) => (
     <button
         onClick={onClick}
         title={title}
-        className={`${styles.slimButton} ${active ? styles.slimButtonActive : ''}`}
+        className={`${styles['slim-button']} ${active ? styles['slim-button-active'] : ''}`}
     >
         {children}
     </button>
 );
 
 const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, theme, setTheme, searchQuery, setSearchQuery, onOpenSettings, onOpenLogin }) => {
+    // Use standardized breakpoint matching our --md custom media
     const isMobile = useMediaQuery('(max-width: 768px)');
     // Sidebar uses app-level theme management (passed via props)
     const toggleTheme = () => {
@@ -63,15 +64,26 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
         return () => root.classList.remove('has-open-sidebar');
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                onClose && onClose();
+            }
+        };
+        window.addEventListener('keydown', onKey, { passive: true });
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
+
     const portal = (
         <>
             <div
-                className={`${styles.sidebarOverlay} ${isOpen ? 'open' : ''}`}
+                className={`${styles['sidebar-overlay']} ${isOpen ? styles.open : ''}`}
                 onClick={onClose}
                 aria-hidden={!isOpen}
             />
             <aside
-                className={`${styles.sidebar} ${isOpen ? 'open' : ''}`}
+                className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}
                 role="navigation"
                 aria-label="Primary"
                 data-open={isOpen ? 'true' : 'false'}
@@ -79,7 +91,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                 {isMobile && (
                     <>
                         <button
-                            className={styles.mobileCloseButton}
+                            className={styles['mobile-close-button']}
                             onClick={onClose}
                             aria-label="Close sidebar"
                         >
@@ -87,11 +99,11 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                         </button>
 
                         {/* Mobile: surface the search input inside the sidebar */}
-                        <div className={styles.searchMobileWrap}>
-                            <div className={styles.sidebarSearchMobile}>
-                                <div className={styles.searchIcon}><SearchIcon /></div>
+                        <div className={styles['search-mobile-wrap']}>
+                            <div className={styles['sidebar-search-mobile']}>
+                                <div className={styles['search-icon']}><SearchIcon /></div>
                                 <input
-                                    className={styles.searchInput}
+                                    className={styles['search-input']}
                                     type="text"
                                     placeholder="Search"
                                     value={searchQuery || ''}
@@ -102,10 +114,10 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                     </>
                 )}
 
-                <div className={styles.contentCol}>
+                <div className={styles['content-col']}>
                     {/* Quick actions row (no settings) - moved above calendar */}
-                    <div className={styles.quickRow}>
-                        <NavLink to="/" style={() => ({ textDecoration: 'none' })} end>
+                    <div className={styles['quick-row']}>
+                        <NavLink to="/" className={styles['no-link']} end>
                             {({ isActive }) => (
                                 <SlimButton title="Home" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <HomeIcon />
@@ -113,7 +125,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                             )}
                         </NavLink>
 
-                        <NavLink to="/search" style={() => ({ textDecoration: 'none' })}>
+                        <NavLink to="/search" className={styles['no-link']}>
                             {({ isActive }) => (
                                 <SlimButton title="Advanced Search" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <SearchIcon />
@@ -121,7 +133,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                             )}
                         </NavLink>
 
-                        <NavLink to="/statistics" style={() => ({ textDecoration: 'none' })}>
+                        <NavLink to="/statistics" className={styles['no-link']}>
                             {({ isActive }) => (
                                 <SlimButton title="Statistics" active={isActive} onClick={() => { if (isMobile && onClose) onClose(); }}>
                                     <StatsIcon width={16} height={16} />
@@ -164,28 +176,28 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                     </div>
 
                     {/* Calendar (original, cleaner layout) */}
-                    <div className={styles.calendarWrap}>
+                    <div className={styles['calendar-wrap']}>
                         <ModernCalendar selectedDate={selectedDate} onSelectDate={onSelectDate} />
                     </div>
 
                     {/* Prev / Today / Next - single row (compact) */}
-                    <div className={styles.dayNavRow}>
+                    <div className={styles['day-nav-row']}>
                         <button
-                            className={styles.btnPrev}
+                            className={styles['btn-prev']}
                             onClick={() => pickDay(prev)}
                             title="Previous day"
                         >
                             Previous
                         </button>
                         <button
-                            className={styles.btnToday}
+                            className={styles['btn-today']}
                             onClick={() => pickDay(todayStr)}
                             title="Today"
                         >
                             Today
                         </button>
                         <button
-                            className={styles.btnNext}
+                            className={styles['btn-next']}
                             onClick={() => pickDay(next)}
                             title="Next day"
                         >
@@ -199,7 +211,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
                 <div className={styles.spacer} />
                 <footer className={styles.footer}>
                     {isMobile && (
-                        <button className={styles.sidebarFooterLogin} onClick={() => { onOpenLogin && onOpenLogin(); onClose && onClose(); }}>
+                        <button className={styles['sidebar-footer-login']} onClick={() => { onOpenLogin && onOpenLogin(); onClose && onClose(); }}>
                             Login
                         </button>
                     )}

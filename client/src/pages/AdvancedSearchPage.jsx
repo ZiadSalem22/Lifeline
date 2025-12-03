@@ -1,12 +1,13 @@
 import React from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import AdvancedSearch from '../components/search/AdvancedSearch';
+import styles from './AdvancedSearchPage.module.css';
 
 const AdvancedSearchPage = ({ sidebarProps = {}, topBarProps = {}, searchProps = {} }) => {
   return (
     <AppLayout sidebarProps={sidebarProps} topBarProps={topBarProps}>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 80px)' }}>
-        <div style={{ width: '100%', maxWidth: 900 }}>
+      <div className={styles.page}>
+        <div className={styles.container}>
           <AdvancedSearch {...searchProps} />
         </div>
       </div>

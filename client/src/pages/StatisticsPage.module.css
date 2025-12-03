@@ -1,0 +1,43 @@
+/* Responsive layout wrapper for Statistics page */
+.page{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  min-height:100%;
+  padding:24px;
+  padding-top: calc(24px + env(safe-area-inset-top));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.container{
+  width:100%;
+  max-width:640px;
+  margin:0 auto;
+}
+
+@media (--lg){
+  .page{ padding:20px; padding-top: calc(20px + env(safe-area-inset-top)); padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+
+@media (--md){
+  .page{ padding:16px; padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .container{ max-width:100%; }
+}
+
+@media (--sm){
+  .page{ padding:12px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+
+/* iPhone 15/15 Pro portrait safe-area */
+@media (max-width: 393px){
+  /* Center content and remove extra left padding for iPhone width */
+  .page{ padding-left: 0; padding-right: 0; }
+  .container{ max-width: 640px; margin: 0 auto; padding-left: 0; padding-right: 0; }
+}
+
+/* Fluid safe-area handling covers all small widths; remove 430px special-case */
+
+/* Landscape safe-area handling */
+@media (max-height: 430px){
+  .page{ padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

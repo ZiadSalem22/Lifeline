@@ -57,7 +57,7 @@ const DashboardPage = ({ sidebarProps, topBarProps, children, showBackground = f
       {showBackground && <CosmicBackground />}
       <Sidebar {...sidebarProps} />
       <TopBar {...topBarProps} />
-      <main className="main-content" style={{ paddingTop: '120px' }}>
+      <main className="main-content">
         {children}
         {me && (
           <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '1rem' }}>

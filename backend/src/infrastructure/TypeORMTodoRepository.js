@@ -296,6 +296,226 @@ class TypeORMTodoRepository extends ITodoRepository {
         return { totalTodos: total, completedCount, completionRate: total>0?Math.round((completedCount/total)*100):0, avgDuration, topTags, tasksPerDay };
     }
 
+    async getStatisticsForUserInRange(userId, startDate, endDate) {
+        const dialect = (AppDataSource.options && AppDataSource.options.type) || 'mssql';
+        // Normalize inclusive end
+        let endPlusOne = endDate;
+        try {
+            const d = new Date(endDate);
+            if (!Number.isNaN(d.getTime())) {
+                d.setDate(d.getDate() + 1);
+                endPlusOne = d.toISOString().slice(0, 10);
+            }
+        } catch (_) {}
+
+        if (dialect === 'sqlite') {
+            // Totals and completed in range (end-exclusive)
+            const totals = await AppDataSource.manager.query(
+                `SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
+                        AVG(NULLIF(duration,0)) as avgDur, SUM(COALESCE(duration,0)) as sumDur
+                 FROM todos
+                 WHERE user_id = ? AND COALESCE(archived,0) = 0 AND due_date >= ? AND due_date < ?`,
+                [userId, startDate, endPlusOne]
+            );
+            const trow = totals && totals[0] ? totals[0] : {};
+            const totalTodos = parseInt(trow.total || 0, 10);
+            const completedCount = parseInt(trow.completed || 0, 10);
+            const avgDuration = trow.avgDur ? Math.round(trow.avgDur) : 0;
+            const timeSpentTotal = trow.sumDur ? parseInt(trow.sumDur, 10) : 0;
+
+            const topRows = await AppDataSource.manager.query(
+                `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+                 FROM todo_tags tt
+                 JOIN tags t ON t.id = tt.tag_id
+                 JOIN todos td ON td.id = tt.todo_id
+                 WHERE td.user_id = ? AND COALESCE(td.archived,0) = 0 AND td.due_date >= ? AND td.due_date < ?
+                 GROUP BY t.id, t.name, t.color
+                 ORDER BY cnt DESC
+                 LIMIT 10`,
+                [userId, startDate, endPlusOne]
+            );
+            const topTagsInPeriod = (topRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+
+            const groupRows = await AppDataSource.manager.query(
+                `SELECT strftime('%Y-%m-%d', due_date) as day, COUNT(*) as cnt
+                 FROM todos
+                 WHERE user_id = ? AND COALESCE(archived,0) = 0 AND due_date >= ? AND due_date < ?
+                 GROUP BY day
+                 ORDER BY day ASC`,
+                [userId, startDate, endPlusOne]
+            );
+            const groups = (groupRows || []).map(r => ({ period: r.day, date: r.day, count: r.cnt }));
+            const completionRate = totalTodos > 0 ? Math.round((completedCount / totalTodos) * 100) : 0;
+            return { periodTotals: { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal }, topTagsInPeriod, groups };
+        }
+
+        // MSSQL default
+        const totals = await AppDataSource.manager.query(
+            `SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
+                    AVG(CASE WHEN duration > 0 THEN duration ELSE NULL END) as avgDur,
+                    SUM(ISNULL(duration,0)) as sumDur
+             FROM todos
+             WHERE user_id = @0 AND ISNULL(archived,0) = 0 AND due_date >= @1 AND due_date < @2`,
+            [userId, startDate, endPlusOne]
+        );
+        const trow = totals && totals[0] ? totals[0] : {};
+        const totalTodos = parseInt(trow.total || 0, 10);
+        const completedCount = parseInt(trow.completed || 0, 10);
+        const avgDuration = trow.avgDur ? Math.round(trow.avgDur) : 0;
+        const timeSpentTotal = trow.sumDur ? parseInt(trow.sumDur, 10) : 0;
+
+        const topRows = await AppDataSource.manager.query(
+            `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+             FROM todo_tags tt
+             JOIN tags t ON t.id = tt.tag_id
+             JOIN todos td ON td.id = tt.todo_id
+             WHERE td.user_id = @0 AND ISNULL(td.archived,0) = 0 AND td.due_date >= @1 AND td.due_date < @2
+             GROUP BY t.id, t.name, t.color
+             ORDER BY cnt DESC
+             OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY`,
+            [userId, startDate, endPlusOne]
+        );
+        const topTagsInPeriod = (topRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+
+        const groupRows = await AppDataSource.manager.query(
+            `SELECT CONVERT(varchar(10), due_date, 23) as day, COUNT(*) as cnt
+             FROM todos
+             WHERE user_id = @0 AND ISNULL(archived,0) = 0 AND due_date >= @1 AND due_date < @2
+             GROUP BY CONVERT(varchar(10), due_date, 23)
+             ORDER BY day ASC`,
+            [userId, startDate, endPlusOne]
+        );
+        const groups = (groupRows || []).map(r => ({ period: r.day, date: r.day, count: r.cnt }));
+        const completionRate = totalTodos > 0 ? Math.round((completedCount / totalTodos) * 100) : 0;
+        return { periodTotals: { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal }, topTagsInPeriod, groups };
+    }
+
+    async getStatisticsAggregated(userId, period) {
+        // Determine current window for period totals; 'all' or undefined returns overall
+        const today = new Date();
+        let start = null, end = null;
+        if (period === 'day') {
+            end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            start = new Date(end);
+        } else if (period === 'week') {
+            const day = today.getDay();
+            const diffToMonday = (day + 6) % 7;
+            start = new Date(today);
+            start.setDate(today.getDate() - diffToMonday);
+            end = new Date(start);
+            end.setDate(start.getDate() + 6);
+        } else if (period === 'month') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        } else if (period === 'year') {
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+        }
+
+        const toISO = (d) => d.toISOString().slice(0,10);
+
+        if (start && end) {
+            return this.getStatisticsForUserInRange(userId, toISO(start), toISO(end));
+        }
+
+        // 'all' or undefined: overall totals + last 30 days groups
+        const dialect = (AppDataSource.options && AppDataSource.options.type) || 'mssql';
+        if (dialect === 'sqlite') {
+            const totals = await AppDataSource.manager.query(
+                `SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
+                        AVG(NULLIF(duration,0)) as avgDur, SUM(COALESCE(duration,0)) as sumDur
+                 FROM todos WHERE user_id = ? AND COALESCE(archived,0) = 0`,
+                [userId]
+            );
+            const r = totals && totals[0] ? totals[0] : {};
+            const totalTodos = parseInt(r.total || 0, 10);
+            const completedCount = parseInt(r.completed || 0, 10);
+            const avgDuration = r.avgDur ? Math.round(r.avgDur) : 0;
+            const timeSpentTotal = r.sumDur ? parseInt(r.sumDur, 10) : 0;
+            const completionRate = totalTodos > 0 ? Math.round((completedCount/totalTodos)*100) : 0;
+            const topRows = await AppDataSource.manager.query(
+                `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+                 FROM todo_tags tt
+                 JOIN tags t ON t.id = tt.tag_id
+                 JOIN todos td ON td.id = tt.todo_id
+                 WHERE td.user_id = ? AND COALESCE(td.archived,0) = 0
+                 GROUP BY t.id, t.name, t.color
+                 ORDER BY cnt DESC
+                 LIMIT 10`,
+                [userId]
+            );
+            const topTagsInPeriod = (topRows || []).map(r => ({ id: r.id, name: r.name, color: r.color, count: r.cnt }));
+
+            const endD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const startD = new Date(endD.getTime() - (29 * 24 * 60 * 60 * 1000));
+            const startStr = toISO(startD), endStr = toISO(endD);
+            const perDayRows = await AppDataSource.manager.query(
+                `SELECT strftime('%Y-%m-%d', due_date) as day, COUNT(*) as cnt
+                 FROM todos
+                 WHERE user_id = ? AND COALESCE(archived,0) = 0 AND due_date BETWEEN ? AND ?
+                 GROUP BY day ORDER BY day ASC`,
+                [userId, startStr, endStr]
+            );
+            const map = {};
+            (perDayRows || []).forEach(r => { if (r.day) map[r.day] = r.cnt; });
+            const groups = [];
+            for (let i=0;i<30;i++) {
+                const d = new Date(startD.getTime() + i*24*60*60*1000);
+                const key = toISO(d);
+                groups.push({ period: key, date: key, count: map[key] || 0 });
+            }
+            return { periodTotals: { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal }, topTagsInPeriod, groups };
+        }
+
+        const totals = await AppDataSource.manager.query(
+            `SELECT COUNT(*) as total, SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
+                    AVG(CASE WHEN duration > 0 THEN duration ELSE NULL END) as avgDur,
+                    SUM(ISNULL(duration,0)) as sumDur
+             FROM todos WHERE user_id = @0 AND ISNULL(archived,0) = 0`,
+            [userId]
+        );
+        const r = totals && totals[0] ? totals[0] : {};
+        const totalTodos = parseInt(r.total || 0, 10);
+        const completedCount = parseInt(r.completed || 0, 10);
+        const avgDuration = r.avgDur ? Math.round(r.avgDur) : 0;
+        const timeSpentTotal = r.sumDur ? parseInt(r.sumDur, 10) : 0;
+        const completionRate = totalTodos > 0 ? Math.round((completedCount/totalTodos)*100) : 0;
+
+        const topRows = await AppDataSource.manager.query(
+            `SELECT t.id, t.name, t.color, COUNT(*) as cnt
+             FROM todo_tags tt
+             JOIN tags t ON t.id = tt.tag_id
+             JOIN todos td ON td.id = tt.todo_id
+             WHERE td.user_id = @0 AND ISNULL(td.archived,0) = 0
+             GROUP BY t.id, t.name, t.color
+             ORDER BY cnt DESC
+             OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY`,
+            [userId]
+        );
+        const topTagsInPeriod = (topRows || []).map(x => ({ id: x.id, name: x.name, color: x.color, count: x.cnt }));
+
+        const endD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const startD = new Date(endD.getTime() - (29 * 24 * 60 * 60 * 1000));
+        const startStr = toISO(startD), endStr = toISO(endD);
+        const perDayRows = await AppDataSource.manager.query(
+            `SELECT CONVERT(varchar(10), due_date, 23) as day, COUNT(*) as cnt
+             FROM todos
+             WHERE user_id = @0 AND ISNULL(archived,0) = 0 AND due_date BETWEEN @1 AND @2
+             GROUP BY CONVERT(varchar(10), due_date, 23)
+             ORDER BY day ASC`,
+            [userId, startStr, endStr]
+        );
+        const map = {};
+        (perDayRows || []).forEach(x => { if (x.day) map[x.day] = x.cnt; });
+        const groups = [];
+        for (let i=0;i<30;i++) {
+            const d = new Date(startD.getTime() + i*24*60*60*1000);
+            const key = toISO(d);
+            groups.push({ period: key, date: key, count: map[key] || 0 });
+        }
+        return { periodTotals: { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal }, topTagsInPeriod, groups };
+    }
+
     _mapRowToDomain(row) {
         const tags = (row.tags || []).map(t => new Tag(t.id, t.name, t.color));
         const subtasks = row.subtasks ? JSON.parse(row.subtasks) : [];

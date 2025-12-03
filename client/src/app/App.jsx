@@ -29,7 +29,7 @@ function AppInner() {
   const location = useLocation();
   const guestStorage = useGuestStorage();
   const { fetchWithAuth } = useApi();
-  const { currentUser, guestMode, isAuthenticated, checkedIdentity, logout, authLoading, setGuestMode } = useAuthContext();
+  const { currentUser, guestMode, isAuthenticated, checkedIdentity, logout, authLoading, setGuestMode, login } = useAuthContext();
   const { theme, changeTheme, font, themes, changeFont } = useTheme();
   const {
     loading,
@@ -384,7 +384,7 @@ function AppInner() {
     searchQuery,
     setSearchQuery,
     onOpenSettings: () => setShowSettings(true),
-    onOpenLogin: () => navigate('/auth'),
+    onOpenLogin: () => login && login(),
     onNavigate: setCurrentPage,
     theme,
     setTheme: handleThemeChange,
@@ -446,6 +446,83 @@ function AppInner() {
       <RecurrenceSelector {...recurrenceProps} />
       <ExportImport {...exportImportProps} />
     </>
+  );
+
+  const renderHeroSection = () => (
+    <div className="fade-in-slide-down home-hero">
+      <div className="header-content">
+        <h1 className="header-title">{title}</h1>
+        {durationString && (
+          <span className="duration-pill scale-in">{durationString}</span>
+        )}
+      </div>
+
+      <div className="home-progress-row">
+        <p className="home-progress-text">
+          {completedCount} of {filteredTodos.length} completed
+        </p>
+        {filteredTodos.length > 0 && (
+          <div className="home-progress-meter">
+            <div className="home-progress-track">
+              <div
+                className="progress-bar-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!searchActive && (
+        <div className="home-filters-row">
+          {tags.length > 0 && (
+            <div className="home-filter-chips">
+              <span className="home-filter-label">Filter:</span>
+              {tags.map((tag) => {
+                const isActive = selectedFilterTags.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFilterTags((prev) =>
+                        prev.includes(tag.id)
+                          ? prev.filter((id) => id !== tag.id)
+                          : [...prev, tag.id]
+                      );
+                    }}
+                    className={`home-filter-chip${isActive ? ' home-filter-chip--active' : ''}`}
+                    style={{ '--chip-color': tag.color }}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+              {selectedFilterTags.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterTags([])}
+                  className="home-filter-chip"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="home-sort-select"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="priority">Sort by Priority</option>
+            <option value="duration">Sort by Duration</option>
+            <option value="name">Sort by Name</option>
+          </select>
+        </div>
+      )}
+    </div>
   );
 
   if (loading || !checkedIdentity) {
@@ -816,6 +893,8 @@ function AppInner() {
         <Route path="/stats" element={
             <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
         } />
+
+        <Route path="/auth" element={<AuthPage />} />
 
 
         {/* Remove auth route; guest mode uses home */}

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import './modal.css';
 
 export default function Modal({ isOpen, onClose, title, children }) {
   useEffect(() => {
@@ -9,10 +10,10 @@ export default function Modal({ isOpen, onClose, title, children }) {
 
   if (!isOpen) return null;
   return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={onClose}>
-      <div onClick={(e)=>e.stopPropagation()} style={{ width: 'min(720px, 94%)', background: 'var(--color-bg)', borderRadius: 12, padding: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
-        {title && <h3 style={{ marginTop: 0 }}>{title}</h3>}
-        <div>{children}</div>
+    <div className="modal-overlay safe-area-x" onClick={onClose}>
+      <div className="modal-card" onClick={(e)=>e.stopPropagation()}>
+        {title && <h3 className="modal-title">{title}</h3>}
+        <div className="modal-body safe-area-y">{children}</div>
       </div>
     </div>
   );
