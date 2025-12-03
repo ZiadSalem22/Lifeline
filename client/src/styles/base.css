@@ -1288,11 +1288,19 @@ input[type="checkbox"]:focus {
   /* Common micro-adjustments for compact mobile width */
   .home-hero { gap: 5px; margin-bottom: 24px; }
   .home-progress-row { gap: 8px; }
+  .home-progress-meter { max-width: 220px; }
+  .home-filters-row { gap: 10px; }
   .home-filter-chips { gap: 5px; }
-  .home-filter-chip { font-size: calc(0.82rem * 0.913); padding: 5px 9px; }
-  .duration-pill { font-size: calc(0.78rem * 0.913); }
+  .home-filter-chip { font-size: calc(0.82rem * 0.913); padding: 5px 9px; max-width: 140px; }
+  .duration-pill { font-size: calc(0.78rem * 0.913); padding: 3px 10px; }
   .add-task-form { padding: 22px 16px 18px; }
   .mobile-menu-button, .mobile-close-button { width: 44px; height: 44px; }
+  /* Make inline controls narrower without affecting height */
+  select,
+  input[type="date"],
+  input[type="time"] {
+    max-width: 150px;
+  }
 }
 
 /* Global mobile scale for iPhone widths: visually shrink to 85% */
