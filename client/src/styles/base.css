@@ -1314,7 +1314,8 @@ input[type="checkbox"]:focus {
   .task-card,
   .task-card-enter-exit {
     width: 85%;
-    margin-left: auto;
+    /* Align closer to the left on small screens */
+    margin-left: 0;
     margin-right: auto;
   }
 }
