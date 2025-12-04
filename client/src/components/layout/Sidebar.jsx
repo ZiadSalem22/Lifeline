@@ -210,11 +210,7 @@ const Sidebar = ({ selectedDate, onSelectDate, isOpen, onClose, onNavigate, them
 
                 <div className={styles.spacer} />
                 <footer className={styles.footer}>
-                    {isMobile && (
-                        <button className={styles['sidebar-footer-login']} onClick={() => { onOpenLogin && onOpenLogin(); onClose && onClose(); }}>
-                            Login
-                        </button>
-                    )}
+                    {/* Login button removed for mobile view */}
                     <div className={styles.version}>
                         v{(import.meta.env.REACT_APP_VERSION || import.meta.env.VITE_APP_VERSION || '1.0')}
                     </div>

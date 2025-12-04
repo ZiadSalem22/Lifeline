@@ -1,3 +1,19 @@
+.chip-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 12px 24px rgba(0 0 0 / 30%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
 .sidebar-search-mobile {
   display: flex;
   align-items: center;
@@ -7,10 +23,12 @@
   border-radius: 10px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  z-index: 100; /* Adjusted for dropdown interactivity */
+  pointer-events: auto; /* Ensured pointer events are enabled */
 }
-
 [data-theme='white'] .sidebar-search-mobile {
   background: rgb(0 0 0 / 2%);
+  /* Removed stray closing brace to fix CSS error */
 }
 
 .sidebar-search-mobile .search-icon {
@@ -305,31 +323,43 @@
 }
 
 /* Guest banner in top bar */
+
 .guest-pill {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  padding: 6px 12px;
+  padding: 8px 20px;
   border-radius: 999px;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  position: relative; /* anchor for dropdown */
+  font-size: 1rem;
+  font-family: var(--font-family-heading);
+  font-weight: 600;
+  color: var(--color-text);
+  box-shadow: 0 8px 24px rgba(0 0 0 / 10%);
+  margin-right: 0;
+  transition: background 0.18s, box-shadow 0.18s;
 }
 
 .guest-pill .guest-login {
-  background: var(--color-primary);
-  color: var(--color-bg);
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
+  /* Hidden in guest mode per requirement */
+  display: none !important;
 }
 
-.guest-pill .guest-login:hover { filter: brightness(1.05); }
+/* Hover styles removed since button is hidden */
+
+@media (width <= 900px) {
+  .guest-pill {
+    font-size: 0.92rem;
+    padding: 7px 12px;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(0 0 0 / 8%);
+  }
+  .guest-pill .guest-login {
+    font-size: 0.92rem;
+    padding: 7px 16px;
+  }
+}
 
 /* Guest caret (dropdown toggle) */
 .guest-caret-btn {
@@ -363,7 +393,7 @@
 }
 
 .top-bar-login {
-  min-width: 96px;
+  min-width: 100px;
 }
 
 .top-bar-controls {
@@ -392,13 +422,13 @@
   gap: 10px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  padding: 6px 10px;
+  padding: 6px 1px;
   border-radius: 999px;
   position: relative;
   transition: background 160ms ease, box-shadow 160ms ease;
   flex: 0 0 auto;
   cursor: pointer;
-  max-width: 240px;
+  -width: 240px;
   color: var(--color-text);
   z-index: 1;
 }
@@ -408,11 +438,11 @@
 }
 
 .chip-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 100%;
   object-fit: cover;
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
 }
 .chip-initials {
   display: flex;
@@ -420,12 +450,12 @@
   justify-content: center;
   background: #333;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 
 .chip-name {
   max-width: 120px;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
@@ -446,7 +476,7 @@
 
 .identity-chip-container {
   position: relative;
-  display: inline-flex;
+  display: inline;
   align-items: center;
 }
 
@@ -460,22 +490,48 @@
 .search-input:focus { outline: none; }
 
 @media (width <= 900px) {
-  .top-bar {
-    padding: 10px 16px 14px;
-  }
-
-  .top-bar-menu-button {
-    display: inline-flex;
-  }
-
-  .chip-name {
-    max-width: 90px;
-  }
-
   .identity-chip {
-    max-width: 200px;
+    max-width: 90vw;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-surface);
+    border-radius: 999px;
+    /* box-shadow removed for a cleaner look */
+    overflow: hidden;
+    margin-right: 0 !important;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+  }
+  .chip-avatar, .chip-initials {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+  .chip-name {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: inherit;
+    flex: 1 1 auto;
+    text-align: left;
   }
 }
+/* Removed duplicate/stray rules and closing brace to fix CSS error */
 
 @media (width <= 720px) {
   .top-bar-controls {
