@@ -509,6 +509,10 @@
     transform: translateY(-50%);
     z-index: 10;
   }
+  /* Ensure menu button appears when sidebar is hidden (< 900px) */
+  .top-bar-menu-button {
+    display: inline-flex;
+  }
   .chip-avatar, .chip-initials {
     width: 32px;
     height: 32px;
