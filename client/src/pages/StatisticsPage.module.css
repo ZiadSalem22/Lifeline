@@ -1,11 +1,11 @@
 /* Responsive layout wrapper for Statistics page */
-.page{
+ .page{
   display:flex;
   justify-content:center;
   align-items:flex-start;
   min-height:100%;
   padding:24px;
-  padding-top: calc(24px + env(safe-area-inset-top));
+  padding-top: calc(84px + env(safe-area-inset-top));
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
