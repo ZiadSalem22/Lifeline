@@ -1,0 +1,52 @@
+name: Deploy Backend to Azure
+
+on:
+  push:
+    branches:
+      - deploy    # Only deploy when pushing to the 'deploy' branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      #############################################################
+      # 1. Checkout repository
+      #############################################################
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      #############################################################
+      # 2. Setup Node.js (your backend uses Node 20)
+      #############################################################
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      #############################################################
+      # 3. Install backend dependencies
+      #############################################################
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install --production
+
+      #############################################################
+      # 4. Azure Login (Uses service principal from GitHub Secrets)
+      #    Secret must contain JSON created from Azure CLI:
+      #    `az ad sp create-for-rbac --name lifeline-backend-sp --role contributor --scopes /subscriptions/<sub-id>/resourceGroups/lifeline-rg --sdk-auth`
+      #############################################################
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      #############################################################
+      # 5. Deploy the backend folder to Azure App Service
+      #############################################################
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: lifeline-backend-app
+          resource-group-name: lifeline-rg
+          package: ./backend
