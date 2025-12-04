@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportDataModal from './ExportDataModal';
 import ExportImport from './ExportImport';
@@ -16,6 +16,28 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
     const [editTagName, setEditTagName] = useState('');
     const [editTagColor, setEditTagColor] = useState('');
 
+    // Preset palette for random tag colors
+    const presetColors = useMemo(() => [
+        '#6366F1', // indigo
+        '#22C55E', // green
+        '#EF4444', // red
+        '#F59E0B', // amber
+        '#3B82F6', // blue
+        '#A855F7', // purple
+        '#14B8A6', // teal
+        '#EAB308', // yellow
+        '#FB7185', // rose
+        '#0EA5E9', // sky
+    ], []);
+
+    // When settings open, pick a random default color
+    useEffect(() => {
+        if (isOpen) {
+            const random = presetColors[Math.floor(Math.random() * presetColors.length)];
+            setNewTagColor(random);
+        }
+    }, [isOpen, presetColors]);
+
     const handleAddTag = async (e) => {
         e.preventDefault();
         if (!newTagName.trim() || isSubmitting) return;
@@ -25,7 +47,9 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
             const created = await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
             setTags([...tags, created]);
             setNewTagName('');
-            setNewTagColor('#6366f1');
+            // After adding, choose another random color for convenience
+            const random = presetColors[Math.floor(Math.random() * presetColors.length)];
+            setNewTagColor(random);
         } catch (error) {
             console.error('Failed to create tag', error);
         } finally {
