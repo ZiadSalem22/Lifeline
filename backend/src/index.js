@@ -26,7 +26,7 @@ const CompleteRecurringTodo = require('./application/CompleteRecurringTodo');
 const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/TagUseCases');
 
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
@@ -1442,10 +1442,8 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start Server
-if (process.env.NODE_ENV !== 'test') {
-    app.listen(port, () => {
-        console.log(`Backend running at http://localhost:${port}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`);
+});
 
 module.exports = app;
