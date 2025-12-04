@@ -23,6 +23,7 @@ const EXPORT_URL = joinUrl('/export');
 const IMPORT_URL = joinUrl('/import');
 const TODOS_BATCH_URL = joinUrl('/todos/batch');
 const SETTINGS_URL = joinUrl('/settings');
+const RESET_ACCOUNT_URL = joinUrl('/reset-account');
 
 const assertFetcher = (fetchWithAuth, caller) => {
     if (typeof fetchWithAuth !== 'function') {
@@ -281,4 +282,13 @@ export const deleteTag = async (id, fetchWithAuth) => {
         method: 'DELETE',
     });
     ensureOk(response, 'Failed to delete tag', 'deleteTag');
+};
+
+export const resetAccountData = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'resetAccountData');
+    const response = await executeFetch(RESET_ACCOUNT_URL, {
+        method: 'POST',
+    });
+    ensureOk(response, 'Failed to reset account data', 'resetAccountData');
+    return response.json();
 };

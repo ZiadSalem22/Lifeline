@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { downloadExport, importTodos } from '../../utils/api';
+import { downloadExport, importTodos, resetAccountData } from '../../utils/api';
 import styles from './ExportImport.module.css';
 
 // Settings-adjacent dialog responsible for exporting and importing workspace data safely.
@@ -61,6 +61,20 @@ const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  // Add reset handler
+  const handleResetAccount = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL your todos, tags, and theme? This cannot be undone.')) return;
+    try {
+      setImportMessage('Resetting account data...');
+      await resetAccountData(fetchWithAuth);
+      setImportMessage('Account data deleted. Reloading...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+      setImportError('Failed to reset account: ' + error.message);
+      setTimeout(() => setImportError(''), 3000);
     }
   };
 
@@ -142,6 +156,21 @@ const ExportImport = ({ onImportComplete, isOpen, onClose, fetchWithAuth }) => {
         {importError && (
           <div className={styles.error}>{importError}</div>
         )}
+
+        {/* Delete/Reset Button */}
+        <div className={styles.section} style={{ borderTop: '1px solid var(--color-border)', marginTop: 24, paddingTop: 16 }}>
+          <h3 style={{ color: 'var(--color-danger)' }}>Delete All Data</h3>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-danger)', margin: 0 }}>
+            This will permanently delete all your todos, tags, and theme. This action cannot be undone.
+          </p>
+          <button
+            onClick={handleResetAccount}
+            className={styles['danger-btn']}
+            style={{ marginTop: 12 }}
+          >
+            Delete All Data
+          </button>
+        </div>
 
         {/* Close Button */}
         <button onClick={onClose} className={styles['close-btn']}>Close</button>

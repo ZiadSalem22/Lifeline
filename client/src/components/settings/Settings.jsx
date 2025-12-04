@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportDataModal from './ExportDataModal';
+import ExportImport from './ExportImport';
 import { createTag, deleteTag, updateTag } from '../../utils/api';
 import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
 import styles from './Settings.module.css';
@@ -135,15 +136,13 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setActiveTab('export')}
-                                className={activeTab === 'export' ? styles['tab-active'] : styles.tab}
+                                onClick={() => setActiveTab('importExport')}
+                                className={activeTab === 'importExport' ? styles['tab-active'] : styles.tab}
                             >
-                                Export
+                                Import / Export
                             </motion.button>
                         </div>
-                        {showExportModal && (
-                            <ExportDataModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} />
-                        )}
+                            {/* No modal needed, handled inline below */}
 
                         {/* Content */}
                         <div className={styles['body']}>
@@ -335,13 +334,22 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                             </div>
                             )}
 
-                            {/* Export Tab */}
-                            {activeTab === 'export' && (
+                            {/* Import / Export Tab */}
+                            {activeTab === 'importExport' && (
                                 <div className={styles.section}>
-                                    <h3 className={styles['section-title']}>Export</h3>
-                                    <p className={styles['section-subtitle']}>Export your data (tasks, tags, and preferences). Use the button below to open the export dialog.</p>
+                                    {/* Import/Export functionality in one place */}
+                                    <h3 className={styles['section-title']}>Import / Export</h3>
+                                    <p className={styles['section-subtitle']}>
+                                        Export your data (tasks, tags, preferences) or import a previously exported JSON file to restore your workspace.
+                                    </p>
                                     <div>
-                                        <button onClick={() => setShowExportModal(true)} className={styles['submit-btn']}>Open Export Dialog</button>
+                                        {/* Render the full-featured Import/Export component */}
+                                        <ExportImport
+                                            fetchWithAuth={fetchWithAuth}
+                                            onImportComplete={() => window.location.reload()}
+                                            isOpen={true}
+                                            onClose={() => {}}
+                                        />
                                     </div>
                                 </div>
                             )}
