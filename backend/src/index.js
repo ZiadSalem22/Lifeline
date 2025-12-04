@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -27,33 +28,35 @@ const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/Tag
 const app = express();
 const port = 3000;
 
-
-// CORS configuration: allow Vite dev origin (HTTP/HTTPS) and Authorization header
-const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173,https://localhost:5173,https://192.168.1.153:5173/')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            if (!origin) return callback(null, true); // non-browser or same-origin
-            if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
-            return callback(new Error(`CORS blocked for origin ${origin}`));
-        },
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: [
-            'Authorization',
-            'Content-Type',
-            'Accept',
-            'Origin',
-            'X-Requested-With',
-        ],
-        credentials: true,
-    })
-);
-
 app.use(bodyParser.json());
+
+/**
+ * @openapi
+ * /api/reset-account:
+ *   post:
+ *     summary: Delete all todos, tags, and theme for the current user
+ *     tags: [Account]
+ *     responses:
+ *       '200': { description: Account data reset }
+ */
+app.post('/api/reset-account', checkJwt, attachCurrentUser, requireAuth(), async (req, res) => {
+    try {
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        // Delete all todos for user
+        await AppDataSource.manager.query('DELETE FROM todos WHERE user_id = @0', [userId]);
+        // Delete all tags for user
+        await AppDataSource.manager.query('DELETE FROM tags WHERE user_id = @0', [userId]);
+        // Delete user settings (theme, etc)
+        await AppDataSource.manager.query('DELETE FROM user_settings WHERE user_id = @0', [userId]);
+
+        res.json({ success: true, message: 'Account data reset: todos, tags, and theme deleted.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // PUBLIC DB health check route (must be before checkJwt)
 /**
