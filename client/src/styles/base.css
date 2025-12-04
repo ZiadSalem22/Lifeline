@@ -1,3 +1,18 @@
+.task-list-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
@@ -363,16 +378,15 @@ body {
 
 /* Mobile: pull hero block slightly closer to Top Bar */
 @media (max-width: 420px) {
-  .fade-in-slide-down {
-    margin-top: -8px;
+  .task-card-subtasks {
+    width: 200% !important;
+    max-width: 200%;
+    min-width: 0;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
   }
 }
-@media (max-width: 393px) {
-  .fade-in-slide-down {
-    margin-top: -12px;
-  }
-}
-
 .scale-in {
   animation: scaleIn 0.2s ease-out forwards;
 }
@@ -1133,13 +1147,6 @@ input[type="checkbox"]:focus {
   height: 14px !important;
 }
 
-.subtask-checkbox-small:checked::after {
-  left: 3px !important;
-  top: 1px !important;
-  width: 4px !important;
-  height: 8px !important;
-}
-
 /* --- Consolidated from responsive.css --- */
 
 /* Layout & Responsive Design Tokens */
@@ -1314,8 +1321,16 @@ input[type="checkbox"]:focus {
   .task-card,
   .task-card-enter-exit {
     width: 85%;
-    /* Align closer to the left on small screens */
-    margin-left: 0;
+    /* Center on small screens */
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Center main content and task list wrappers at 393px */
+  .main-content,
+  .tasks-container,
+  .task-list {
+    margin-left: auto;
     margin-right: auto;
   }
 }
@@ -1333,6 +1348,165 @@ input[type="checkbox"]:focus {
 /* Only apply this top offset in the 394–430px range to avoid overriding tighter rules below 393px */
 @media (min-width: 394px) and (max-width: 430px) {
   .main-content { padding-top: 96px; }
+}
+
+/* TaskCard mobile styles for iPhone 15 Pro (max-width: 392px) */
+@media (max-width: 392px) {
+  .task-card-wrapper {
+    width: 92vw;
+    min-width: 0;
+    max-width: 370px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 10px 8px;
+    border-radius: 12px;
+    gap: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  /* Make subtasks container wider for mobile */
+  .task-card-wrapper .motion-div,
+  .task-card-wrapper .subtasks-container {
+    width: 300px !important;
+    max-width:150%;
+    min-width: 0;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+  }
+
+  .task-card-enter-exit {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .task-card-hover-actions {
+    gap: 2px;
+  }
+
+  .task-card-button,
+  .task-card-toggle-button,
+  .task-card-button.delete-button,
+  .task-card-button.flag-button {
+    padding: 6px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .check-icon-enter-exit {
+    font-size: 1rem;
+  }
+
+  .tag-fade-in-slide-right {
+    font-size: 0.72rem;
+    padding: 3px 7px;
+    border-radius: 8px;
+  }
+
+  .scale-in {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+
+  .subtask-checkbox-small {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .task-card-wrapper textarea,
+  .task-card-wrapper input[type="text"],
+  .task-card-wrapper input[type="number"],
+  .task-card-wrapper select {
+    font-size: 0.85rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .task-card-hover-actions button,
+  .task-card-wrapper .task-card-hover-actions select {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .task-card-hover-actions {
+    gap: 2px;
+  }
+
+  .task-card-wrapper .tag-fade-in-slide-right {
+    font-size: 0.72rem;
+    padding: 3px 7px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .scale-in {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .subtask-checkbox-small {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .task-card-wrapper .task-card-enter-exit {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .task-card-wrapper .task-card-button,
+  .task-card-wrapper .task-card-toggle-button,
+  .task-card-wrapper .task-card-button.delete-button,
+  .task-card-wrapper .task-card-button.flag-button {
+    padding: 6px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .task-card-wrapper .check-icon-enter-exit {
+    font-size: 1rem;
+  }
+
+  .task-card-wrapper .task-card-hover-actions {
+    gap: 2px;
+  }
+
+  .task-card-wrapper .task-card-hover-actions button,
+  .task-card-wrapper .task-card-hover-actions select {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .tag-fade-in-slide-right {
+    font-size: 0.72rem;
+    padding: 3px 7px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .scale-in {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+
+  .task-card-wrapper .subtask-checkbox-small {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .task-card-wrapper .task-card-enter-exit {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 /* Sidebar */
@@ -1482,5 +1656,58 @@ input[type="checkbox"]:focus {
     left: var(--sidebar-width);
     right: 0;
     width: auto;
+  }
+}
+
+/* Desktop styles for percentage indicator */
+.task-card-progress-bar-container {
+  position: relative;
+}
+.task-card-progress-percentage {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+  z-index: 2;
+}
+.task-card-progress-bar-container:hover .task-card-progress-percentage {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 392px) {
+  .task-card-progress-bar-container {
+    position: relative;
+  }
+  .task-card-progress-percentage {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s;
+    z-index: 2;
+  }
+  .task-card-progress-bar-container:hover .task-card-progress-percentage {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
