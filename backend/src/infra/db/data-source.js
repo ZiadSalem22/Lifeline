@@ -3,14 +3,21 @@ require('reflect-metadata');
 
 const AppDataSource = new DataSource({
     type: 'mssql',
-    host: process.env.MSSQL_SERVER || 'localhost',
-    port: Number(process.env.MSSQL_PORT) || 1433,
+    host: process.env.MSSQL_SERVER,
+    port: Number(process.env.MSSQL_PORT || 1433),
     username: process.env.MSSQL_USERNAME,
     password: process.env.MSSQL_PASSWORD,
-    database: process.env.MSSQL_DATABASE || 'LifelineTodos',
+    database: process.env.MSSQL_DATABASE,
 
-    extra: {
-        instanceName: process.env.MSSQL_INSTANCE || 'SQLEXPRESS'
+    synchronize: false,
+    logging: true,
+
+    // IMPORTANT: remove instance
+    extra: {},
+
+    options: {
+        encrypt: true,                 // MUST MATCH MIGRATIONS
+        trustServerCertificate: true,
     },
 
     entities: [
@@ -21,14 +28,6 @@ const AppDataSource = new DataSource({
         require('./entities/UserProfileEntity'),
         require('./entities/UserSettingsEntity')
     ],
-
-    synchronize: false,
-    logging: true,
-
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-    }
 });
 
 module.exports = { AppDataSource };
