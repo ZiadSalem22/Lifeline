@@ -1,65 +1,52 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - lifeline-backend-app
+name: Deploy Backend to Azure
 
 on:
   push:
     branches:
-      - deplyed
-  workflow_dispatch:
+      - deploy    # Only deploy when pushing to the 'deploy' branch
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      #############################################################
+      # 1. Checkout repository
+      #############################################################
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      #############################################################
+      # 2. Setup Node.js (your backend uses Node 20)
+      #############################################################
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
 
-      - name: npm install, build, and test
-        run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+      #############################################################
+      # 3. Install backend dependencies
+      #############################################################
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install --production
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
-      - name: Login to Azure
+      #############################################################
+      # 4. Azure Login (Uses service principal from GitHub Secrets)
+      #    Secret must contain JSON created from Azure CLI:
+      #    `az ad sp create-for-rbac --name lifeline-backend-sp --role contributor --scopes /subscriptions/<sub-id>/resourceGroups/lifeline-rg --sdk-auth`
+      #############################################################
+      - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8D3BB336CA094AD3B4ABA74FF9DE3CEF }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_215FAD8A36C94C5C9971FF2DC6517D8E }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_14B0902C658B4EAE9D56A51B390598B4 }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
+      #############################################################
+      # 5. Deploy the backend folder to Azure App Service
+      #############################################################
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'lifeline-backend-app'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: lifeline-backend-app
+          resource-group-name: lifeline-rg
+          package: ./backend
