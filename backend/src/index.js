@@ -235,15 +235,19 @@ let todoRepository;
 let tagRepository;
 
 // Ensure TypeORM is initialized before repositories are used
-if (!AppDataSource.isInitialized) {
-    AppDataSource.initialize()
-        .then(() => {
+async function ensureDataSource() {
+    if (!AppDataSource.isInitialized) {
+        try {
+            await AppDataSource.initialize();
             console.log('[TypeORM] DataSource initialized (MSSQL)');
-        })
-        .catch((err) => {
+        } catch (err) {
             console.error('[TypeORM] Failed to initialize DataSource', err);
-        });
+            throw err;
+        }
+    }
 }
+// Initialize proactively at startup
+ensureDataSource().catch(() => {});
 
 todoRepository = new TypeORMTodoRepository();
 tagRepository = new TypeORMTagRepository();
@@ -386,6 +390,7 @@ app.get('/api/me', requireAuth(), (req, res) => {
  *         description: Unauthorized
  */
 app.post('/api/profile', requireAuth(), async (req, res) => {
+    try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
     const user = req.currentUser;
     if (!user || !user.id) return res.status(401).json({ error: 'Unauthorized' });
     const {
