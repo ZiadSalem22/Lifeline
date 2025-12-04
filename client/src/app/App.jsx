@@ -111,6 +111,11 @@ function AppInner() {
   const [expandedTodoId, setExpandedTodoId] = useState(null);
   // Removed hasLoggedToken (token logging now unnecessary in App layer)
 
+  // Toggle expanded state for a given todo card
+  const toggleExpand = useCallback((id) => {
+    setExpandedTodoId((prev) => (prev === id ? null : id));
+  }, []);
+
   // handleSelectDate provided by TodoProvider
   // Recurring tasks and export/import states
   const [showRecurrenceSelector, setShowRecurrenceSelector] = useState(false);
@@ -449,7 +454,7 @@ function AppInner() {
   );
 
   const renderHeroSection = () => (
-    <div className="fade-in-slide-down home-hero">
+        <div className="fade-in-slide-down home-hero app-hero-section">
       <div className="header-content">
         <h1 className="header-title">{title}</h1>
         {durationString && (
@@ -458,7 +463,7 @@ function AppInner() {
       </div>
 
       <div className="home-progress-row">
-        <p className="home-progress-text">
+            <p className="home-progress-text app-progress-text">
           {completedCount} of {filteredTodos.length} completed
         </p>
         {filteredTodos.length > 0 && (
@@ -1636,17 +1641,17 @@ function AppInner() {
               )}
 
             {/* Task List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
+              <div className="task-list-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
               {filteredTodos.length === 0 && (
                 <div
-                  className="fade-in-scale-up"
+                  className="fade-in-scale-up empty-state"
                   style={{
                     textAlign: 'center',
                     padding: '80px 0'
                   }}
                 >
                     <div
-                      className="rotate-scale-infinite"
+                      className="rotate-scale-infinite empty-state-icon"
                       style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
                     >
                       <SparklesIcon />
@@ -1771,7 +1776,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
 
   return (
     <div
-      className="task-card-enter-exit"
+      className="task-card-enter-exit task-card-root"
       style={{
         cursor: hasSubtasks ? 'pointer' : 'move',
         opacity: 1,
@@ -1800,7 +1805,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
       onDrop={(e) => onDrop && onDrop(e, todo.id)}
     >
         <div
-        className="task-card-wrapper"
+        className="task-card-wrapper task-card-flex"
         style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -1840,8 +1845,8 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             )}
         </button>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+        <div className="task-card-content" style={{ flex: 1, minWidth: 0 }}>
+          <div className="task-card-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
             {isEditing ? (
               <>
                 <input
@@ -1897,9 +1902,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   }}
                 />
                 {/* Tags on top row */}
-                <div style={{ marginTop: '8px' }} onClick={e => e.stopPropagation()}>
+                <div className="task-card-edit-tags" style={{ marginTop: '8px' }} onClick={e => e.stopPropagation()}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--color-text)' }}>Tags</label>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  <div className="task-card-edit-tags-row" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                     {allTags && allTags.map(tag => {
                       const selected = editingTags && editingTags.includes(tag.id);
                       return (
@@ -1934,8 +1939,8 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 </div>
 
                 {/* Editing controls: priority and duration below tags, left-aligned */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }} onClick={e => e.stopPropagation()}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="task-card-edit-controls" style={{ display: 'flex', gap: '12px', marginTop: '8px' }} onClick={e => e.stopPropagation()}>
+                  <div className="task-card-edit-priority" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--color-text)' }}>Priority</label>
                     <select value={editingPriority} onChange={(e) => setEditingPriority && setEditingPriority(e.target.value)} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
                       <option value="low">Low</option>
@@ -1944,7 +1949,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                     </select>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div className="task-card-edit-duration" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--color-text)' }}>Duration</label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       <input type="number" min={0} value={Math.floor((editingDuration||0)/60)} onChange={e => setEditingDuration && setEditingDuration(parseInt(e.target.value||0)*60 + (editingDuration||0)%60)} style={{ width: '64px', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
@@ -1955,11 +1960,11 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   </div>
                 </div>
 
-                <div style={{ marginTop: '10px', width: '100%' }} onClick={e => e.stopPropagation()}>
+                <div className="task-card-edit-subtasks" style={{ marginTop: '10px', width: '100%' }} onClick={e => e.stopPropagation()}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Subtasks</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', width: '100%' }}>
+                    <div className="task-card-edit-subtasks-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', width: '100%' }}>
                     {(editingSubtasks || []).map((st, sidx) => (
-                      <div key={st.id || sidx} style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                      <div key={st.id || sidx} className="task-card-edit-subtask-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
                         <input type="checkbox" checked={!!st.isCompleted} onChange={(e) => setEditingSubtasks && setEditingSubtasks((prev) => prev.map(x => x.id === st.id ? { ...x, isCompleted: e.target.checked } : x))} style={{ flexShrink: 0 }} />
                         <input
                           type="text"
@@ -1978,7 +1983,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                         <button type="button" onClick={() => setEditingSubtasks && setEditingSubtasks((prev) => prev.filter(x => x.id !== st.id))} style={{ padding: '6px', borderRadius: '6px', border: 'none', background: 'transparent', color: 'var(--color-danger)', flexShrink: 0 }}>×</button>
                       </div>
                     ))}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                    <div className="task-card-edit-subtask-new-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
                       <input id={`new-subtask-${todo.id}`} type="text" placeholder="New subtask" style={{ flex: 1, width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
                       <button type="button" onClick={(e) => {
                         e.stopPropagation();
@@ -2053,7 +2058,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             )}
           {/* Description display (when not editing) */}
           {!isEditing && todo.description && (
-            <div style={{
+            <div className="task-card-description" style={{
               marginTop: '6px',
               fontSize: '0.85rem',
               color: 'var(--color-text-muted)',
@@ -2067,7 +2072,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
           )}
           </div>
           {!isEditing && todo.tags && todo.tags.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div className="task-card-tags-row" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {todo.tags.map((tag, i) => {
                 const active = Array.isArray(selectedFilterTags) && selectedFilterTags.includes(tag.id);
                 return (
@@ -2125,7 +2130,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             </div>
           )}
           {!isEditing && todo.recurrence && (!todo.tags || todo.tags.length === 0) && (
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div className="task-card-recurrence-row" style={{ display: 'flex', gap: '6px' }}>
               <span
                 style={{
                   fontSize: '0.75rem',
@@ -2151,7 +2156,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             </div>
           )}
           {!isEditing && showDate && todo.dueDate && (
-            <div style={{
+            <div className="task-card-date-row" style={{
               marginTop: '4px',
               fontSize: '0.75rem',
               color: 'var(--color-text-muted)',
@@ -2172,7 +2177,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             </div>
           )}
           {todo.dueTime && !showDate && (
-            <div style={{
+            <div className="task-card-due-time-row" style={{
               marginTop: '4px',
               fontSize: '0.75rem',
               color: 'var(--color-text-muted)',
@@ -2186,8 +2191,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
           
           {/* Subtasks */}
           {!isEditing && todo.subtasks && todo.subtasks.length > 0 && (
-            <div style={{ marginTop: '8px', width: '100%' }}>
+            <div className="task-card-subtasks" style={{ marginTop: '8px', width: '100%' }}>
               <div 
+                className="task-card-subtasks-header-row"
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -2204,8 +2210,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   }
                 }}
               >
-                <div style={{ flex: 1, height: '6px', background: 'var(--color-surface-light)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                <div className="task-card-subtasks-progress-bar" style={{ flex: 1, height: '6px', background: 'var(--color-surface-light)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                   <div 
+                    className="task-card-subtasks-progress-fill"
                     style={{ 
                       height: '100%', 
                       background: `linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)`,
@@ -2216,7 +2223,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                     }} 
                   />
                 </div>
-                <span style={{ 
+                <span className="task-card-subtasks-progress-label" style={{ 
                   fontSize: '0.75rem', 
                   color: 'var(--color-text-muted)',
                   fontWeight: '500',
@@ -2227,6 +2234,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 </span>
                 {hasSubtasks && (
                   <motion.div
+                    className="task-card-subtasks-chevron"
                     animate={{ rotate: isExpanded ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     style={{ 
@@ -2251,6 +2259,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
               </div>
               {isExpanded && (
                 <motion.div
+                  className="task-card-subtasks-expanded-list"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -2270,6 +2279,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   {todo.subtasks.map((subtask, idx) => (
                     <motion.div
                       key={subtask.id}
+                      className="task-card-subtasks-expanded-row"
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
@@ -2399,7 +2409,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                         </span>
                       )}
 
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <div className="task-card-subtasks-expanded-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           title={subtask.isFlagged ? 'Unflag subtask' : 'Flag subtask'}
@@ -2454,10 +2464,11 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 </motion.div>
               )}
               {!isExpanded && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="task-card-subtasks-collapsed-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {todo.subtasks.slice(0, 2).map((subtask, idx) => (
                     <motion.div
                       key={subtask.id}
+                      className="task-card-subtasks-collapsed-row"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: idx * 0.05 }}
@@ -2579,7 +2590,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                         </span>
                       )}
 
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <div className="task-card-subtasks-collapsed-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           title={subtask.isFlagged ? 'Unflag subtask' : 'Flag subtask'}
@@ -2633,6 +2644,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   ))}
                   {todo.subtasks.length > 2 && (
                     <motion.div
+                      className="task-card-subtasks-collapsed-more"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       style={{ 
@@ -2664,7 +2676,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+        <div className="task-card-actions-col" style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
           {todo.isFlagged && (
             <button
               className={`task-card-button flag-button ${todo.isFlagged ? 'flagged' : ''}`}
@@ -2684,6 +2696,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
 
           {todo.description && (
             <div
+              className="task-card-note-preview"
               title="Has notes"
               style={{ position: 'relative', padding: '6px', borderRadius: '8px', background: 'transparent', color: 'var(--color-text-muted)' }}
               onMouseEnter={(e) => { e.stopPropagation(); setShowNotePreview(true); }}
@@ -2691,7 +2704,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             >
               <NoteIcon />
               {showNotePreview && (
-                <div style={{
+                <div className="task-card-note-preview-popup" style={{
                   position: 'absolute',
                   top: '-8px',
                   right: '36px',
@@ -2714,7 +2727,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
         </div>
 
         {isEditing ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+          <div className="task-card-edit-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onSaveEdit(todo.id); }}
