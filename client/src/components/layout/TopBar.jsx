@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Button from '../common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { SearchIcon, SettingsIcon, MenuIcon } from '../../icons/Icons';
 import styles from './TopBar.module.css';
@@ -74,60 +75,45 @@ const TopBar = (props) => {
                     />
                 </div>
 
-                <div className={styles['top-bar-actions']}>
-                    {/* Settings icon removed; now inside identity dropdown */}
-                    {guestMode && (
-                        <div className={styles['guest-pill']} ref={dropdownRef}>
-                            <span>Hello, Guest</span>
-                            <button type="button" className={styles['guest-login']} onClick={() => loginWithRedirect()}>Log in</button>
-                            <button
-                                type="button"
-                                className={styles['guest-caret-btn']}
-                                aria-haspopup="true"
-                                aria-expanded={open ? 'true' : 'false'}
-                                aria-label="Open guest menu"
-                                onClick={(e) => { e.stopPropagation(); toggle(); }}
-                            >
-                                ▾
-                            </button>
-                            {open && (
-                                <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
-                                    <button type="button" onClick={() => { close(); loginWithRedirect(); }} role="menuitem">Login</button>
-                                    <button type="button" onClick={() => { close(); loginWithRedirect({ authorizationParams: { screen_hint: 'signup' } }); }} role="menuitem">Sign up</button>
-                                </div>
+                {/* Identity chip moved to its own division at the far right */}
+                {!guestMode && isAuthenticated && currentUser && (
+                    <div style={{ marginLeft: 'auto', paddingRight: '8px', display: 'flex', alignItems: 'center' }}>
+                        <button
+                            type="button"
+                            className={styles['identity-chip']}
+                            onClick={toggle}
+                            aria-haspopup="true"
+                            aria-expanded={open ? 'true' : 'false'}
+                            aria-label="Open profile menu"
+                            ref={dropdownRef}
+                        >
+                            {avatar ? (
+                                <img src={avatar} alt={name || 'User'} className={styles['chip-avatar']} />
+                            ) : (
+                                <div className={`${styles['chip-avatar']} ${styles['chip-initials']}`}>{(name || 'U').substring(0,1).toUpperCase()}</div>
                             )}
+                            <div className={styles['chip-name']} title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
+                        </button>
+                        {open && (
+                            <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
+                                <button type="button" onMouseDown={() => { console.log('Profile clicked'); close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
+                                <button type="button" onMouseDown={() => { console.log('Settings clicked'); close(); onOpenSettings && onOpenSettings(); }} role="menuitem">Settings</button>
+                                <button type="button" onMouseDown={() => { console.log('Logout clicked'); dropdownLogout(); }} role="menuitem">Logout</button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* Guest pill and login button restored */}
+                {(guestMode || !isAuthenticated) && (
+                    <div style={{ marginLeft: 'auto', paddingRight: '8px', display: 'flex', alignItems: 'center' }}>
+                        <div className={styles['guest-pill']}>
+                            Hello Guest
+                            <Button variant="primary" type="button" onClick={onLoginClick} ariaLabel="Login">
+                                Login
+                            </Button>
                         </div>
-                    )}
-                    {!guestMode && isAuthenticated && currentUser && (
-                        <div className={styles['identity-chip-container']} ref={dropdownRef}>
-                            <button
-                                type="button"
-                                className={styles['identity-chip']}
-                                onClick={toggle}
-                                aria-haspopup="true"
-                                aria-expanded={open ? 'true' : 'false'}
-                                aria-label="Open profile menu"
-                            >
-                                {avatar ? (
-                                    <img src={avatar} alt={name || 'User'} className={styles['chip-avatar']} />
-                                ) : (
-                                    <div className={`${styles['chip-avatar']} ${styles['chip-initials']}`}>{(name || 'U').substring(0,1).toUpperCase()}</div>
-                                )}
-                                <div className={styles['chip-name']} title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
-                            </button>
-                            {open && (
-                                <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
-                                    <button type="button" onClick={() => { close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
-                                    <button type="button" onClick={() => { close(); onOpenSettings && onOpenSettings(); }} role="menuitem">Settings</button>
-                                    <button type="button" onClick={dropdownLogout} role="menuitem">Logout</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {!guestMode && !isAuthenticated && (
-                        <button type="button" className={`${styles['top-bar-button']} ${styles['top-bar-login']}`} onClick={() => loginWithRedirect()} title="Login">Login</button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </header>
     );
