@@ -1,7 +1,7 @@
 const { MigrationInterface, QueryRunner } = require('typeorm');
 
-module.exports = class AddUsersTable1701000000000 {
-  name = 'AddUsersTable1701000000000'
+module.exports = class AddUsersTable1659999999000 {
+  name = 'AddUsersTable1659999999000'
 
   async up(queryRunner) {
     await queryRunner.query(`
