@@ -30,7 +30,8 @@ export default defineConfig(({ mode }) => ({
     // Proxy API calls to the backend to avoid mixed content in HTTPS dev
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+       // target: 'http://localhost:3000',
+        target: 'https://lifeline-backend-app-e9d6hwbng4b6chba.canadacentral-01.azurewebsites.net',
         changeOrigin: true,
         secure: false,
       },

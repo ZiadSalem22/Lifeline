@@ -26,6 +26,29 @@ const CompleteRecurringTodo = require('./application/CompleteRecurringTodo');
 const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/TagUseCases');
 
 const app = express();
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://localhost:5173',
+    'https://192.168.1.153:5173',
+    'https://172.26.176.1:5173',
+    process.env.FRONTEND_URL,         // for Azure
+    process.env.WEB_CLIENT_URL        // optional second domain
+].filter(Boolean);
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow Postman (origin = undefined)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        console.log('Blocked CORS request from:', origin);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+}));
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());

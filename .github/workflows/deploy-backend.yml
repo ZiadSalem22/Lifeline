@@ -50,3 +50,4 @@ jobs:
           app-name: lifeline-backend-app
           resource-group-name: lifeline-rg
           package: ./backend
+          slot-name: Production
