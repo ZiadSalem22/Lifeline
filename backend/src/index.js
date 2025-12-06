@@ -508,8 +508,18 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
             } else {
                 // Update email if provided during onboarding
                 if (email) {
-                    dbUser.email = email;
-                    await repo.save(dbUser);
+                    // If the provided email differs, ensure no other user already has it
+                    if (dbUser.email !== email) {
+                        const existing = await repo.findOne({ where: { email } });
+                        if (existing && existing.id !== dbUser.id) {
+                            // Signal a conflict to the outer catch so we can return 409
+                            const e = new Error('EMAIL_CONFLICT');
+                            e.statusCode = 409;
+                            throw e;
+                        }
+                        dbUser.email = email;
+                        await repo.save(dbUser);
+                    }
                 }
             }
             // Create or update profile
@@ -558,6 +568,11 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
             onboarding_completed: !!onboardingFlag
         });
     } catch (err) {
+        // Handle explicit email conflict thrown inside the transaction
+        if (err && (err.message === 'EMAIL_CONFLICT' || err.statusCode === 409)) {
+            logger.warn('[POST /api/profile] email conflict during onboarding', { error: err.message });
+            return res.status(409).json({ error: 'Email already in use by another account' });
+        }
         logger.error('[POST /api/profile] failed to create user/profile', { error: err.message });
         res.status(500).json({ error: 'Failed to create user/profile' });
     }

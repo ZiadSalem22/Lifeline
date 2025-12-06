@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from '../providers/AuthProvider';
 
 export default function OnboardingPage({ user, currentUser, guestMode, onCompleted }) {
   const { fetchWithAuth } = useApi();
@@ -14,6 +15,7 @@ export default function OnboardingPage({ user, currentUser, guestMode, onComplet
   const [startDay, setStartDay] = useState('Monday');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [emailConflict, setEmailConflict] = useState(false);
 
   const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })();
 
@@ -28,11 +30,14 @@ export default function OnboardingPage({ user, currentUser, guestMode, onComplet
 
   const valid = firstName.trim() && lastName.trim() && email.trim();
 
+  const { refreshIdentity } = useAuthContext();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!valid) return;
     setSubmitting(true);
     setError(null);
+    setEmailConflict(false);
     try {
       const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
       const res = await fetchWithAuth(`${apiBase}/profile`, {
@@ -48,7 +53,16 @@ export default function OnboardingPage({ user, currentUser, guestMode, onComplet
           onboarding_completed: true
         })
       });
+      if (res.status === 409) {
+        // Email already used by another account
+        setError('This email is already associated with another account.');
+        setEmailConflict(true);
+        setSubmitting(false);
+        return;
+      }
       if (!res.ok) throw new Error(`Failed (${res.status})`);
+      // Refresh identity so AuthProvider.currentUser reflects the saved profile
+      try { await refreshIdentity(); } catch (e) { /* ignore refresh errors */ }
       onCompleted && onCompleted();
     } catch (err) {
       setError(err.message || 'Submission failed');
@@ -100,7 +114,16 @@ export default function OnboardingPage({ user, currentUser, guestMode, onComplet
               <option value="Saturday">Saturday</option>
             </select>
           </div>
-          {error && <div style={{ color:'var(--color-danger)', fontSize:'0.8rem' }}>{error}</div>}
+          {error && (
+            <div style={{ color:'var(--color-danger)', fontSize:'0.8rem', display:'flex', flexDirection:'column', gap:8 }}>
+              <div>{error}</div>
+              {emailConflict && (
+                <div style={{ display:'flex', gap:8 }}>
+                  <button type="button" onClick={() => { setEmail(''); setError(null); setEmailConflict(false); }} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--color-border)', background:'transparent' }}>Use different email</button>
+                </div>
+              )}
+            </div>
+          )}
           <button type="submit" disabled={!valid || submitting} style={buttonStyle}>
             {submitting ? 'Saving...' : 'Continue'}
           </button>

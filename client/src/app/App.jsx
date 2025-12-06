@@ -59,10 +59,14 @@ function AppInner() {
   
   // Onboarding redirect based on profile
   React.useEffect(() => {
+    // Only redirect after we've resolved identity to avoid competing redirects
+    if (!checkedIdentity) return;
+    // Don't navigate if already on the onboarding route
+    if (location && location.pathname === '/onboarding') return;
     if (currentUser?.profile && currentUser.profile.onboarding_completed === false) {
       navigate('/onboarding');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, checkedIdentity, location]);
 
     // Modal state for new tag creation
     const [showNewTagModal, setShowNewTagModal] = useState(false);

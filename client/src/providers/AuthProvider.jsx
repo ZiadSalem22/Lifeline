@@ -63,6 +63,7 @@ export function AuthProvider({ children }) {
     error,
     login: loginWithRedirect,
     logout: (options) => logout(options),
+    refreshIdentity: loadIdentity,
     // Expose setter for legacy fallback logic in App.jsx; consider refactoring App to rely solely on provider state.
     setGuestMode
   };

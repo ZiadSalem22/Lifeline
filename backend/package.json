@@ -9,7 +9,9 @@
     "migration:generate": "npx typeorm migration:generate -d ./data-source-migrations.js -o src/migrations",
     "migration:run": "npx typeorm migration:run -d ./data-source-migrations.js",
     "migration:revert": "npx typeorm migration:revert -d ./data-source-migrations.js",
-    "promote-admin": "node src/scripts/promote-admin.js"
+    "promote-admin": "node src/scripts/promote-admin.js",
+    "reset-db": "node src/scripts/reset-db.js",
+    "soft-reset-db": "node src/scripts/soft-reset-db.js"
   },
   "keywords": [],
   "author": "",
