@@ -339,7 +339,7 @@ app.use('/api', checkJwt, attachCurrentUser);
 
 // Compatibility redirects: handle mistaken root paths without '/api'
 app.get('/me', (req, res) => res.redirect(301, '/api/me'));
-app.get('/notifications/*', (req, res) => {
+app.get(/^\/notifications\/(.*)/, (req, res) => {
     const rest = req.params[0] || '';
     res.redirect(301, `/api/notifications/${rest}`);
 });
