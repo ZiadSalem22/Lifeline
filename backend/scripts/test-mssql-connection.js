@@ -1,52 +1,56 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const sql = require('mssql');
-const msnodesqlv8 = require('mssql/msnodesqlv8');
+
+// Extract components from your MSSQL_URL
+// Example MSSQL_URL:
+//  SERVER=myserver;DATABASE=mydb;USER=user;PASSWORD=pass;PORT=1433
+const parseConnString = (connString) => {
+    const parts = connString.split(';').filter(Boolean);
+    const config = {};
+
+    for (const part of parts) {
+        const [key, value] = part.split('=');
+        config[key.trim().toUpperCase()] = value.trim();
+    }
+
+    return {
+        user: config.USER,
+        password: config.PASSWORD,
+        server: config.SERVER,
+        database: config.DATABASE,
+        port: config.PORT ? parseInt(config.PORT) : 1433,
+        options: {
+            encrypt: false,               // change to true if using Azure SQL
+            trustServerCertificate: true  // allow self-signed certs
+        }
+    };
+};
 
 const connString = process.env.MSSQL_URL;
 
-const normalizeConnString = (raw) => {
-    if (!raw) return raw;
-    const trimmed = raw.replace(/;+$/, '');
-    if (/driver=/i.test(trimmed)) {
-        return trimmed;
-    }
-    // Prefer modern ODBC Driver 17 which supports LocalDB resolution.
-    return `${trimmed};Driver={ODBC Driver 17 for SQL Server};`;
-};
-
 if (!connString) {
-    console.error('MSSQL_URL not defined');
+    console.error('MSSQL_URL is not defined in .env');
     process.exit(1);
 }
 
-sql.connect({
-    driver: msnodesqlv8,
-    options: {
-        connectionString: normalizeConnString(connString),
-        trustedConnection: true,
-        trustServerCertificate: true
-    }
-})
-    .then(pool => {
-        console.log('Connected OK');
-        return pool.request().query('SELECT @@VERSION AS version');
-    })
-    .then(result => {
-        console.log('Query result:', result.recordset[0]);
-        return sql.close();
-    })
-    .catch(err => {
-        console.error('Connection failed:', err);
-        if (err && err.originalError) {
-            console.error('Original error keys:', Object.keys(err.originalError));
-            console.error('Original error message:', err.originalError.message);
-            console.error('Original error toString:', String(err.originalError));
-            console.error('Original error inspect:', require('util').inspect(err.originalError, { depth: null }));
-        }
+const dbConfig = parseConnString(connString);
+
+let connectionPool;
+
+async function getPool() {
+    if (!connectionPool) {
         try {
-            console.error('Error JSON:', JSON.stringify(err));
-        } catch (jsonErr) {
-            console.error('Error stringify failed:', jsonErr.message);
+            connectionPool = await sql.connect(dbConfig);
+            console.log('Connected to SQL Server successfully.');
+        } catch (error) {
+            console.error('SQL Connection Error:', error);
+            process.exit(1);
         }
-        process.exit(1);
-    });
+    }
+    return connectionPool;
+}
+
+module.exports = {
+    sql,
+    getPool
+};
