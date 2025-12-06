@@ -17,7 +17,7 @@ const AppDataSource = new DataSource({
 
     options: {
         encrypt: true,                 // MUST MATCH MIGRATIONS
-        trustServerCertificate: true,
+        trustServerCertificate: false, // For Azure SQL, should be false unless using self-signed certs
     },
 
     entities: [
