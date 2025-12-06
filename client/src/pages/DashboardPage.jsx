@@ -3,6 +3,7 @@ import CosmicBackground from '../components/background/CosmicBackground';
 import { Sidebar, TopBar } from '../components/layout';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
+import { fetchMe } from '../utils/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 if (!API_BASE_URL) {
@@ -25,11 +26,7 @@ const DashboardPage = ({ sidebarProps, topBarProps, children, showBackground = f
 
     const loadProfile = async () => {
       try {
-        const response = await fetchWithAuth(`${API_BASE}/me`);
-        if (!response.ok) {
-          throw new Error(`API error ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await fetchMe(fetchWithAuth);
         if (!cancelled) {
           setMe(data);
           setError(null);

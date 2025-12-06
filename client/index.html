@@ -7,15 +7,6 @@
     <title>Lifeline</title>
   </head>
   <body>
-    <script>
-      (function() {
-        var target = '/Lifeline/';
-        if (window.location.pathname === '/' || window.location.pathname === '') {
-          var suffix = window.location.search + window.location.hash;
-          window.location.replace(target + suffix);
-        }
-      })();
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/app/main.jsx"></script>
   </body>

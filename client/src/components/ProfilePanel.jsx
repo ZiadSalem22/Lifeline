@@ -26,10 +26,8 @@ export default function ProfilePanel() {
     const load = async () => {
       if (!isAuthenticated) { setLoading(false); return; }
       try {
-        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-        const res = await fetchWithAuth(`${apiBase}/me`);
-        if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
-        const me = await res.json();
+        const { fetchMe } = await import('../utils/api');
+        const me = await fetchMe(fetchWithAuth);
         const p = me.profile || {};
         if (mounted) {
           setProfile({

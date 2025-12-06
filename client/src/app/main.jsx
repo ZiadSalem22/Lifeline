@@ -29,7 +29,7 @@ createRoot(document.getElementById('root')).render(
       useRefreshTokens={true}
     >
       <BrowserRouter
-        basename="/Lifeline/"
+        basename="/"
         future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,

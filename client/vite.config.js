@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Use repo base in production, root in dev to avoid 500s on module fetch
-  base: mode === 'production' ? '/Lifeline/' : '/',
+  // Always use root base path
+  base: '/',
   plugins: [react()],
   server: {
     host: true,

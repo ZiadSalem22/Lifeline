@@ -4,15 +4,15 @@ if (!API_BASE_ENV) {
     throw new Error('VITE_API_BASE_URL is not defined');
 }
 
-const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
+// Normalize base URL and ensure '/api' prefix is used for all API calls
+const NORMALIZED_BASE = API_BASE_ENV.replace(/\/$/, '');
+const API_BASE_URL = NORMALIZED_BASE.endsWith('/api') ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api`;
 
 const joinUrl = (path) => {
     const p = path.startsWith('/') ? path : `/${path}`;
-    // Avoid duplicate '/api' if API_BASE_URL already ends with '/api' and caller passed '/api/...'
-    if (API_BASE_URL.endsWith('/api') && p.startsWith('/api')) {
-        return `${API_BASE_URL}${p.replace(/^\/api/, '')}`;
-    }
-    return `${API_BASE_URL}${p}`;
+    // API_BASE_URL already includes '/api' by normalization above. Strip any leading '/api' from path to avoid duplication.
+    const cleaned = p.replace(/^\/api/, '');
+    return `${API_BASE_URL}${cleaned}`;
 };
 
 const TODOS_URL = joinUrl('/todos');
@@ -24,6 +24,7 @@ const IMPORT_URL = joinUrl('/import');
 const TODOS_BATCH_URL = joinUrl('/todos/batch');
 const SETTINGS_URL = joinUrl('/settings');
 const RESET_ACCOUNT_URL = joinUrl('/reset-account');
+const ME_URL = joinUrl('/me');
 
 const assertFetcher = (fetchWithAuth, caller) => {
     if (typeof fetchWithAuth !== 'function') {
@@ -290,5 +291,12 @@ export const resetAccountData = async (fetchWithAuth) => {
         method: 'POST',
     });
     ensureOk(response, 'Failed to reset account data', 'resetAccountData');
+    return response.json();
+};
+
+export const fetchMe = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'fetchMe');
+    const response = await executeFetch(ME_URL);
+    ensureOk(response, 'Failed to fetch user profile', 'fetchMe');
     return response.json();
 };

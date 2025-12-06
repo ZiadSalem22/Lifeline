@@ -9,6 +9,7 @@ import { useApi } from '../hooks/useApi';
 import { AuthProvider, useAuthContext } from '../providers/AuthProvider.jsx';
 import { ThemeProvider, useTheme } from '../providers/ThemeProvider.jsx';
 import { TodoProvider, useTodos } from '../providers/TodoProvider.jsx';
+import { Navigate } from 'react-router-dom';
 import NotificationPoller from '../providers/NotificationPoller.jsx';
 import { SunIcon, MoonIcon, SettingsIcon, CalendarIcon, TomorrowIcon, SearchIcon, ArrowRightIcon, FlagIcon, CheckIcon, DeleteIcon, MenuIcon, SparklesIcon, CloseIcon, EditIcon, NoteIcon } from '../icons/Icons';
 import AdvancedSearch from '../components/search/AdvancedSearch';
@@ -1720,6 +1721,9 @@ function AppInner() {
               </div>
             </DashboardPage>
           } />
+
+        {/* Catch-all: redirect any unknown path to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
 

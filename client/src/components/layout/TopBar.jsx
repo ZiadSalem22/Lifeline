@@ -58,7 +58,7 @@ const TopBar = (props) => {
                 )}
 
                 <div className={styles['top-bar-title-wrap']}>
-                    <h2 className={styles['top-bar-title']}>Lifeline</h2>
+                    <h2 className={styles['top-bar-title']}>Home</h2>
                 </div>
 
                 <div className={styles['top-bar-search']}>

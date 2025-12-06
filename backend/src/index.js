@@ -26,13 +26,24 @@ const CompleteRecurringTodo = require('./application/CompleteRecurringTodo');
 const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/TagUseCases');
 
 const app = express();
+// Build allowed CORS origins from multiple env vars (comma-separated supported)
+function splitOrigins(value) {
+    if (!value) return [];
+    return String(value)
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
 const allowedOrigins = [
     'http://localhost:5173',
     'https://localhost:5173',
     'https://192.168.1.153:5173',
     'https://172.26.176.1:5173',
-    process.env.FRONTEND_URL,         // for Azure
-    process.env.WEB_CLIENT_URL        // optional second domain
+    ...splitOrigins(process.env.FRONTEND_URL),      // for Azure (single or multiple)
+    ...splitOrigins(process.env.WEB_CLIENT_URL),    // optional second domain(s)
+    ...splitOrigins(process.env.CORS_ORIGIN),       // compatibility with existing .env
+    ...splitOrigins(process.env.FRONTEND_ORIGIN)    // compatibility with existing .env
 ].filter(Boolean);
 
 app.use(cors({
@@ -325,6 +336,13 @@ app.get('/api/public/info', (req, res) => {
 
 // Secure API: checkJwt, then attachCurrentUser (excludes /api/public/* which is above)
 app.use('/api', checkJwt, attachCurrentUser);
+
+// Compatibility redirects: handle mistaken root paths without '/api'
+app.get('/me', (req, res) => res.redirect(301, '/api/me'));
+app.get('/notifications/*', (req, res) => {
+    const rest = req.params[0] || '';
+    res.redirect(301, `/api/notifications/${rest}`);
+});
 
 // Rate limits
 const todosLimiter = createRateLimiter({
@@ -942,10 +960,20 @@ app.use('/api/ai', requirePaid());
  *                       name: { type: string }
  *                       color: { type: string }
  */
-app.get('/api/tags', requireAuth(), async (req, res, next) => {
+// Allow anonymous read of default tags; authenticated users get defaults + their custom tags
+app.get('/api/tags', async (req, res, next) => {
     try {
-        const tags = await listTags.execute(req.currentUser.id);
-        res.json(tags);
+        // If user is authenticated (checkJwt attaches currentUser), return personalized list
+        const userId = req.currentUser?.id;
+        if (userId) {
+            const tags = await listTags.execute(userId);
+            return res.json(tags);
+        }
+        // Otherwise return only default tags
+        await ensureDataSource();
+        const rows = await AppDataSource.getRepository('Tag').find({ where: { is_default: 1 } });
+        const payload = rows.map(r => ({ id: r.id, name: r.name, color: r.color, isDefault: true }));
+        return res.json(payload);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -4,14 +4,14 @@ if (!API_BASE_ENV) {
   throw new Error('VITE_API_BASE_URL is not defined');
 }
 
-const API_BASE_URL = API_BASE_ENV.replace(/\/$/, '');
+// Normalize to ensure '/api' is included
+const NORMALIZED_BASE = API_BASE_ENV.replace(/\/$/, '');
+const API_BASE_URL = NORMALIZED_BASE.endsWith('/api') ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api`;
 
 const joinUrl = (path) => {
   const p = path.startsWith('/') ? path : `/${path}`;
-  if (API_BASE_URL.endsWith('/api') && p.startsWith('/api')) {
-    return `${API_BASE_URL}${p.replace(/^\/api/, '')}`;
-  }
-  return `${API_BASE_URL}${p}`;
+  const cleaned = p.replace(/^\/api/, '');
+  return `${API_BASE_URL}${cleaned}`;
 };
 
 export function createApiClient(fetchWithAuth) {

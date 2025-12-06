@@ -56,7 +56,7 @@ export default function OnboardingPage({ user, currentUser, guestMode, onComplet
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', padding:'40px 20px' }}>
       <div style={{ width:'100%', maxWidth:'440px', background:'var(--color-surface)', border:'1px solid var(--color-border)', borderRadius:'16px', padding:'32px 32px 40px', boxShadow:'0 12px 40px rgba(0,0,0,0.25)' }}>
-        <h2 style={{ margin:0, fontSize:'1.6rem', fontWeight:700, fontFamily:'var(--font-family-heading)', color:'var(--color-text)' }}>Welcome to Lifeline</h2>
+        <h2 style={{ margin:0, fontSize:'1.6rem', fontWeight:700, fontFamily:'var(--font-family-heading)', color:'var(--color-text)' }}>Welcome Home</h2>
         <p style={{ margin:'12px 0 28px', fontSize:'0.95rem', lineHeight:1.5, color:'var(--color-text-muted)' }}>
           Let’s personalize your experience. Please fill in the required fields to continue.
         </p>

@@ -21,21 +21,16 @@ export function AuthProvider({ children }) {
     }
     try {
       const token = await getAccessTokenSilently(createTokenOptions());
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-      const res = await fetch(`${apiBase}/me`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data);
-        if (data.profile && data.profile.onboarding_completed === false) {
-          // onboarding redirect handled at route level
-        }
-        setGuestMode(false);
-      } else if (res.status === 401) {
-        setGuestMode(true);
-        setCurrentUser(null);
-      } else {
-        setError(`Identity request failed (${res.status})`);
+      // Use new fetchMe utility for user profile
+      const { fetchMe } = await import('../utils/api');
+      const data = await fetchMe(async (url, options) => {
+        return await fetch(url, { ...options, headers: { ...(options?.headers || {}), Authorization: `Bearer ${token}` } });
+      });
+      setCurrentUser(data);
+      if (data.profile && data.profile.onboarding_completed === false) {
+        // onboarding redirect handled at route level
       }
+      setGuestMode(false);
     } catch (err) {
       console.warn('Failed to load identity; using guest mode.', err?.message || err);
       setError(err?.message || 'Identity load failed');

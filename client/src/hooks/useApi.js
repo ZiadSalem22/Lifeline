@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 let tokenErrorLogged = false; // suppress repeat noisy token errors in dev
 import { useAuth0 } from '@auth0/auth0-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
 
 export const AUTH_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE;
 export const AUTH_SCOPE = import.meta.env.VITE_AUTH0_SCOPE;
@@ -33,11 +33,12 @@ const ensureAbsoluteUrl = (input) => {
     return input;
   }
 
-  if (!API_BASE_URL) {
+  if (!API_BASE_ENV) {
     throw new Error('VITE_API_BASE_URL is not defined');
   }
 
-  const base = API_BASE_URL.replace(/\/$/, '');
+  const raw = API_BASE_ENV.replace(/\/$/, '');
+  const base = raw.endsWith('/api') ? raw : `${raw}/api`;
   let path = String(input).startsWith('/') ? String(input) : `/${input}`;
   // Prevent duplicate '/api' when API_BASE_URL already contains '/api' and caller passed '/api/...'
   if (base.endsWith('/api') && path.startsWith('/api')) {
