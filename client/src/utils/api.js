@@ -94,7 +94,7 @@ export const fetchTodos = async (fetchWithAuth) => {
         const response = await executeFetch(TODOS_URL);
         ensureOk(response, 'Failed to fetch todos', 'fetchTodos');
         return response.json();
-    }, 'Loading your tasks…');
+    }, 'Loading…');
 };
 
 export const createTodo = async (title, dueDate, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null, fetchWithAuth) => {
@@ -106,7 +106,7 @@ export const createTodo = async (title, dueDate, tags = [], isFlagged = false, d
         });
         ensureOk(response, 'Failed to create todo', 'createTodo');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const reorderTodo = async (id, order, fetchWithAuth) => {
@@ -128,7 +128,7 @@ export const updateTodo = async (id, updates, fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to update todo', 'updateTodo');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const toggleTodo = async (id, fetchWithAuth) => {
@@ -139,7 +139,7 @@ export const toggleTodo = async (id, fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to toggle todo', 'toggleTodo');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const toggleFlag = async (id, fetchWithAuth) => {
@@ -150,7 +150,7 @@ export const toggleFlag = async (id, fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to toggle flag', 'toggleFlag');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const deleteTodo = async (id, fetchWithAuth) => {
@@ -160,7 +160,7 @@ export const deleteTodo = async (id, fetchWithAuth) => {
             method: 'DELETE',
         });
         ensureOk(response, 'Failed to delete todo', 'deleteTodo');
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const batchTodos = async (action, ids, fetchWithAuth) => {
@@ -172,7 +172,7 @@ export const batchTodos = async (action, ids, fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to batch update todos', 'batchTodos');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const exportTodos = async (format = 'json', fetchWithAuth) => {
@@ -184,7 +184,7 @@ export const exportTodos = async (format = 'json', fetchWithAuth) => {
             return response.text();
         }
         return response.json();
-    }, 'Preparing export…');
+    }, 'Working…');
 };
 
 export const downloadExport = async (format = 'json', fetchWithAuth) => {
@@ -200,7 +200,7 @@ export const downloadExport = async (format = 'json', fetchWithAuth) => {
         link.download = `todos_export_${new Date().getTime()}.${format === 'csv' ? 'csv' : 'json'}`;
         link.click();
         window.URL.revokeObjectURL(url);
-    }, 'Preparing export…');
+    }, 'Working…');
 };
 
 export const importTodos = async (data, mode = 'merge', fetchWithAuth) => {
@@ -212,7 +212,7 @@ export const importTodos = async (data, mode = 'merge', fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to import todos', 'importTodos');
         return response.json();
-    }, 'Importing…');
+    }, 'Working…');
 };
 
 export const getPendingNotifications = async (fetchWithAuth) => {
@@ -231,7 +231,7 @@ export const scheduleNotification = async (todoId, minutesBefore = 0, fetchWithA
         });
         ensureOk(response, 'Failed to schedule notification', 'scheduleNotification');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const markNotificationSent = async (notificationId, fetchWithAuth) => {
@@ -242,7 +242,7 @@ export const markNotificationSent = async (notificationId, fetchWithAuth) => {
         });
         ensureOk(response, 'Failed to mark notification as sent', 'markNotificationSent');
         return response.json();
-    }, 'Saving changes…');
+    }, 'Saving…');
 };
 
 export const deleteNotification = async (notificationId, fetchWithAuth) => {
@@ -261,7 +261,7 @@ export const fetchTags = async (fetchWithAuth) => {
         const response = await executeFetch(TAGS_URL);
         ensureOk(response, 'Failed to fetch tags', 'fetchTags');
         return response.json();
-    }, 'Loading tags…');
+    }, 'Loading…');
 };
 
 export const fetchStats = async (fetchWithAuth, period) => {
@@ -352,5 +352,5 @@ export const fetchMe = async (fetchWithAuth) => {
         const response = await executeFetch(ME_URL);
         ensureOk(response, 'Failed to fetch user profile', 'fetchMe');
         return response.json();
-    }, 'Loading profile…');
+    }, 'Loading…');
 };

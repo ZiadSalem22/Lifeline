@@ -18,12 +18,14 @@
   transition: opacity 180ms ease-in-out;
 }
 .global-loading-spinner {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 7px solid rgba(0,0,0,0.06);
+  /* thinner ring */
+  border: 4px solid rgba(0,0,0,0.06);
   border-top-color: var(--color-primary);
-  animation: global-spin 900ms linear infinite;
+  /* slightly faster, smoother spin for a slim ring */
+  animation: global-spin 700ms linear infinite;
 }
 @keyframes global-spin { to { transform: rotate(360deg); } }
 
@@ -47,6 +49,32 @@ button[disabled], .btn[disabled], .submit-btn[disabled] {
   box-shadow: none;
   border: none;
   backdrop-filter: blur(4px) saturate(110%);
+}
+
+/* Apple-like boxed message under spinner */
+.loading-message-box {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  /* transparent background for a cleaner, minimal look */
+  background: transparent;
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.2px;
+  box-shadow: none;
+  border: 1px solid rgba(0,0,0,0.06);
+  min-width: 120px;
+  text-align: center;
+  backdrop-filter: none;
+}
+
+[data-theme='dark'] .loading-message-box,
+[data-theme='blue-dark'] .loading-message-box {
+  /* Dark theme: keep the box subtle and transparent */
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 /* Dark-theme adjustment for loading card background */
