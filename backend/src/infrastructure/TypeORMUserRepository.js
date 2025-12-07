@@ -29,7 +29,7 @@ class TypeORMUserRepository {
         existing.picture = picture || existing.picture || null;
         return await repo.save(existing);
       }
-      const user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null });
+      const user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, auth0_sub: sub });
       return await repo.save(user);
     });
   }
@@ -57,7 +57,7 @@ class TypeORMUserRepository {
         user.subscription_status = subscription_status;
         return await repo.save(user);
       }
-      user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, role, subscription_status });
+      user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, role, subscription_status, auth0_sub: sub });
       return await repo.save(user);
     });
   }

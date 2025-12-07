@@ -24,7 +24,7 @@ const IMPORT_URL = joinUrl('/import');
 const TODOS_BATCH_URL = joinUrl('/todos/batch');
 const SETTINGS_URL = joinUrl('/settings');
 const RESET_ACCOUNT_URL = joinUrl('/reset-account');
-const ME_URL = joinUrl('/me');
+export const ME_URL = joinUrl('/me');
 
 const assertFetcher = (fetchWithAuth, caller) => {
     if (typeof fetchWithAuth !== 'function') {
@@ -243,18 +243,31 @@ export const fetchStatsRange = async (fetchWithAuth, startDate, endDate) => {
 
 export const saveSettings = async (settings, fetchWithAuth, options = {}) => {
     const executeFetch = assertFetcher(fetchWithAuth, 'saveSettings');
-    const response = await executeFetch(SETTINGS_URL, {
-        method: 'POST',
-        body: JSON.stringify(settings || {}),
-        // Allow silent failures if user not authenticated
-        quiet401: options.quiet401 ?? true,
-    });
-    if (response.status === 401 && (options.quiet401 ?? true)) {
-        // In guest mode or unauthenticated, just return settings back
-        return settings;
+    try {
+        const response = await executeFetch(SETTINGS_URL, {
+            method: 'POST',
+            body: JSON.stringify(settings || {}),
+            // Allow silent failures if user not authenticated
+            quiet401: options.quiet401 ?? true,
+        });
+
+        // If fetchWithAuth returned an actual Response with 401 and caller wanted quiet handling
+        if (response && response.status === 401 && (options.quiet401 ?? true)) {
+            return settings;
+        }
+
+        ensureOk(response, 'Failed to save settings', 'saveSettings');
+        return response.json();
+    } catch (err) {
+        // If token retrieval failed or fetchWithAuth threw an error with status 401,
+        // and caller allowed quiet401, return the provided settings as a harmless fallback.
+        const quiet = options.quiet401 ?? true;
+        if (quiet && (err?.status === 401 || err?.code === 'TOKEN_ERROR')) {
+            return settings;
+        }
+        // Re-throw error for callers that don't expect quiet handling
+        throw err;
     }
-    ensureOk(response, 'Failed to save settings', 'saveSettings');
-    return response.json();
 };
 
 export const createTag = async (name, color, fetchWithAuth) => {

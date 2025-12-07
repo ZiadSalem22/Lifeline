@@ -12,6 +12,7 @@ export default function ProfilePanel() {
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
+    email: '',
     phone: '',
     country: '',
     city: '',
@@ -33,6 +34,7 @@ export default function ProfilePanel() {
           setProfile({
             first_name: p.first_name || '',
             last_name: p.last_name || '',
+            email: me.email || p.email || '',
             phone: p.phone || '',
             country: p.country || '',
             city: p.city || '',
@@ -66,6 +68,7 @@ export default function ProfilePanel() {
       const payload = {
         first_name: profile.first_name.trim(),
         last_name: profile.last_name.trim(),
+        email: profile.email || null,
         phone: profile.phone || null,
         country: profile.country || null,
         city: profile.city || null,
@@ -73,8 +76,36 @@ export default function ProfilePanel() {
         avatar_url: profile.avatar_url || null,
         timezone
       };
+      console.debug('[ProfilePanel] saving profile payload:', payload);
       const res = await fetchWithAuth(`${apiBase}/profile`, { method: 'POST', body: JSON.stringify(payload) });
+      console.debug('[ProfilePanel] /profile response status:', res.status);
+      try {
+        const clone = res.clone();
+        const json = await clone.json().catch(() => null);
+        console.debug('[ProfilePanel] /profile response body:', json);
+      } catch (logErr) {
+        console.warn('[ProfilePanel] failed to parse /profile response body', logErr);
+      }
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      // Refresh profile/settings from server so UI reflects persisted values (e.g., start_day_of_week)
+      try {
+        const { fetchMe } = await import('../utils/api');
+        const me = await fetchMe(fetchWithAuth);
+        const p = me.profile || {};
+        setProfile(prev => ({
+          ...prev,
+          first_name: p.first_name || prev.first_name,
+          last_name: p.last_name || prev.last_name,
+          email: me.email || p.email || prev.email,
+          phone: p.phone || prev.phone,
+          country: p.country || prev.country,
+          city: p.city || prev.city,
+          birthday: p.birthday || prev.birthday,
+          avatar_url: p.avatar_url || prev.avatar_url
+        }));
+      } catch (refreshErr) {
+        console.warn('Profile saved but failed to refresh from server:', refreshErr?.message || refreshErr);
+      }
       setToast('Profile updated successfully!');
       setTimeout(() => setToast(''), 2500);
     } catch (e) {
@@ -113,6 +144,7 @@ export default function ProfilePanel() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
               <Field label="First Name *" value={profile.first_name} onChange={onChange('first_name')} required />
               <Field label="Last Name *" value={profile.last_name} onChange={onChange('last_name')} required />
+              <Field label="Email" value={profile.email} onChange={onChange('email')} helper="Optional" />
               <Field label="Phone" value={profile.phone} onChange={onChange('phone')} helper="Optional" />
               <Field label="Country" value={profile.country} onChange={onChange('country')} helper="Optional" />
               <Field label="City" value={profile.city} onChange={onChange('city')} helper="Optional" />
@@ -122,6 +154,7 @@ export default function ProfilePanel() {
                   <img src={profile.avatar_url} alt="avatar preview" style={{ width:40, height:40, borderRadius:'50%', objectFit:'cover', border:'1px solid var(--color-border)' }} />
                 ) : null}
               </Field>
+              {/* Week Start removed from Profile page; change it via Statistics instead */}
             </div>
             {error && <div style={{ color:'var(--color-danger)', fontSize:'0.85rem', marginTop:10 }}>{error}</div>}
             <div style={{ marginTop:16 }}>
@@ -146,6 +179,8 @@ function Field({ label, value, onChange, children, helper, placeholder, required
     </div>
   );
 }
+
+// Week Start selector removed from ProfilePanel; user can change it in Statistics
 
 const inputStyle = {
   padding:'12px 14px',

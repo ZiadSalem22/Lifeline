@@ -1,9 +1,16 @@
+
 const { EntitySchema } = require('typeorm');
 
 module.exports = new EntitySchema({
   name: 'User',
   tableName: 'users',
   columns: {
+    auth0_sub: {
+      type: String,
+      length: 128,
+      nullable: false,
+      unique: true,
+    },
     id: {
       type: String,
       length: 64,
@@ -13,8 +20,7 @@ module.exports = new EntitySchema({
     email: {
       type: String,
       length: 255,
-      unique: true,
-      nullable: false,
+      nullable: true,
     },
     name: {
       type: String,

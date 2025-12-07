@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { fetchStats, fetchStatsRange, saveSettings } from '../../utils/api';
+import { fetchStats, fetchStatsRange, saveSettings, ME_URL } from '../../utils/api';
 import { CloseIcon, StatsIcon } from '../../icons/Icons';
 import styles from './Statistics.module.css';
 
@@ -112,7 +112,33 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
   };
 
   useEffect(() => {
+    // Track mounted state for both week-start load and stats load
     let mounted = true;
+    // Load preferred week start from user profile or saved settings when logged in
+    if (!guestMode && fetchWithAuth) {
+      (async () => {
+        try {
+          const res = await fetchWithAuth(ME_URL);
+          if (!mounted || !res || !res.ok) return;
+          const data = await res.json();
+          const allowed = ['monday','sunday','saturday'];
+          const profileStart = data?.profile?.start_day_of_week;
+          const settingsWeek = data?.settings?.layout?.weekStart;
+          let value = null;
+          if (profileStart) {
+            const p = String(profileStart).toLowerCase();
+            if (allowed.includes(p)) value = p;
+          }
+          if (!value && settingsWeek) {
+            const s = String(settingsWeek).toLowerCase();
+            if (allowed.includes(s)) value = s;
+          }
+          if (value) setWeekStart(value);
+        } catch (e) {
+          // ignore errors; fallback to default
+        }
+      })();
+    }
     const load = async () => {
       try {
         setLoading(true);
@@ -227,13 +253,15 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
   };
 
   const saveWeekStart = async (value) => {
+    setShowWeekStartPicker(false);
     try {
-      setWeekStart(value);
-      setShowWeekStartPicker(false);
-      // Persist in user settings layout
-      await saveSettings({ layout: { weekStart: value } }, fetchWithAuth, { quiet401: true });
+      // Require an authenticated save so user is prompted if token is missing.
+      const saved = await saveSettings({ layout: { weekStart: value } }, fetchWithAuth, { quiet401: false });
+      const savedWeek = saved?.layout?.weekStart ?? value;
+      setWeekStart(String(savedWeek).toLowerCase());
     } catch (e) {
-      console.warn('Failed to save weekStart preference (will keep locally):', e?.message || e);
+      console.warn('Failed to save weekStart preference (not persisted):', e?.message || e);
+      // Do not change local weekStart if persistence failed
     }
   };
 

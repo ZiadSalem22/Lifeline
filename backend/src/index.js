@@ -400,7 +400,19 @@ app.get('/api/me', requireAuth(), (req, res) => {
         role: user.role,
         roles: user.roles,
         subscription_status: user.subscription_status,
-        profile: user.profile || { onboarding_completed: false }
+        // Include settings and profile fields (ensure front-end can read layout.weekStart and profile.start_day_of_week)
+        settings: user.settings || null,
+        profile: user.profile ? {
+            first_name: user.profile.first_name,
+            last_name: user.profile.last_name,
+            phone: user.profile.phone,
+            country: user.profile.country,
+            city: user.profile.city,
+            timezone: user.profile.timezone,
+            avatar_url: user.profile.avatar_url || null,
+            start_day_of_week: user.profile.start_day_of_week || null,
+            onboarding_completed: !!user.profile.onboarding_completed
+        } : { onboarding_completed: false }
     });
 });
 // Update or create user profile
@@ -435,25 +447,116 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
     try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
     const user = req.currentUser;
     if (!user || !user.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Create user and profile in one transaction if user does not exist
+    const userRepo = require('./infrastructure/TypeORMUserRepository');
+    const userProfileRepo = require('./infrastructure/TypeORMUserProfileRepository');
+    const claims = req.auth?.payload || {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+    };
     const {
         first_name,
         last_name,
+        email = null,
         phone = null,
         country = null,
         city = null,
         birthday = null,
         avatar_url = null,
         timezone = null,
+        start_day_of_week = null,
         onboarding_completed
     } = req.body || {};
+    // Debug: log incoming profile payload to help diagnose week-start persistence
+    try { console.debug('[api/profile] incoming body:', { first_name, last_name, email, phone, country, city, birthday, avatar_url, timezone, start_day_of_week, onboarding_completed }); } catch (e) {}
+    // Normalize start_day_of_week to a canonical capitalized form (accept lowercase/mixed-case)
+    let normalizedStartDay = null;
+    if (start_day_of_week) {
+        const raw = String(start_day_of_week).trim();
+        const lower = raw.toLowerCase();
+        const mapping = { sunday: 'Sunday', monday: 'Monday', saturday: 'Saturday' };
+        normalizedStartDay = mapping[lower] || (raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase());
+    }
+    // Validate normalized value
+    const allowedStartDays = ['Saturday', 'Sunday', 'Monday'];
+    if (normalizedStartDay && !allowedStartDays.includes(normalizedStartDay)) {
+        return res.status(400).json({ error: 'start_day_of_week must be one of: Saturday, Sunday, Monday' });
+    }
     if (!first_name || !last_name) {
         return res.status(400).json({ error: 'first_name and last_name are required' });
     }
-    // Only allow onboarding_completed to be true
     const onboardingFlag = onboarding_completed === true ? true : undefined;
     try {
-        const userProfileRepo = require('./infrastructure/TypeORMUserProfileRepository');
-        const saved = await userProfileRepo.saveOrUpdate(user.id, {
+        await AppDataSource.manager.transaction(async (manager) => {
+            // Create user if not exists
+            const repo = manager.getRepository('User');
+            let dbUser = await repo.findOne({ where: { id: claims.sub } });
+            if (!dbUser) {
+                dbUser = repo.create({
+                    id: claims.sub,
+                    email: email || claims.email || null,
+                    name: claims.name || null,
+                    picture: claims.picture || null,
+                    role: 'free',
+                    subscription_status: 'none',
+                    auth0_sub: claims.sub
+                });
+                await repo.save(dbUser);
+            } else {
+                // Update email if provided during onboarding
+                if (email) {
+                    // If the provided email differs, ensure no other user already has it
+                    if (dbUser.email !== email) {
+                        const existing = await repo.findOne({ where: { email } });
+                        if (existing && existing.id !== dbUser.id) {
+                            // Signal a conflict to the outer catch so we can return 409
+                            const e = new Error('EMAIL_CONFLICT');
+                            e.statusCode = 409;
+                            throw e;
+                        }
+                        dbUser.email = email;
+                        await repo.save(dbUser);
+                    }
+                }
+            }
+            // Create or update profile
+            const profileRepo = manager.getRepository('UserProfile');
+            let profile = await profileRepo.findOne({ where: { user_id: claims.sub } });
+            if (!profile) {
+                profile = profileRepo.create({
+                    user_id: claims.sub,
+                    first_name,
+                    last_name,
+                    timezone,
+                    phone,
+                    country,
+                    city,
+                    birthday,
+                    avatar_url,
+                    start_day_of_week: normalizedStartDay || null,
+                    onboarding_completed: !!onboardingFlag
+                });
+            } else {
+                Object.assign(profile, {
+                    first_name,
+                    last_name,
+                    timezone,
+                    phone,
+                    country,
+                    city,
+                    birthday,
+                    avatar_url,
+                    start_day_of_week: normalizedStartDay || profile.start_day_of_week || null,
+                    ...(onboardingFlag ? { onboarding_completed: true } : {})
+                });
+            }
+            const saved = await profileRepo.save(profile);
+            try { console.debug('[api/profile] saved profile record:', saved); } catch (e) {}
+        });
+        res.json({
             first_name,
             last_name,
             timezone,
@@ -462,22 +565,16 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
             city,
             birthday,
             avatar_url,
-            ...(onboardingFlag ? { onboarding_completed: true } : {})
-        });
-        res.json({
-            first_name: saved.first_name,
-            last_name: saved.last_name,
-            timezone: saved.timezone,
-            phone: saved.phone,
-            country: saved.country,
-            city: saved.city,
-            birthday: saved.birthday,
-            avatar_url: saved.avatar_url,
-            onboarding_completed: !!saved.onboarding_completed
+            onboarding_completed: !!onboardingFlag
         });
     } catch (err) {
-        logger.error('[POST /api/profile] failed', { error: err.message });
-        res.status(500).json({ error: 'Failed to save profile' });
+        // Handle explicit email conflict thrown inside the transaction
+        if (err && (err.message === 'EMAIL_CONFLICT' || err.statusCode === 409)) {
+            logger.warn('[POST /api/profile] email conflict during onboarding', { error: err.message });
+            return res.status(409).json({ error: 'Email already in use by another account' });
+        }
+        logger.error('[POST /api/profile] failed to create user/profile', { error: err.message });
+        res.status(500).json({ error: 'Failed to create user/profile' });
     }
 });
 // Auth probe

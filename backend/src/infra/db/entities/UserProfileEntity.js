@@ -45,6 +45,11 @@ module.exports = new EntitySchema({
       length: 64,
       nullable: true,
     },
+    start_day_of_week: {
+      type: 'nvarchar',
+      length: 16,
+      nullable: true,
+    },
     avatar_url: {
       type: 'nvarchar',
       length: 255,

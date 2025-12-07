@@ -122,6 +122,11 @@ export function useApi() {
         if (!options.quiet401) {
           console.log('API ERROR STATUS:', response.status, url);
         }
+        // If caller explicitly requested quiet401, return the response for the caller
+        // to handle (e.g. saveSettings wants to treat 401 as a soft-failure).
+        if (options.quiet401) {
+          return response;
+        }
         const error = new Error(`Unauthorized request to ${url}`);
         error.status = 401;
         throw error;
