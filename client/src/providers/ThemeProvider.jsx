@@ -6,7 +6,7 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const themes = ['dark', 'blue-dark', 'white', 'pink', 'red', 'blue', 'midnight', 'sunset'];
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'white');
   const [font, setFont] = useState(() => localStorage.getItem('font') || '"DM Sans", sans-serif');
   const { fetchWithAuth } = useApi();
   const { guestMode, isAuthenticated, checkedIdentity } = useAuthContext();

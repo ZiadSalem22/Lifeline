@@ -232,6 +232,14 @@ body {
     overflow-x: hidden;
 }
 
+/* Make the "Create New Tag" name input dark in dark themes only. Targets the input by placeholder to avoid changing other inputs. */
+[data-theme='dark'] input[placeholder="Tag name"],
+[data-theme='blue-dark'] input[placeholder="Tag name"] {
+ background: rgba(120, 125, 130, 0.55); /* black background */
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
 /* Global layout variables */
 :root {
   /* Default desktop sidebar width; used to offset content */
