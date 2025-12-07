@@ -102,6 +102,21 @@
   --search-focus: rgba(30, 144, 255, 0.18);
 }
 
+/* Date input styling for dark themes: keep light theme defaults untouched */
+[data-theme='dark'] input[type="date"],
+[data-theme='blue-dark'] input[type="date"] {
+  background: var(--color-surface-light);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+[data-theme='dark'] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme='blue-dark'] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) hue-rotate(180deg) saturate(0.6);
+}
+
 /* New Color Themes */
 
 /* Pink Theme */
