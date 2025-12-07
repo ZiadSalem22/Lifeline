@@ -16,8 +16,10 @@ const todoSchemaCreate = Joi.object({
     Joi.object({
       id: Joi.alternatives(Joi.string(), Joi.number()).required(),
       name: Joi.string().required(),
-      color: Joi.string().required()
-    })
+      color: Joi.string().required(),
+      userId: Joi.alternatives(Joi.string().allow(''), Joi.number(), Joi.valid(null)).optional(),
+      isDefault: Joi.boolean().optional()
+    }).unknown(true)
   ).default([]),
   isFlagged: Joi.boolean().optional(),
   duration: Joi.number().integer().min(0).max(1440).optional(),
@@ -35,8 +37,10 @@ const todoSchemaUpdate = Joi.object({
     Joi.object({
       id: Joi.alternatives(Joi.string(), Joi.number()).required(),
       name: Joi.string().required(),
-      color: Joi.string().required()
-    })
+      color: Joi.string().required(),
+      userId: Joi.alternatives(Joi.string().allow(''), Joi.number(), Joi.valid(null)).optional(),
+      isDefault: Joi.boolean().optional()
+    }).unknown(true)
   ).optional(),
   isFlagged: Joi.boolean().optional(),
   duration: Joi.number().integer().min(0).max(1440).optional(),
