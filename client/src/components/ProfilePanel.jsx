@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
+import { useLoading } from '../context/LoadingContext';
 
 export default function ProfilePanel() {
   const { isAuthenticated } = useAuth();
@@ -51,6 +52,8 @@ export default function ProfilePanel() {
     load();
     return () => { mounted = false; };
   }, [isAuthenticated, fetchWithAuth]);
+
+  const { isLoading: globalLoading } = useLoading();
 
   const onChange = (field) => (e) => setProfile(prev => ({ ...prev, [field]: e.target.value }));
 
@@ -138,7 +141,9 @@ export default function ProfilePanel() {
         </div>
 
         {loading ? (
-          <div>Loading…</div>
+          (!globalLoading) ? (
+            <div>Loading…</div>
+          ) : null
         ) : (
           <form onSubmit={onSave}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -158,7 +163,7 @@ export default function ProfilePanel() {
             </div>
             {error && <div style={{ color:'var(--color-danger)', fontSize:'0.85rem', marginTop:10 }}>{error}</div>}
             <div style={{ marginTop:16 }}>
-              <button type="submit" disabled={saving} style={saveBtnStyle}>{saving ? 'Saving…' : 'Save Changes'}</button>
+              <button type="submit" disabled={saving || globalLoading} style={{ ...saveBtnStyle, cursor: (saving || globalLoading) ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving…' : (globalLoading ? 'Please wait…' : 'Save Changes')}</button>
             </div>
           </form>
         )}

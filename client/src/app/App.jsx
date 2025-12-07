@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, memo, useEffect } from 'react';
+import { useLoading } from '../context/LoadingContext';
 import { createTag } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -227,6 +228,8 @@ function AppInner() {
     setEditingTodoTitle('');
     setEditingTodoDescription('');
   }, []);
+
+  const { isLoading: globalLoading } = useLoading();
 
   const handleToggle = useCallback(async (id) => {
     try {
@@ -554,25 +557,30 @@ function AppInner() {
   );
 
   if (loading || !checkedIdentity) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
-        {/* <CosmicBackground /> */}
-        <div className="fade-in-scale" style={{ textAlign: 'center' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              border: '4px solid var(--color-surface)',
-              borderTopColor: 'var(--color-primary)',
-              borderRadius: '50%',
-              margin: '0 auto 16px',
-              animation: 'spin 1s linear infinite'
-            }}
-          />
-          <p style={{ color: 'var(--color-text)', fontWeight: 600 }}>Loading your tasks...</p>
+    // If global overlay is active, let it present the loading UI.
+    // Only render the local centered loader when the global overlay is NOT active.
+    if (!globalLoading) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
+          {/* <CosmicBackground /> */}
+          <div className="fade-in-scale" style={{ textAlign: 'center' }}>
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                border: '4px solid var(--color-surface)',
+                borderTopColor: 'var(--color-primary)',
+                borderRadius: '50%',
+                margin: '0 auto 16px',
+                animation: 'spin 1s linear infinite'
+              }}
+            />
+            <p style={{ color: 'var(--color-text)', fontWeight: 600 }}>Loading your tasks...</p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   }
 
   // Use react-router routes so the URL controls the view
@@ -1348,6 +1356,7 @@ function AppInner() {
                 <button
                   type="submit"
                   className="button-hover-scale-bg"
+                  disabled={globalLoading}
                   style={{
                     padding: '10px 28px',
                     background: 'var(--color-primary)',
@@ -1356,21 +1365,23 @@ function AppInner() {
                     fontWeight: '600',
                     fontSize: '0.9rem',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: globalLoading ? 'not-allowed' : 'pointer',
                     transition: 'background 0.25s ease, transform 0.2s ease',
                     boxShadow: '0 6px 18px -6px var(--shadow-primary)',
                     margin: '12px auto 0'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--color-primary-dark)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    if (!globalLoading) {
+                      e.currentTarget.style.background = 'var(--color-primary-dark)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'var(--color-primary)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  Add Task
+                  {globalLoading ? 'Adding…' : 'Add Task'}
                 </button>
               </div>
 

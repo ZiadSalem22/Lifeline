@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ExportDataModal from './ExportDataModal';
 import ExportImport from './ExportImport';
 import { createTag, deleteTag, updateTag } from '../../utils/api';
+import { useLoading } from '../../context/LoadingContext';
 import { DeleteIcon, TagIcon, EditIcon, CheckIcon, CloseIcon } from '../../icons/Icons';
 import styles from './Settings.module.css';
 
@@ -10,6 +11,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState('#6366f1');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isLoading: globalLoading } = useLoading();
     const [activeTab, setActiveTab] = useState('tags');
     const [showExportModal, setShowExportModal] = useState(false);
     const [editingTagId, setEditingTagId] = useState(null);
@@ -40,7 +42,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
 
     const handleAddTag = async (e) => {
         e.preventDefault();
-        if (!newTagName.trim() || isSubmitting) return;
+        if (!newTagName.trim() || isSubmitting || globalLoading) return;
 
         try {
             setIsSubmitting(true);
@@ -206,18 +208,18 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                     </div>
                                     <motion.button
                                         type="submit"
-                                        disabled={isSubmitting}
+                                        disabled={isSubmitting || globalLoading}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         className={styles['submit-btn']}
                                         onMouseEnter={(e) => {
-                                            if (!isSubmitting) e.currentTarget.style.background = 'var(--color-primary-dark)';
+                                            if (!(isSubmitting || globalLoading)) e.currentTarget.style.background = 'var(--color-primary-dark)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (!isSubmitting) e.currentTarget.style.background = 'var(--color-primary)';
+                                            if (!(isSubmitting || globalLoading)) e.currentTarget.style.background = 'var(--color-primary)';
                                         }}
                                     >
-                                        {isSubmitting ? (<div className={styles.spinner} />) : ('Add')}
+                                        {(isSubmitting || globalLoading) ? (<div className={styles.spinner} />) : ('Add')}
                                     </motion.button>
                                 </form>
 
@@ -280,13 +282,14 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                             <motion.button
                                                                 whileHover={{ scale: 1.1 }}
                                                                 whileTap={{ scale: 0.9 }}
-                                                                onClick={() => handleSaveEdit(tag.id)}
+                                                                onClick={() => { if (!globalLoading) handleSaveEdit(tag.id); }}
                                                                 className={styles.btn}
+                                                                disabled={globalLoading}
                                                                 onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.background = 'var(--color-surface-hover)';
+                                                                    if (!globalLoading) e.currentTarget.style.background = 'var(--color-surface-hover)';
                                                                 }}
                                                                 onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.background = 'transparent';
+                                                                    if (!globalLoading) e.currentTarget.style.background = 'transparent';
                                                                 }}
                                                             >
                                                                 <CheckIcon />
@@ -294,15 +297,20 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                             <motion.button
                                                                 whileHover={{ scale: 1.1 }}
                                                                 whileTap={{ scale: 0.9 }}
-                                                                onClick={handleCancelEdit}
+                                                                onClick={() => { if (!globalLoading) handleCancelEdit(); }}
                                                                 className={styles.btn}
+                                                                disabled={globalLoading}
                                                                 onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.color = 'var(--color-text)';
-                                                                    e.currentTarget.style.background = 'var(--color-surface-hover)';
+                                                                    if (!globalLoading) {
+                                                                        e.currentTarget.style.color = 'var(--color-text)';
+                                                                        e.currentTarget.style.background = 'var(--color-surface-hover)';
+                                                                    }
                                                                 }}
                                                                 onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.color = 'var(--color-text-muted)';
-                                                                    e.currentTarget.style.background = 'transparent';
+                                                                    if (!globalLoading) {
+                                                                        e.currentTarget.style.color = 'var(--color-text-muted)';
+                                                                        e.currentTarget.style.background = 'transparent';
+                                                                    }
                                                                 }}
                                                             >
                                                                 <CloseIcon />
@@ -322,13 +330,14 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                                 <motion.button
                                                                     whileHover={{ scale: 1.1 }}
                                                                     whileTap={{ scale: 0.9 }}
-                                                                    onClick={() => handleStartEdit(tag)}
+                                                                    onClick={() => { if (!globalLoading) handleStartEdit(tag); }}
                                                                     className={styles.btn}
+                                                                    disabled={globalLoading}
                                                                     onMouseEnter={(e) => {
-                                                                        e.currentTarget.style.color = 'var(--color-primary)';
+                                                                        if (!globalLoading) e.currentTarget.style.color = 'var(--color-primary)';
                                                                     }}
                                                                     onMouseLeave={(e) => {
-                                                                        e.currentTarget.style.color = 'var(--color-text-muted)';
+                                                                        if (!globalLoading) e.currentTarget.style.color = 'var(--color-text-muted)';
                                                                     }}
                                                                 >
                                                                     <EditIcon />
@@ -336,13 +345,14 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                                                 <motion.button
                                                                     whileHover={{ scale: 1.1 }}
                                                                     whileTap={{ scale: 0.9 }}
-                                                                    onClick={() => handleDeleteTag(tag.id)}
+                                                                    onClick={() => { if (!globalLoading) handleDeleteTag(tag.id); }}
                                                                     className={styles.btn}
+                                                                    disabled={globalLoading}
                                                                     onMouseEnter={(e) => {
-                                                                        e.currentTarget.style.color = 'var(--color-danger)';
+                                                                        if (!globalLoading) e.currentTarget.style.color = 'var(--color-danger)';
                                                                     }}
                                                                     onMouseLeave={(e) => {
-                                                                        e.currentTarget.style.color = 'var(--color-text-muted)';
+                                                                        if (!globalLoading) e.currentTarget.style.color = 'var(--color-text-muted)';
                                                                     }}
                                                                 >
                                                                     <DeleteIcon />

@@ -11,6 +11,8 @@ import '../styles/design/breakpoints.css'
 import '../styles/utils.css'
 import App from './App.jsx'
 import ErrorBoundary from '../components/common/ErrorBoundary.jsx'
+import { LoadingProvider } from '../context/LoadingContext';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
@@ -36,7 +38,10 @@ createRoot(document.getElementById('root')).render(
         }}
       >
         <ErrorBoundary>
-          <App />
+          <LoadingProvider>
+            <App />
+            <LoadingOverlay />
+          </LoadingProvider>
         </ErrorBoundary>
       </BrowserRouter>
     </Auth0Provider>
