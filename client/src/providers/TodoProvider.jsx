@@ -176,10 +176,35 @@ export function TodoProvider({ children }) {
     const today = format(new Date(), 'yyyy-MM-dd');
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
     return todos.filter(todo => {
-      // Date filter
-      if (selectedDate === 'today' && todo.dueDate !== today) return false;
-      if (selectedDate === 'tomorrow' && todo.dueDate !== tomorrow) return false;
-      if (typeof selectedDate === 'string' && selectedDate.includes('-') && selectedDate !== 'today' && selectedDate !== 'tomorrow' && todo.dueDate !== selectedDate) return false;
+      // Date filter (original behavior) but allow dateRange recurring todos to appear on days inside their span
+      if (selectedDate === 'today' && todo.dueDate !== today) {
+        // allow if this todo is a dateRange that covers today
+        if (!(todo.recurrence && todo.recurrence.mode === 'dateRange' && (() => {
+          try {
+            const start = todo.recurrence.startDate || todo.dueDate;
+            const end = todo.recurrence.endDate || todo.dueDate;
+            return start && end && (today >= start && today <= end);
+          } catch (e) { return false; }
+        })())) return false;
+      }
+      if (selectedDate === 'tomorrow' && todo.dueDate !== tomorrow) {
+        if (!(todo.recurrence && todo.recurrence.mode === 'dateRange' && (() => {
+          try {
+            const start = todo.recurrence.startDate || todo.dueDate;
+            const end = todo.recurrence.endDate || todo.dueDate;
+            return start && end && (tomorrow >= start && tomorrow <= end);
+          } catch (e) { return false; }
+        })())) return false;
+      }
+      if (typeof selectedDate === 'string' && selectedDate.includes('-') && selectedDate !== 'today' && selectedDate !== 'tomorrow' && todo.dueDate !== selectedDate) {
+        if (!(todo.recurrence && todo.recurrence.mode === 'dateRange' && (() => {
+          try {
+            const start = todo.recurrence.startDate || todo.dueDate;
+            const end = todo.recurrence.endDate || todo.dueDate;
+            return start && end && (selectedDate >= start && selectedDate <= end);
+          } catch (e) { return false; }
+        })())) return false;
+      }
       // Search filter
       if (searchQuery.trim().length) {
         const q = searchQuery.toLowerCase();

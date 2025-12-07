@@ -54,7 +54,7 @@ describe('CreateTodo Recurrence Integration', () => {
         db.close(done);
     });
 
-    it('should create multiple todos for daily recurrence (dateRange)', async () => {
+    it('should create a single logical todo for dateRange recurrence', async () => {
         const recurrence = {
             mode: 'dateRange',
             startDate: '2025-11-24',
@@ -67,13 +67,12 @@ describe('CreateTodo Recurrence Integration', () => {
                 else resolve(rows);
             });
         });
-        expect(all).toHaveLength(4);
-        expect(all.map(t => t.due_date)).toEqual([
-            '2025-11-24',
-            '2025-11-25',
-            '2025-11-26',
-            '2025-11-27'
-        ]);
+        // New behavior: one logical todo represents the whole date range
+        expect(all).toHaveLength(1);
+        expect(all[0].due_date).toBe('2025-11-24');
+        const storedRecurrence = JSON.parse(all[0].recurrence);
+        expect(storedRecurrence.startDate).toBe('2025-11-24');
+        expect(storedRecurrence.endDate).toBe('2025-11-27');
     });
 
     it('should create todos only on selected days for specificDays recurrence', async () => {

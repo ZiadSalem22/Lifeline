@@ -364,9 +364,27 @@ function AppInner() {
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
     const dateFiltered = todos.filter(todo => {
       const due = todo.dueDate;
-      if (selectedDate === 'tomorrow') return !!due && due === tomorrow;
-      if (selectedDate === 'today') return !!due && due === today;
-      if (typeof selectedDate === 'string' && selectedDate.includes('-')) return !!due && due === selectedDate;
+      // exact matches
+      if (selectedDate === 'tomorrow' && due === tomorrow) return true;
+      if (selectedDate === 'today' && due === today) return true;
+      if (typeof selectedDate === 'string' && selectedDate.includes('-') && due === selectedDate) return true;
+      // dateRange recurrence that covers the selected date
+      try {
+        if (todo.recurrence && todo.recurrence.mode === 'dateRange') {
+          const start = todo.recurrence.startDate || due;
+          const end = todo.recurrence.endDate || due;
+          if (start && end) {
+            let sel = selectedDate;
+            if (selectedDate === 'today') sel = today;
+            if (selectedDate === 'tomorrow') sel = tomorrow;
+            if (typeof sel === 'string' && sel.includes('-') && sel >= start && sel <= end) return true;
+          }
+        }
+      } catch (e) {
+        // ignore and continue
+      }
+      // otherwise exclude when date-specific view
+      if (selectedDate === 'today' || selectedDate === 'tomorrow' || (typeof selectedDate === 'string' && selectedDate.includes('-'))) return false;
       return true;
     });
     return dateFiltered.filter(t => t.isCompleted).length;

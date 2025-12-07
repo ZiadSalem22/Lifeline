@@ -53,16 +53,44 @@ const RecurrenceSelector = ({ recurrence, baseDate, isOpen, onClose, onApply, on
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           {[
             { key: 'daily', label: 'Daily', desc: 'Every day between start and end' },
-            { key: 'dateRange', label: 'Date Range', desc: 'Single continuous span (daily)' },
+            { key: 'dateRange', label: 'Date Range', desc: 'Single continuous task — rendered until it\'s done' },
             { key: 'specificDays', label: 'Specific Weekdays', desc: 'Only selected weekdays in range' }
           ].map(opt => (
-            <label key={opt.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 10px', borderRadius: 10, border: `1px solid ${mode === opt.key ? 'var(--color-primary)' : 'var(--color-border)'}`, background: mode === opt.key ? 'color-mix(in oklab, var(--color-primary) 12%, transparent)' : 'var(--color-surface-light)', cursor: 'pointer' }}>
-              <input type="radio" name="recurrenceMode" checked={mode === opt.key} onChange={() => setMode(opt.key)} style={{ marginTop: 2 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{opt.label}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{opt.desc}</span>
-              </div>
-            </label>
+            <div key={opt.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: `1px solid ${mode === opt.key ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: mode === opt.key ? 'color-mix(in oklab, var(--color-primary) 12%, transparent)' : 'var(--color-surface-light)',
+                  cursor: 'pointer'
+                }}
+              >
+                <input type="radio" name="recurrenceMode" checked={mode === opt.key} onChange={() => setMode(opt.key)} style={{ marginTop: 2 }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', flex: '0 0 auto' }}>{opt.label}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.1, flex: '1 1 auto', textAlign: 'right' }}>{opt.desc}</span>
+                </div>
+              </label>
+
+              {mode === opt.key && (
+                <div style={{ fontSize: '0.74rem', color: 'var(--color-text)', padding: '6px 10px', marginLeft: 36, borderLeft: '3px solid rgba(0,0,0,0.06)', lineHeight: 1.25 }}>
+                  {opt.key === 'daily' && (
+                    <div><strong style={{fontWeight:600}}>Daily:</strong> Creates separate tasks for each day in the selected span. Each day is its own task and can be completed independently.</div>
+                  )}
+                  {opt.key === 'dateRange' && (
+                    <div><strong style={{fontWeight:600}}>Date Range:</strong> Creates one logical task that appears on every day between the start and end dates. It is rendered on each day until it is marked done; completing it will mark the entire date range completed and it will no longer appear on remaining days.</div>
+                  )}
+                  {opt.key === 'specificDays' && (
+                    <div><strong style={{fontWeight:600}}>Specific Weekdays:</strong> Shows a single task each day that matches the selected weekdays inside the date span. Only selected weekdays will show the task.</div>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
