@@ -382,7 +382,7 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                             fetchWithAuth={fetchWithAuth}
                                             onImportComplete={() => window.location.reload()}
                                             isOpen={true}
-                                            onClose={() => {}}
+                                            onClose={() => setActiveTab('tags')}
                                         />
                                     </div>
                                 </div>
