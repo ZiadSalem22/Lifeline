@@ -445,15 +445,15 @@ const Settings = ({ isOpen, onClose, tags, setTags, theme, themes, setTheme, fon
                                     <h3 className={styles['section-title']}>About</h3>
                                     <div className={styles.panel}>
                                         <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                                            <h4 className={styles.h3}>Todo App</h4>
+                                            <h4 className={styles.h3}>Lifeline</h4>
                                             <p className={styles['section-subtitle']}>Version 1.0.0</p>
                                             <p className={styles['section-subtitle']}>
-                                                A beautiful and functional todo application built with React and Node.js.
-                                                Organize your tasks efficiently with tags and priorities.
+                                                A beautiful and functional Do Apps experience built with React and Node.js.
+                                                Organize your do apps efficiently with tags and priorities.
                                             </p>
                                             <div className={styles['section-border']} style={{ marginTop: '24px', paddingTop: '24px' }}>
                                                 <p className={styles['section-subtitle']}>
-                                                    © 2024 Todo App. All rights reserved.
+                                                    © 2025 Golden Gateway. All rights reserved.
                                                 </p>
                                             </div>
                                         </div>
