@@ -692,6 +692,61 @@ body {
   box-shadow: 0 0 0 4px rgba(0, 255, 65, 0.1);
 }
 
+/* Add Task Button - responsive */
+.add-task-button {
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+.add-task-button:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
+
+/* Mobile: full width, large tap target */
+@media (max-width: 480px) {
+  .add-task-button { width: 100%; padding: 14px 16px; font-size: 1rem; min-height: 44px; }
+}
+
+/* Desktop: compact inline */
+@media (min-width: 481px) {
+  .add-task-button { width: auto; padding: 8px 12px; font-size: 0.95rem; }
+}
+
+/* Polished Add Task button (premium, Notion-like) */
+.add-task-button-wrap { display: flex; align-items: flex-start; }
+.add-task-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%; /* w-full mobile */
+  padding: 0.625rem 1.25rem; /* py-2.5 px-5 */
+  border-radius: 9999px; /* rounded-full */
+  background: var(--color-bg, #fff); /* bg-white */
+  border: 1px solid var(--color-border, #e5e7eb); /* border-gray-300 */
+  color: var(--color-text, #374151); /* text-gray-700 */
+  font-weight: 500; /* font-medium */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04); /* shadow-sm */
+  cursor: pointer;
+  transition: all 180ms ease; /* transition-all */
+  justify-content: center;
+}
+.add-task-button__icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:9999px;border:1px solid rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.02);
+  color: var(--color-primary);
+  font-weight:700;font-size:16px;line-height:1;
+}
+.add-task-button__label{display:inline-block}
+
+.add-task-button:hover{ background: #f9fafb; /* hover:bg-gray-50 */ box-shadow: 0 6px 20px rgba(0,0,0,0.06); transform: translateY(-1px); }
+.add-task-button:active{ transform: scale(.98); }
+
+/* md: shadow-none and auto width */
+@media (min-width: 768px) {
+  .add-task-button { width: auto; box-shadow: none; padding: 0.625rem 1rem; }
+}
+
 /* Progress Bar Fill Animation */
 .progress-bar-fill {
   transition: width 0.5s ease-out;

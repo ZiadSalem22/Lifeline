@@ -115,6 +115,8 @@ function AppInner() {
   const [savedMessage, setSavedMessage] = useState('');
   const [draggedTodoId, setDraggedTodoId] = useState(null);
   const [expandedTodoId, setExpandedTodoId] = useState(null);
+  const [isAddCardOpen, setIsAddCardOpen] = useState(todos.length === 0);
+  const addCardRef = useRef(null);
   // Removed hasLoggedToken (token logging now unnecessary in App layer)
 
   // Toggle expanded state for a given todo card
@@ -176,11 +178,44 @@ function AppInner() {
       setCurrentRecurrence(null);
       setShowTagInput(false);
       inputRef.current?.focus();
+      // Close the add card after successful add (if tasks now exist)
+      try { setIsAddCardOpen(false); } catch (_) {}
     } catch (error) {
       setAddTodoError(error?.message || 'Failed to add todo');
       console.error('Failed to add todo', error);
     }
-  }, [inputValue, inputDescription, scheduleDate, selectedDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, currentRecurrence, createTodo]);
+  }, [inputValue, inputDescription, scheduleDate, selectedDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, currentRecurrence, createTodo, setIsAddCardOpen]);
+
+  // Auto-open/close add card based on todos count
+  useEffect(() => {
+    if (!Array.isArray(todos)) return;
+    if (todos.length === 0) {
+      setIsAddCardOpen(true);
+    } else {
+      setIsAddCardOpen(false);
+    }
+  }, [todos.length]);
+
+  // Outside click & Escape handling for add card
+  useEffect(() => {
+    if (!isAddCardOpen) return;
+    function onDown(e) {
+      if (addCardRef.current && !addCardRef.current.contains(e.target)) {
+        setIsAddCardOpen(false);
+      }
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setIsAddCardOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isAddCardOpen]);
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
@@ -830,8 +865,22 @@ function AppInner() {
 
               </div>
             {/* Add Task Form hidden when searching */}
-            {!searchActive && (
+            {!searchActive && !isAddCardOpen && (
+              <div className="add-task-button-wrap" style={{ marginTop: '24px', marginBottom: '16px' }}>
+                <button
+                  type="button"
+                  className="add-task-button"
+                  onClick={() => setIsAddCardOpen(true)}
+                  aria-label="Add Task"
+                >
+                  <span className="add-task-button__icon" aria-hidden>+</span>
+                  <span className="add-task-button__label">Add Task</span>
+                </button>
+              </div>
+            )}
+            {!searchActive && isAddCardOpen && (
               <form
+              ref={addCardRef}
               className="add-task-form add-task-form-animation"
               onSubmit={handleAdd}
               style={{
@@ -1111,8 +1160,31 @@ function AppInner() {
               </div>
             )}
             {/* Hide add task form when searching */}
-            {!searchActive && (
+            {!searchActive && !isAddCardOpen && (
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  type="button"
+                  className="add-task-button"
+                  onClick={() => setIsAddCardOpen(true)}
+                  aria-label="Add Task"
+                  style={{
+                    display: 'inline-block',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Add Task
+                </button>
+              </div>
+            )}
+            {!searchActive && isAddCardOpen && (
             <form
+              ref={addCardRef}
               className="add-task-form add-task-form-animation"
               onSubmit={handleAdd}
               style={{
