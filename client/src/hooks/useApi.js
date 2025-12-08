@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 let tokenErrorLogged = false; // suppress repeat noisy token errors in dev
+let missingRefreshHandled = false; // avoid infinite redirect loops
 import { useAuth0 } from '@auth0/auth0-react';
 
 const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
@@ -48,7 +49,7 @@ const ensureAbsoluteUrl = (input) => {
 };
 
 export function useApi() {
-  const { getAccessTokenSilently } = useAuth0();
+  const { getAccessTokenSilently, loginWithRedirect } = useAuth0();
 
   const tokenOptions = useMemo(() => createTokenOptions(), []);
 
@@ -65,6 +66,25 @@ export function useApi() {
         err.code = err.code || 'TOKEN_ERROR';
         // unify with HTTP handling so callers can treat like 401
         err.status = err.status || 401;
+      }
+      // If the SDK reports a missing refresh token for the requested audience/scope,
+      // clear local storage (Auth0 keys) and re-trigger an interactive login exactly once.
+      const msg = String(err && (err.message || err.error || err.code || ''));
+      const isMissingRefresh = msg.includes('Missing Refresh Token') || msg.toLowerCase().includes('missing_refresh_token');
+      if (isMissingRefresh && !missingRefreshHandled) {
+        try {
+          missingRefreshHandled = true;
+          // remove Auth0-related keys from localStorage so SDK starts fresh
+          Object.keys(localStorage)
+            .filter((k) => k && k.startsWith('auth0.'))
+            .forEach((k) => localStorage.removeItem(k));
+          // redirect to login to obtain fresh tokens (include audience+scope)
+          if (typeof loginWithRedirect === 'function') {
+            loginWithRedirect({ authorizationParams: { audience: AUTH_AUDIENCE, scope: AUTH_SCOPE } });
+          }
+        } catch (cleanupErr) {
+          console.error('Failed to handle missing refresh token cleanup', cleanupErr);
+        }
       }
       if (!tokenErrorLogged) {
         console.error('fetchWithAuth: failed to retrieve token (will fallback)', err);

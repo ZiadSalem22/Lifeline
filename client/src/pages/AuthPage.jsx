@@ -7,7 +7,12 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
-      loginWithRedirect();
+      loginWithRedirect({
+        authorizationParams: {
+          audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+          scope: import.meta.env.VITE_AUTH0_SCOPE,
+        },
+      });
     }
   }, [isAuthenticated, isLoading, loginWithRedirect]);
 
