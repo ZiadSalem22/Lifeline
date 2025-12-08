@@ -17,6 +17,7 @@ import LoadingOverlay from '../components/ui/LoadingOverlay';
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
 const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+const scope = import.meta.env.VITE_AUTH0_SCOPE || 'openid profile email offline_access';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -25,7 +26,8 @@ createRoot(document.getElementById('root')).render(
       clientId={clientId}
       authorizationParams={{
         audience,
-        redirect_uri: window.location.origin
+        redirect_uri: window.location.origin,
+        scope
       }}
       cacheLocation="localstorage"
       useRefreshTokens={true}
