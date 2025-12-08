@@ -6,7 +6,8 @@ const logger = require('../config/logger');
 // AUTH0_AUDIENCE should match the access token's aud claim (API identifier or client id)
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN?.replace(/^https?:\/\//, '').replace(/\/$/, '') || 'dev-1b4upl01bjz8l8li.us.auth0.com';
 // Support multiple audiences via comma-separated list or AUTH0_AUDIENCE_ALT
-const audRaw = (process.env.AUTH0_AUDIENCE || '5THMMyQGm2mIbpLnCVW1RpXGIyd1G9jr').split(',');
+// Default to the API identifier so the backend validates API-scoped tokens by default
+const audRaw = (process.env.AUTH0_AUDIENCE || 'https://lifeline-api').split(',');
 const audAlt = (process.env.AUTH0_AUDIENCE_ALT || '').split(',');
 const AUTH0_AUDIENCE = [...audRaw, ...audAlt].map(a => a.trim()).filter(Boolean);
 
