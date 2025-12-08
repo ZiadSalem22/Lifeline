@@ -1274,28 +1274,37 @@ input[type="checkbox"]:checked {
 input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  left: 5px;
-  top: 2px;
+  /* center the checkmark inside the checkbox */
+  left: 50%;
+  top: 50%;
   width: 5px;
   height: 10px;
   border: solid var(--color-bg);
   border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  transform: translate(-50%, -50%) rotate(45deg);
   animation: checkmark 0.2s ease;
 }
 
 @keyframes checkmark {
   0% {
     opacity: 0;
-    transform: rotate(45deg) scale(0);
+    transform: translate(-50%, -50%) rotate(45deg) scale(0);
   }
   50% {
-    transform: rotate(45deg) scale(1.2);
+    transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
   }
   100% {
     opacity: 1;
-    transform: rotate(45deg) scale(1);
+    transform: translate(-50%, -50%) rotate(45deg) scale(1);
   }
+}
+
+/* Smaller dimensions for the tiny subtask checkboxes so the mark stays centered */
+input[type="checkbox"].subtask-checkbox-small:checked::after,
+.task-card-wrapper input[type="checkbox"].subtask-checkbox-small:checked::after {
+  width: 4px;
+  height: 7px;
+  border-width: 0 1.6px 1.6px 0;
 }
 
 input[type="checkbox"]:focus {
