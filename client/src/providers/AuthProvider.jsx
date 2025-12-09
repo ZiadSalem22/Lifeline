@@ -20,7 +20,14 @@ export function AuthProvider({ children }) {
       return;
     }
     try {
-      const token = await getAccessTokenSilently(createTokenOptions());
+      const token = await Promise.race([
+  getAccessTokenSilently(createTokenOptions()),
+
+  // Timeout after 5 seconds
+  new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("SilentRefreshTimeout")), 5000)
+  )
+]);
       // Use new fetchMe utility for user profile
       const { fetchMe } = await import('../utils/api');
       const data = await fetchMe(async (url, options) => {
