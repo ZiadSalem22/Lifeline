@@ -994,6 +994,17 @@ function AppInner() {
                     Clear Template
                   </button>
                 </div>
+                <div style={{
+                  marginTop: '6px',
+                  marginBottom: '4px',
+                  fontSize: '0.97rem',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'left',
+                  fontStyle: 'italic',
+                  letterSpacing: '0.01em'
+                }}>
+                  Repeating a task? Just enter the number and we got you. We’ll make it easier.
+                </div>
                 {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
                 <input
                   ref={inputRef}
@@ -1316,6 +1327,18 @@ function AppInner() {
                   <button className="load-template-clear" type="button" onClick={clearTemplate}>
                     Clear Template
                   </button>
+                </div>
+                   <div style={{
+                  paddingLeft: '8px',
+                  marginTop: '5px',
+                  marginBottom: 'px',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'left',
+                  fontStyle: 'initial',
+                  letterSpacing: '0.001em'
+                }}>
+                 Repeating a Task? Enter its number to load a previous task instantly.
                 </div>
                 {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
 
