@@ -78,6 +78,8 @@ function AppInner() {
   const [loadTaskNumber, setLoadTaskNumber] = useState('');
   const [loadTaskError, setLoadTaskError] = useState('');
   const [isLoadingTask, setIsLoadingTask] = useState(false);
+  const loadTaskInputRef = useRef(null);
+  const [prefilling, setPrefilling] = useState(false);
   const fonts = [
     { name: 'Inter', value: '"Inter", sans-serif' },
     { name: 'DM Sans', value: '"DM Sans", sans-serif' },
@@ -104,6 +106,69 @@ function AppInner() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const inputRef = useRef(null);
+  
+
+  const clearTemplate = useCallback(() => {
+    setLoadTaskNumber('');
+    setLoadTaskError('');
+    setInputValue('');
+    setInputDescription('');
+    setSelectedTags([]);
+    setIsFlagged(false);
+    setPriority('medium');
+    setSubtasks([]);
+    setHours(0);
+    setMinutes(0);
+    setDueTime('');
+    setScheduleDate('');
+    setCurrentRecurrence(null);
+  }, []);
+
+  const handleLoadTemplate = useCallback(async () => {
+    setLoadTaskError('');
+    if (!loadTaskNumber || isNaN(parseInt(loadTaskNumber, 10))) {
+      setLoadTaskError('Enter a valid task number');
+      return;
+    }
+    setIsLoadingTask(true);
+    try {
+      const data = await getTodoByNumber(parseInt(loadTaskNumber, 10), fetchWithAuth);
+      if (!data) {
+        setLoadTaskError('No task found with that number.');
+        setIsLoadingTask(false);
+        return;
+      }
+      if (data.error) {
+        setLoadTaskError(data.error || 'No task found with that number.');
+        setIsLoadingTask(false);
+        return;
+      }
+      const todo = data;
+      // Visual smoothing: briefly set prefilling to trigger a subtle transition
+      setPrefilling(true);
+      // Populate form fields
+      setInputValue(todo.title || '');
+      setInputDescription(todo.description || '');
+      setSelectedTags(todo.tags || []);
+      setIsFlagged(!!todo.is_flagged || !!todo.isFlagged);
+      setPriority(todo.priority || 'medium');
+      setSubtasks(todo.subtasks || []);
+      setHours(Math.floor((todo.duration || 0) / 60));
+      setMinutes((todo.duration || 0) % 60);
+      setDueTime(todo.due_time || todo.dueTime || '');
+      // Do NOT copy the original task's date — treat the template as new.
+      // Clearing scheduleDate ensures the created task will use the current/selected date.
+      setScheduleDate('');
+      setCurrentRecurrence(todo.recurrence || null);
+      // Clear loading & reset prefilling state shortly after
+      setIsLoadingTask(false);
+      setTimeout(() => setPrefilling(false), 180);
+    } catch (err) {
+      setLoadTaskError(err?.message || 'Failed to load task');
+      setIsLoadingTask(false);
+      setPrefilling(false);
+    }
+  }, [loadTaskNumber, fetchWithAuth]);
   // navigate is declared earlier to avoid temporal dead zone in effects
   
   // selectedFilterTags provided by TodoProvider
@@ -135,6 +200,16 @@ function AppInner() {
 
   const handleThemeChange = useCallback((newTheme) => { changeTheme(newTheme); }, [changeTheme]);
   const handleFontChange = useCallback((newFont) => { /* future: font provider */ }, []);
+
+  // Autofocus the task-number input when the Create Task panel opens
+  useEffect(() => {
+    if (isAddCardOpen) {
+      // small timeout to wait for render
+      setTimeout(() => {
+        loadTaskInputRef.current?.focus();
+      }, 40);
+    }
+  }, [isAddCardOpen]);
 
 
   // Removed legacy manual data/theme/notification initialization; handled by providers (AuthProvider, TodoProvider, ThemeProvider, NotificationPoller)
@@ -895,7 +970,8 @@ function AppInner() {
                 padding: '28px 28px 24px',
                 border: '1px solid var(--color-border)',
                 boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-                transition: 'box-shadow 0.3s ease',
+                transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
+                opacity: prefilling ? 0.92 : 1
               }}
             >
               {/* Title on top, then description, then centered controls */}
@@ -903,42 +979,19 @@ function AppInner() {
                 {/* Load Task UI: numeric input + Load button */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <input
+                    ref={loadTaskInputRef}
                     type="number"
                     min={1}
                     value={loadTaskNumber}
                     onChange={(e) => setLoadTaskNumber(e.target.value)}
                     placeholder="Load task #"
-                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)' }}
+                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', transition: 'background 0.15s, color 0.15s' }}
                   />
-                  <button type="button" onClick={async () => {
-                    setLoadTaskError('');
-                    if (!loadTaskNumber || isNaN(parseInt(loadTaskNumber,10))) { setLoadTaskError('Enter a valid task number'); return; }
-                    setIsLoadingTask(true);
-                    try {
-                      const data = await getTodoByNumber(parseInt(loadTaskNumber,10), fetchWithAuth);
-                      if (!data) { setLoadTaskError('No task found with that number.'); setIsLoadingTask(false); return; }
-                      // API returns todo object or { error }
-                      if (data.error) { setLoadTaskError(data.error || 'No task found with that number.'); setIsLoadingTask(false); return; }
-                      const todo = data;
-                      // Populate form fields
-                      setInputValue(todo.title || '');
-                      setInputDescription(todo.description || '');
-                      setSelectedTags(todo.tags || []);
-                      setIsFlagged(!!todo.is_flagged || !!todo.isFlagged);
-                      setPriority(todo.priority || 'medium');
-                      setSubtasks(todo.subtasks || []);
-                      setHours(Math.floor((todo.duration||0)/60));
-                      setMinutes((todo.duration||0)%60);
-                      setDueTime(todo.due_time || todo.dueTime || '');
-                      setScheduleDate(todo.due_date || todo.dueDate || '');
-                      setCurrentRecurrence(todo.recurrence || null);
-                      setIsLoadingTask(false);
-                    } catch (err) {
-                      setLoadTaskError(err?.message || 'Failed to load task');
-                      setIsLoadingTask(false);
-                    }
-                  }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                  <button type="button" onClick={handleLoadTemplate} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
                     {isLoadingTask ? 'Loading…' : 'Load'}
+                  </button>
+                  <button type="button" onClick={clearTemplate} style={{ padding: '8px 10px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                    Clear Template
                   </button>
                 </div>
                 {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
@@ -1240,11 +1293,31 @@ function AppInner() {
                 padding: '28px 28px 24px',
                 border: '1px solid var(--color-border)',
                 boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-                transition: 'box-shadow 0.3s ease',
+                transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
+                opacity: prefilling ? 0.92 : 1,
               }}
             >
               {/* Title on top, then description, then centered controls */}
               <div style={{ marginBottom: '12px' }}>
+                {/* Load Task UI: numeric input + Load button */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    ref={loadTaskInputRef}
+                    type="number"
+                    min={1}
+                    value={loadTaskNumber}
+                    onChange={(e) => setLoadTaskNumber(e.target.value)}
+                    placeholder="Load task #"
+                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', transition: 'background 0.15s, color 0.15s' }}
+                  />
+                  <button type="button" onClick={handleLoadTemplate} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                    {isLoadingTask ? 'Loading…' : 'Load'}
+                  </button>
+                  <button type="button" onClick={clearTemplate} style={{ padding: '8px 10px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                    Clear Template
+                  </button>
+                </div>
+                {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
                 <input
                   ref={inputRef}
                   type="text"
