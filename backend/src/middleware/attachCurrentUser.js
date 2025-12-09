@@ -20,7 +20,7 @@ async function attachCurrentUser(req, res, next) {
         role: 'free',
         roles: ['free'],
         subscription_status: null,
-        profile: { onboarding_completed: false },
+        profile: { onboarding_completed: true },
         settings: null,
       };
       return next();
@@ -85,7 +85,7 @@ async function attachCurrentUser(req, res, next) {
             phone: profile.phone,
             country: profile.country,
             timezone: profile.timezone,
-            onboarding_completed: !!profile.onboarding_completed
+            onboarding_completed:  !!profile.onboarding_completed
           }
         : { onboarding_completed: false }
       ,

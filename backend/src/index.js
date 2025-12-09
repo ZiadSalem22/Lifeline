@@ -503,7 +503,7 @@ app.get('/api/me', requireAuth(), (req, res) => {
  *         description: Unauthorized
  */
 app.post('/api/profile', requireAuth(), async (req, res) => {
-    try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
+   // try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
     const user = req.currentUser;
     if (!user || !user.id) return res.status(401).json({ error: 'Unauthorized' });
 
