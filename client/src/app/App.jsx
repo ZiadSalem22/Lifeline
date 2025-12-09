@@ -1318,6 +1318,14 @@ function AppInner() {
                   </button>
                 </div>
                 {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
+
+                
+              <div style={{
+                height: '1px',
+                backgroundColor: 'var(--color-border)',
+                margin: '20px 0 16px'
+              }} />
+
                 <input
                   ref={inputRef}
                   type="text"
@@ -1328,14 +1336,14 @@ function AppInner() {
                     width: '100%',
                     background: 'var(--color-surface-light)',
                     color: 'var(--color-text)',
-                    fontSize: '1.125rem',
+                    fontSize: '0.9rem',
                     fontFamily: 'var(--font-family-base)',
                     border: '1px solid var(--color-border)',
                     borderRadius: '12px',
                     padding: '12px 14px',
                     outline: 'none',
                     boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
-                    fontWeight: 600
+                    fontWeight: 300
                   }}
                   onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                   onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
@@ -1355,7 +1363,8 @@ function AppInner() {
                     borderRadius: '8px',
                     padding: '8px',
                     color: 'var(--color-text)',
-                    fontSize: '0.95rem',
+                    fontSize: '0.83rem',                    
+                    fontFamily: 'var(--font-family-base)',
                     outline: 'none',
                     resize: 'vertical'
                   }}

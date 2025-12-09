@@ -813,6 +813,7 @@ body {
   gap: 8px;
   margin-bottom: 8px;
   align-items: center;
+  
 }
 .load-template-input {
   padding: 8px;
@@ -823,6 +824,8 @@ body {
   transition: background 0.15s, color 0.15s;
   flex: 0 0 120px; /* default fixed width on desktop */
   min-width: 80px;
+  font-size: 0.9rem;
+  font-family: var(--font-family-base);
 }
 .load-template-action {
   padding: 8px 12px;
@@ -853,7 +856,7 @@ body {
   }
   .load-template-input {
     flex: none;
-    width: 100%;
+    width: 30%;
   }
   /* Make action buttons compact and centered instead of full-bleed */
   .load-template-action, .load-template-clear {
