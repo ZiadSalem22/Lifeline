@@ -826,11 +826,14 @@ body {
 }
 .load-template-action {
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
+  border-radius: 10px;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-bg);
   cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(16,185,129,0.12);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
 }
 .load-template-clear {
   padding: 8px 10px;
@@ -852,11 +855,23 @@ body {
     flex: none;
     width: 100%;
   }
+  /* Make action buttons compact and centered instead of full-bleed */
   .load-template-action, .load-template-clear {
-    width: 100%;
+    width: auto;
+    max-width: 220px;
+    margin: 8px auto 0 auto;
     text-align: center;
   }
+  .load-template-action {
+    display: inline-block;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 }
+
+/* Hover/active states for load button */
+.load-template-action:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(16,185,129,0.14); }
+.load-template-action:active { transform: translateY(0); opacity: 0.95; }
 
 .header-content {
   display: flex;
