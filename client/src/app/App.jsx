@@ -1560,9 +1560,7 @@ function AppInner() {
                 {/* Subtasks */}
                 <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <input
-                      {/* Load template + Add Task controls: instruction, compact load input + load button, and Add Task submit */}
-                      <div style={{ width: '100%', marginTop: '12px' }}>
+                    <div style={{ width: '100%', marginTop: '12px' }}>
                         <div style={{ textAlign: 'center', marginBottom: '8px', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
                           Do you want to copy an old task? easy Enter its number
                         </div>
