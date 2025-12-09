@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
 
   // Timeout after 5 seconds
   new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("SilentRefreshTimeout")), 5000)
+    setTimeout(() => reject(new Error("SilentRefreshTimeout")), 7000)
   )
 ]);
       // Use new fetchMe utility for user profile
@@ -39,10 +39,21 @@ export function AuthProvider({ children }) {
       }
       setGuestMode(false);
     } catch (err) {
-      console.warn('Failed to load identity; using guest mode.', err?.message || err);
-      setError(err?.message || 'Identity load failed');
-      setGuestMode(true);
-      setCurrentUser(null);
+     if (err?.message === "SilentRefreshTimeout") {
+  console.warn("Silent token renewal timed out. Clearing stale Auth0 data.");
+
+  // Clear stale Auth0 tokens
+  Object.keys(localStorage)
+    .filter(k => k.startsWith("auth0."))
+    .forEach(k => localStorage.removeItem(k));
+
+  // Force login if user was actually authenticated
+  if (isAuthenticated) {
+    return loginWithRedirect({
+      authorizationParams: createTokenOptions()?.authorizationParams,
+    });
+  }
+}
     } finally {
       setCheckedIdentity(true);
     }
