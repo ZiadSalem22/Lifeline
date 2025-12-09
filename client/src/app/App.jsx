@@ -977,20 +977,20 @@ function AppInner() {
               {/* Title on top, then description, then centered controls */}
               <div style={{ marginBottom: '12px' }}>
                 {/* Load Task UI: numeric input + Load button */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <div className="load-template-bar">
                   <input
+                    className="load-template-input"
                     ref={loadTaskInputRef}
                     type="number"
                     min={1}
                     value={loadTaskNumber}
                     onChange={(e) => setLoadTaskNumber(e.target.value)}
                     placeholder="Load task #"
-                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', transition: 'background 0.15s, color 0.15s' }}
                   />
-                  <button type="button" onClick={handleLoadTemplate} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                  <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
                     {isLoadingTask ? 'Loading…' : 'Load'}
                   </button>
-                  <button type="button" onClick={clearTemplate} style={{ padding: '8px 10px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                  <button className="load-template-clear" type="button" onClick={clearTemplate}>
                     Clear Template
                   </button>
                 </div>
@@ -1300,20 +1300,20 @@ function AppInner() {
               {/* Title on top, then description, then centered controls */}
               <div style={{ marginBottom: '12px' }}>
                 {/* Load Task UI: numeric input + Load button */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <div className="load-template-bar">
                   <input
+                    className="load-template-input"
                     ref={loadTaskInputRef}
                     type="number"
                     min={1}
                     value={loadTaskNumber}
                     onChange={(e) => setLoadTaskNumber(e.target.value)}
                     placeholder="Load task #"
-                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)', transition: 'background 0.15s, color 0.15s' }}
                   />
-                  <button type="button" onClick={handleLoadTemplate} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                  <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
                     {isLoadingTask ? 'Loading…' : 'Load'}
                   </button>
-                  <button type="button" onClick={clearTemplate} style={{ padding: '8px 10px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                  <button className="load-template-clear" type="button" onClick={clearTemplate}>
                     Clear Template
                   </button>
                 </div>
