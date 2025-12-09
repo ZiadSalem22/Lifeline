@@ -15,24 +15,26 @@ describe('Complete dateRange behavior', () => {
         createTodo = new CreateTodo(repo);
         completeRec = new CompleteRecurringTodo(repo);
         db.serialize(() => {
-            db.run(`
-                CREATE TABLE todos (
-                  id TEXT PRIMARY KEY,
-                  title TEXT NOT NULL,
-                  description TEXT,
-                  is_completed INTEGER DEFAULT 0,
-                  due_date TEXT,
-                  is_flagged INTEGER DEFAULT 0,
-                  duration INTEGER DEFAULT 0,
-                  priority TEXT DEFAULT 'medium',
-                  due_time TEXT,
-                  subtasks TEXT,
-                  "order" INTEGER DEFAULT 0,
-                  recurrence TEXT,
-                  next_recurrence_due TEXT,
-                  original_id TEXT
-                )
-            `);
+                        db.run(`
+                                CREATE TABLE todos (
+                                    id TEXT PRIMARY KEY,
+                                    user_id TEXT,
+                                    title TEXT NOT NULL,
+                                    description TEXT,
+                                    is_completed INTEGER DEFAULT 0,
+                                    due_date TEXT,
+                                    is_flagged INTEGER DEFAULT 0,
+                                    duration INTEGER DEFAULT 0,
+                                    priority TEXT DEFAULT 'medium',
+                                    due_time TEXT,
+                                    subtasks TEXT,
+                                    "order" INTEGER DEFAULT 0,
+                                    recurrence TEXT,
+                                    next_recurrence_due TEXT,
+                                    original_id TEXT,
+                                    task_number INTEGER DEFAULT NULL
+                                )
+                        `);
             db.run(`
                 CREATE TABLE tags (
                   id TEXT PRIMARY KEY,

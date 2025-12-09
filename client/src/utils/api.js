@@ -354,3 +354,10 @@ export const fetchMe = async (fetchWithAuth) => {
         return response.json();
     }, 'Loading…');
 };
+
+export const getTodoByNumber = async (taskNumber, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'getTodoByNumber');
+    const response = await executeFetch(`${TODOS_URL}/by-number/${encodeURIComponent(taskNumber)}`);
+    ensureOk(response, 'Failed to fetch todo by number', 'getTodoByNumber');
+    return response.json();
+};

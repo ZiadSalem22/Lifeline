@@ -8,11 +8,32 @@ class SQLiteTodoRepository extends ITodoRepository {
         this.db = db;
     }
 
-    save(todo) {
+    async save(todo) {
+        // Ensure taskNumber is present for user to avoid NULL insert causing unique index conflicts
+        if ((typeof todo.taskNumber === 'undefined' || todo.taskNumber === null) && todo.userId) {
+            try {
+                const max = await this.getMaxTaskNumber(todo.userId);
+                todo.taskNumber = (max || 0) + 1;
+            } catch (e) {
+                // ignore; proceed with null if unable to compute
+            }
+        }
+
+        // Defensive fallback: ensure todo.taskNumber is set to a non-null number before attempting to insert
+        if ((typeof todo.taskNumber === 'undefined' || todo.taskNumber === null || Number.isNaN(parseInt(todo.taskNumber, 10))) && todo.userId) {
+            try {
+                // attempt to compute a value; if that fails we'll set 1
+                const max = await this.getMaxTaskNumber(todo.userId);
+                todo.taskNumber = (max || 0) + 1;
+            } catch (e) {
+                todo.taskNumber = 1;
+            }
+        }
+
         return new Promise((resolve, reject) => {
             const subtasksJson = JSON.stringify(todo.subtasks || []);
             const recurrenceJson = todo.recurrence ? JSON.stringify(todo.recurrence) : null;
-            const stmt = this.db.prepare('INSERT OR REPLACE INTO todos (id, title, description, is_completed, due_date, is_flagged, duration, priority, due_time, subtasks, `order`, recurrence, next_recurrence_due, original_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            const stmt = this.db.prepare('INSERT OR REPLACE INTO todos (id, title, description, is_completed, due_date, is_flagged, duration, priority, due_time, subtasks, `order`, recurrence, next_recurrence_due, original_id, task_number, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             stmt.run(
                 todo.id,
                 todo.title,
@@ -28,6 +49,8 @@ class SQLiteTodoRepository extends ITodoRepository {
                 recurrenceJson,
                 todo.nextRecurrenceDue || null,
                 todo.originalId || null,
+                typeof todo.taskNumber !== 'undefined' ? todo.taskNumber : null,
+                todo.userId || null,
                 (err) => {
                     if (err) {
                         reject(err);
@@ -80,7 +103,9 @@ class SQLiteTodoRepository extends ITodoRepository {
                         row.description || '',
                         recurrence,
                         row.next_recurrence_due || null,
-                        row.original_id || null
+                        row.original_id || null,
+                        row.task_number || null,
+                        row.user_id || null
                     ));
                 }
             });
@@ -111,7 +136,9 @@ class SQLiteTodoRepository extends ITodoRepository {
                             row.description || '',
                             recurrence,
                             row.next_recurrence_due || null,
-                            row.original_id || null
+                            row.original_id || null,
+                            row.task_number || null,
+                            row.user_id || null
                         );
                     }));
                     resolve(todos);
@@ -239,7 +266,9 @@ class SQLiteTodoRepository extends ITodoRepository {
                                 row.description || '',
                                 recurrence,
                                 row.next_recurrence_due || null,
-                                row.original_id || null
+                                row.original_id || null,
+                                row.task_number || null,
+                                row.user_id || null
                             );
                         }));
                         resolve({ todos, total });
@@ -261,6 +290,47 @@ class SQLiteTodoRepository extends ITodoRepository {
             this.db.all(query, [todoId], (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows.map(row => new Tag(row.id, row.name, row.color)));
+            });
+        });
+    }
+
+    getMaxTaskNumber(userId) {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT MAX(task_number) as maxNum FROM todos WHERE user_id = ?', [userId], (err, row) => {
+                if (err) return reject(err);
+                const v = row && row.maxNum ? parseInt(row.maxNum, 10) : 0;
+                resolve(v || 0);
+            });
+        });
+    }
+
+    findByTaskNumber(userId, taskNumber) {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT * FROM todos WHERE user_id = ? AND task_number = ?', [userId, taskNumber], async (err, row) => {
+                if (err) return reject(err);
+                if (!row) return resolve(null);
+                const tags = await this.getTagsForTodo(row.id);
+                const subtasks = row.subtasks ? JSON.parse(row.subtasks) : [];
+                const recurrence = row.recurrence ? JSON.parse(row.recurrence) : null;
+                resolve(new Todo(
+                    row.id,
+                    row.title,
+                    !!row.is_completed,
+                    row.due_date,
+                    tags,
+                    !!row.is_flagged,
+                    row.duration,
+                    row.priority || 'medium',
+                    row.due_time || null,
+                    subtasks,
+                    row.order || 0,
+                    row.description || '',
+                    recurrence,
+                    row.next_recurrence_due || null,
+                    row.original_id || null,
+                    row.task_number || null,
+                    row.user_id || null
+                ));
             });
         });
     }

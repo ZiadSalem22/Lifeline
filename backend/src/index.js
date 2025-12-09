@@ -15,6 +15,8 @@ const logger = require('./config/logger');
 
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
 const TypeORMTagRepository = require('./infrastructure/TypeORMTagRepository');
+const SQLiteTodoRepository = require('./infrastructure/SQLiteTodoRepository');
+const SQLiteTagRepository = require('./infrastructure/SQLiteTagRepository');
 const TypeORMUserSettingsRepository = require('./infrastructure/TypeORMUserSettingsRepository');
 const { AppDataSource } = require('./infra/db/data-source');
 const NotificationService = require('./application/NotificationService');
@@ -261,47 +263,104 @@ try {
     console.warn('Swagger UI not available:', e.message);
 }
 
-// Database Setup: enforce TypeORM-only mode
+// Database Setup: try TypeORM (MSSQL). If it fails (dev machine without Azure),
+// fall back to a local SQLite DB so the dev server can start for manual testing.
 const USE_TYPEORM = true;
-let db = null; // No SQLite in TypeORM-only mode
+let db = null; // For SQLite fallback this will be a sqlite3.Database instance
 
-// Repository & Use Cases
+// Repository & Use Cases (set below after choosing backend)
 let todoRepository;
 let tagRepository;
+let notificationService;
+let createTodo;
+let listTodos;
+let toggleTodo;
+let completeRecurringTodo;
+let deleteTodo;
+let updateTodo;
+let searchTodos;
+let getStatistics;
+let createTag;
+let listTags;
+let deleteTag;
+let updateTag;
 
-// Ensure TypeORM is initialized before repositories are used
-async function ensureDataSource() {
-    if (!AppDataSource.isInitialized) {
-        try {
+// Ensure TypeORM is initialized before repositories are used. If it fails,
+// create a local SQLite DB at backend/db/dev.sqlite and wire SQLite repos.
+const sqlite3 = require('sqlite3').verbose();
+async function initDataSources() {
+    try {
+        if (!AppDataSource.isInitialized) {
             await AppDataSource.initialize();
             console.log('[TypeORM] DataSource initialized (MSSQL)');
-        } catch (err) {
-            console.error('[TypeORM] Failed to initialize DataSource', err);
-            throw err;
         }
+        // Use TypeORM-backed repositories
+        todoRepository = new TypeORMTodoRepository();
+        tagRepository = new TypeORMTagRepository();
+        db = null;
+    } catch (err) {
+        // Fallback to SQLite for local/dev usage
+        console.warn('[startup] TypeORM initialization failed, falling back to local SQLite for dev:', err.message || err);
+        const path = require('path');
+        const dbFile = path.join(__dirname, '..', '..', 'db', 'dev.sqlite');
+        // Ensure db directory exists
+        const fs = require('fs');
+        const dir = path.dirname(dbFile);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        db = new sqlite3.Database(dbFile);
+
+        // Create minimal tables if they don't exist
+        await new Promise((resolve, reject) => db.serialize(() => {
+            db.run(`CREATE TABLE IF NOT EXISTS todos (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                is_completed INTEGER DEFAULT 0,
+                due_date TEXT,
+                is_flagged INTEGER DEFAULT 0,
+                duration INTEGER DEFAULT 0,
+                priority TEXT DEFAULT 'medium',
+                due_time TEXT,
+                subtasks TEXT,
+                "order" INTEGER DEFAULT 0,
+                recurrence TEXT,
+                next_recurrence_due TEXT,
+                original_id TEXT,
+                task_number INTEGER,
+                user_id TEXT
+            )`, (e) => e ? reject(e) : resolve());
+        }));
+        await new Promise((resolve, reject) => db.run(`CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL)`, (e) => e ? reject(e) : resolve()));
+        await new Promise((resolve, reject) => db.run(`CREATE TABLE IF NOT EXISTS todo_tags (todo_id TEXT, tag_id TEXT, PRIMARY KEY (todo_id, tag_id))`, (e) => e ? reject(e) : resolve()));
+
+        todoRepository = new SQLiteTodoRepository(db);
+        tagRepository = new SQLiteTagRepository(db);
     }
 }
-// Initialize proactively at startup
-ensureDataSource().catch(() => {});
 
-todoRepository = new TypeORMTodoRepository();
-tagRepository = new TypeORMTagRepository();
+// Initialize proactively at startup (no crash on failure)
+// Initialize data sources and then instantiate application services that depend on repositories.
+initDataSources()
+    .then(() => {
+        console.log('[startup] data sources initialized, wiring application services');
+        // NotificationService may use the sqlite `db` handle
+        notificationService = new NotificationService(db);
 
-const notificationService = new NotificationService(db);
+        createTodo = new CreateTodo(todoRepository);
+        listTodos = new ListTodos(todoRepository);
+        toggleTodo = new ToggleTodo(todoRepository);
+        completeRecurringTodo = new CompleteRecurringTodo(todoRepository);
+        deleteTodo = new DeleteTodo(todoRepository);
+        updateTodo = new UpdateTodo(todoRepository);
+        searchTodos = new (require('./application/SearchTodos'))(todoRepository);
 
-const createTodo = new CreateTodo(todoRepository);
-const listTodos = new ListTodos(todoRepository);
-const toggleTodo = new ToggleTodo(todoRepository);
-const completeRecurringTodo = new CompleteRecurringTodo(todoRepository);
-const deleteTodo = new DeleteTodo(todoRepository);
-const updateTodo = new UpdateTodo(todoRepository);
-const searchTodos = new (require('./application/SearchTodos'))(todoRepository);
-
-const getStatistics = new (require('./application/GetStatistics'))(todoRepository);
-const createTag = new CreateTag(tagRepository);
-const listTags = new ListTags(tagRepository);
-const deleteTag = new DeleteTag(tagRepository);
-const updateTag = new UpdateTag(tagRepository);
+        getStatistics = new (require('./application/GetStatistics'))(todoRepository);
+        createTag = new CreateTag(tagRepository);
+        listTags = new ListTags(tagRepository);
+        deleteTag = new DeleteTag(tagRepository);
+        updateTag = new UpdateTag(tagRepository);
+    })
+    .catch((e) => console.error('[startup] datasource init error', e));
 
 // Public info endpoint (no auth required)
 /**
@@ -705,6 +764,26 @@ app.post('/api/todos', requireAuth(), validateTodoCreate, async (req, res, next)
         const { title, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, description, recurrence } = req.body;
         const todo = await createTodo.execute(userId, title, dueDate, tags, isFlagged, duration, priority || 'medium', dueTime || null, subtasks || [], description || '', recurrence || null);
         res.status(201).json(todo);
+    } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /api/todos/by-number/{taskNumber}:
+ *   get:
+ *     summary: Get todo by per-user task number
+ *     tags: [Todos]
+ */
+app.get('/api/todos/by-number/:taskNumber', requireAuth(), async (req, res, next) => {
+    try {
+        const userId = req.currentUser && req.currentUser.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        const taskNumber = parseInt(req.params.taskNumber, 10);
+        if (Number.isNaN(taskNumber) || taskNumber < 1) return res.status(400).json({ error: 'Invalid task number' });
+        if (typeof todoRepository.findByTaskNumber !== 'function') return res.status(500).json({ error: 'Lookup by task number not available' });
+        const todo = await todoRepository.findByTaskNumber(userId, taskNumber);
+        if (!todo) return res.status(404).json({ error: `No task found with that number.` });
+        res.json(todo);
     } catch (err) { next(err); }
 });
 
@@ -1454,6 +1533,7 @@ app.post('/api/import', requireAuth(), async (req, res) => {
                 todoData.recurrence || null,
                 todoData.nextRecurrenceDue || null,
                 todoData.originalId || null,
+                todoData.taskNumber || null,
                 userId
             );
 

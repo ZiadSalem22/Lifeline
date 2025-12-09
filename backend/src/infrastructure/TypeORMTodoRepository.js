@@ -27,8 +27,28 @@ class TypeORMTodoRepository extends ITodoRepository {
             recurrence: todo.recurrence ? JSON.stringify(todo.recurrence) : null,
             next_recurrence_due: todo.nextRecurrenceDue || null,
             original_id: todo.originalId || null,
+            task_number: typeof todo.taskNumber !== 'undefined' ? todo.taskNumber : null,
             user_id: todo.userId,
         };
+
+        // If task_number is not provided, ensure we assign the next sequential number
+        if ((entity.task_number === null || typeof entity.task_number === 'undefined') && entity.user_id) {
+            try {
+                const max = await this.getMaxTaskNumber(entity.user_id);
+                entity.task_number = (max || 0) + 1;
+            } catch (e) {
+                // ignore and leave null to let DB handle it (but prefer assignment)
+            }
+        }
+
+        // Defensive fallback: if still not a valid number, assign 1 to avoid inserting NULL (which can violate unique index rules on some DBs)
+        if ((entity.task_number === null || typeof entity.task_number === 'undefined' || Number.isNaN(parseInt(entity.task_number, 10))) && entity.user_id) {
+            try {
+                entity.task_number = 1;
+            } catch (_) {
+                entity.task_number = 1;
+            }
+        }
 
         const tagIds = (todo.tags || []).map(t => t.id);
         const tags = tagIds.length > 0
@@ -40,6 +60,18 @@ class TypeORMTodoRepository extends ITodoRepository {
 
     async findById(id, userId) {
         const row = await this.repo.findOne({ where: { id, user_id: userId }, relations: ['tags'] });
+        if (!row) return null;
+        return this._mapRowToDomain(row);
+    }
+
+    async getMaxTaskNumber(userId) {
+        const r = await AppDataSource.manager.query('SELECT MAX(task_number) AS maxNum FROM todos WHERE user_id = @0', [userId]);
+        if (!r || !r[0] || r[0].maxNum === null || typeof r[0].maxNum === 'undefined') return 0;
+        return parseInt(r[0].maxNum || 0, 10) || 0;
+    }
+
+    async findByTaskNumber(userId, taskNumber) {
+        const row = await this.repo.findOne({ where: { user_id: userId, task_number: taskNumber }, relations: ['tags'] });
         if (!row) return null;
         return this._mapRowToDomain(row);
     }
@@ -65,7 +97,6 @@ class TypeORMTodoRepository extends ITodoRepository {
             offset = 0,
             userId
         } = filters;
-
         const qb = this.repo.createQueryBuilder('todo')
             .leftJoinAndSelect('todo.tags', 'tag')
             .distinct(true);
@@ -536,6 +567,7 @@ class TypeORMTodoRepository extends ITodoRepository {
             recurrence,
             row.next_recurrence_due || null,
             row.original_id || null,
+            row.task_number || null,
             row.user_id || null
         );
     }

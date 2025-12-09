@@ -1,6 +1,12 @@
 const { auth } = require('express-oauth2-jwt-bearer');
 const logger = require('../config/logger');
 
+// Development bypass: when AUTH_DISABLED=1 the JWT check becomes a no-op.
+if (process.env.AUTH_DISABLED === '1') {
+  module.exports = { checkJwt: (req, res, next) => next() };
+  return;
+}
+
 // Required env vars
 // AUTH0_DOMAIN should be just the domain (without protocol or trailing slash)
 // AUTH0_AUDIENCE should match the access token's aud claim (API identifier or client id)

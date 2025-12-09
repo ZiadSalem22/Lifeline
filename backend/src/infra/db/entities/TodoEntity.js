@@ -18,6 +18,7 @@ module.exports = new EntitySchema({
         recurrence: { type: 'nvarchar', length: 'MAX', nullable: true },
         next_recurrence_due: { type: 'datetime', nullable: true },
         original_id: { type: 'nvarchar', length: 64, nullable: true },
+        task_number: { type: 'int', nullable: true },
         archived: { type: 'int', default: 0 },
         user_id: { type: 'nvarchar', length: 128, nullable: false },
     },

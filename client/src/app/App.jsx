@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, memo, useEffect } from 'react';
 import { useLoading } from '../context/LoadingContext';
-import { createTag } from '../utils/api';
+import { createTag, getTodoByNumber } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, addDays } from 'date-fns';
@@ -75,6 +75,9 @@ function AppInner() {
     const [newTagColor, setNewTagColor] = useState('#6C63FF');
   const [inputValue, setInputValue] = useState('');
   const [inputDescription, setInputDescription] = useState('');
+  const [loadTaskNumber, setLoadTaskNumber] = useState('');
+  const [loadTaskError, setLoadTaskError] = useState('');
+  const [isLoadingTask, setIsLoadingTask] = useState(false);
   const fonts = [
     { name: 'Inter', value: '"Inter", sans-serif' },
     { name: 'DM Sans', value: '"DM Sans", sans-serif' },
@@ -897,6 +900,48 @@ function AppInner() {
             >
               {/* Title on top, then description, then centered controls */}
               <div style={{ marginBottom: '12px' }}>
+                {/* Load Task UI: numeric input + Load button */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={loadTaskNumber}
+                    onChange={(e) => setLoadTaskNumber(e.target.value)}
+                    placeholder="Load task #"
+                    style={{ width: '120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-light)', color: 'var(--color-text)' }}
+                  />
+                  <button type="button" onClick={async () => {
+                    setLoadTaskError('');
+                    if (!loadTaskNumber || isNaN(parseInt(loadTaskNumber,10))) { setLoadTaskError('Enter a valid task number'); return; }
+                    setIsLoadingTask(true);
+                    try {
+                      const data = await getTodoByNumber(parseInt(loadTaskNumber,10), fetchWithAuth);
+                      if (!data) { setLoadTaskError('No task found with that number.'); setIsLoadingTask(false); return; }
+                      // API returns todo object or { error }
+                      if (data.error) { setLoadTaskError(data.error || 'No task found with that number.'); setIsLoadingTask(false); return; }
+                      const todo = data;
+                      // Populate form fields
+                      setInputValue(todo.title || '');
+                      setInputDescription(todo.description || '');
+                      setSelectedTags(todo.tags || []);
+                      setIsFlagged(!!todo.is_flagged || !!todo.isFlagged);
+                      setPriority(todo.priority || 'medium');
+                      setSubtasks(todo.subtasks || []);
+                      setHours(Math.floor((todo.duration||0)/60));
+                      setMinutes((todo.duration||0)%60);
+                      setDueTime(todo.due_time || todo.dueTime || '');
+                      setScheduleDate(todo.due_date || todo.dueDate || '');
+                      setCurrentRecurrence(todo.recurrence || null);
+                      setIsLoadingTask(false);
+                    } catch (err) {
+                      setLoadTaskError(err?.message || 'Failed to load task');
+                      setIsLoadingTask(false);
+                    }
+                  }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                    {isLoadingTask ? 'Loading…' : 'Load'}
+                  </button>
+                </div>
+                {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
                 <input
                   ref={inputRef}
                   type="text"
@@ -2122,6 +2167,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   onClick={() => !todo.isCompleted && onStartEdit(todo)}
                   title="Click to edit"
                 >
+                  {todo.taskNumber ? (
+                    <span style={{ display: 'inline-block', marginRight: 8, padding: '2px 8px', borderRadius: 999, background: 'var(--color-surface-light)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }} title={`Task #${todo.taskNumber}`}>#{todo.taskNumber}</span>
+                  ) : null}
                   {todo.title}
                 </span>
                 {todo.priority && (

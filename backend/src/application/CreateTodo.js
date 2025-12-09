@@ -11,6 +11,9 @@ class CreateTodo {
     async execute(userId, title, dueDate, tags, isFlagged, duration, priority = 'medium', dueTime = null, subtasks = [], description = '', recurrence = null) {
         // If no recurrence, just create one todo as before
         if (!recurrence) {
+            // determine next task number for this user
+            const max = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
+            const nextNum = (max || 0) + 1;
             const todo = new Todo(
                 uuidv4(),
                 title,
@@ -27,6 +30,7 @@ class CreateTodo {
                 recurrence,
                 null,
                 null,
+                nextNum,
                 userId
             );
             await this.todoRepository.save(todo);
@@ -47,8 +51,11 @@ class CreateTodo {
             }
             // Create a todo for each date
             const todos = [];
+            // determine starting task number
+            let maxNum = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
             for (const date of dates) {
-                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
+                maxNum += 1;
+                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, maxNum, userId);
                 await this.todoRepository.save(todo);
                 todos.push(todo);
             }
@@ -56,7 +63,9 @@ class CreateTodo {
         } else if (recurrence.mode === 'dateRange') {
             // dateRange: create a single logical todo representing the whole span
             const start = (recurrence.startDate || dueDate);
-            const todo = new Todo(uuidv4(), title, false, start, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
+            const max = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
+            const nextNum = (max || 0) + 1;
+            const todo = new Todo(uuidv4(), title, false, start, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, nextNum, userId);
             await this.todoRepository.save(todo);
             return todo;
         } else if (recurrence.mode === 'specificDays') {
@@ -74,8 +83,10 @@ class CreateTodo {
                 current.setDate(current.getDate() + 1);
             }
             const todos = [];
+            let maxNum = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
             for (const date of dates) {
-                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
+                maxNum += 1;
+                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, maxNum, userId);
                 await this.todoRepository.save(todo);
                 todos.push(todo);
             }
@@ -98,15 +109,19 @@ class CreateTodo {
                 }
             }
             const todos = [];
+            let maxNum = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
             for (const date of dates) {
-                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
+                maxNum += 1;
+                const todo = new Todo(uuidv4(), title, false, date, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, maxNum, userId);
                 await this.todoRepository.save(todo);
                 todos.push(todo);
             }
             return todos[0];
         } else {
             // Fallback: just the dueDate
-            const todo = new Todo(uuidv4(), title, false, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, userId);
+            const max = (typeof this.todoRepository.getMaxTaskNumber === 'function') ? await this.todoRepository.getMaxTaskNumber(userId) : 0;
+            const nextNum = (max || 0) + 1;
+            const todo = new Todo(uuidv4(), title, false, dueDate, tags, isFlagged, duration, priority, dueTime, subtasks, 0, description, recurrence, null, null, nextNum, userId);
             await this.todoRepository.save(todo);
             return todo;
         }
