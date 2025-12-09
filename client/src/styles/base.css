@@ -531,7 +531,7 @@ body {
 }
 
 /* Mobile: pull hero block slightly closer to Top Bar */
-@media (max-width: 420px) {
+@media (max-width: 450px) {
   .task-card-subtasks {
     width: 200% !important;
     max-width: 200%;
@@ -832,6 +832,17 @@ body {
   color: var(--color-bg);
   cursor: pointer;
   font-weight: 600;
+
+/* Compact variant that visually matches Add Task button */
+.load-template-action.compact {
+  padding: 10px 20px;
+  border-radius: 14px;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 6px 18px -6px var(--shadow-primary);
+}
   box-shadow: 0 6px 18px rgba(16,185,129,0.12);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
 }
@@ -1009,7 +1020,7 @@ body {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 450px) {
   .home-hero {
     gap: 6px;
     margin-bottom: 28px;
@@ -1533,7 +1544,7 @@ input[type="checkbox"]:focus {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 450px) {
   .main-content {
     padding: 78px 14px 60px;
   }
