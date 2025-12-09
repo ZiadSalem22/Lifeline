@@ -862,7 +862,7 @@ body {
   .load-template-action, .load-template-clear {
     width: auto;
     max-width: 220px;
-    margin: 8px auto 0 auto;
+    margin: 0px auto 0 auto;
     text-align: center;
   }
   .load-template-action {
@@ -1452,18 +1452,28 @@ input[type="checkbox"]:focus {
 /* Responsive Typography */
 /* Responsive breakpoints */
 @media (max-width: 768px) {
-    :root {
-        --font-size-heading: 1.5rem;
-        --font-size-subheading: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    :root {
-        --font-size-heading: 1.25rem;
-        --font-size-subheading: 0.9rem;
-        --font-size-base: 0.8rem;
-    }
+  .load-template-bar {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  .load-template-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    padding: 8px 6px;
+    font-size: 1rem;
+  }
+  .load-template-action {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    font-size: 0.98rem;
+  }
+  .load-template-clear {
+    flex: 0 0 auto;
+    padding: 8px 8px;
+    font-size: 0.95rem;
+  }
 }
 
 /* Main Layout */
