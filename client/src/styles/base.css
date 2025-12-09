@@ -435,6 +435,53 @@ body {
 
 @keyframes fadeInHeightAuto {
   from {
+.task-card-wrapper {
+  /* keep default row layout; flex container is set inline in JSX */
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .task-card-wrapper {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  /* Make the main content area full width when stacked */
+  .task-card-wrapper > div:nth-child(2) {
+    width: 100%;
+  }
+
+  /* Ensure the right-side column (flags / note / actions) sits at the end */
+  .task-card-wrapper > div:nth-child(3) {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Editing controls will stack and buttons become full-width */
+  .task-edit-controls {
+    width: 100%;
+    display: flex !important;
+    gap: 8px !important;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .task-edit-controls button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Make input and textarea elements inside task cards more fluid */
+  .task-card-wrapper input[type="text"],
+  .task-card-wrapper textarea,
+  .task-card-wrapper select {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+}
     opacity: 0;
     max-height: 0;
   }
