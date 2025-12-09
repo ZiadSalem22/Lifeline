@@ -976,6 +976,25 @@ function AppInner() {
             >
               {/* Title on top, then description, then centered controls */}
               <div style={{ marginBottom: '12px' }}>
+                {/* Load Task UI: numeric input + Load button */}
+                <div className="load-template-bar">
+                  <input
+                    className="load-template-input"
+                    ref={loadTaskInputRef}
+                    type="number"
+                    min={1}
+                    value={loadTaskNumber}
+                    onChange={(e) => setLoadTaskNumber(e.target.value)}
+                    placeholder="Load task #"
+                  />
+                  <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                    {isLoadingTask ? 'Loading…' : 'Load'}
+                  </button>
+                  <button className="load-template-clear" type="button" onClick={clearTemplate}>
+                    Clear Template
+                  </button>
+                </div>
+                {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
                 <input
                   ref={inputRef}
                   type="text"
@@ -1560,69 +1579,37 @@ function AppInner() {
                 {/* Subtasks */}
                 <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <div style={{ width: '100%', marginTop: '12px' }}>
-                        <div style={{ textAlign: 'center', marginBottom: '8px', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-                          Do you want to copy an old task? easy Enter its number
-                        </div>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <input
-                              className="load-template-input"
-                              ref={loadTaskInputRef}
-                              type="number"
-                              min={1}
-                              value={loadTaskNumber}
-                              onChange={(e) => setLoadTaskNumber(e.target.value)}
-                              placeholder="#"
-                              style={{ flex: '0 0 88px' }}
-                            />
-                            <button
-                              className="load-template-action compact"
-                              type="button"
-                              onClick={handleLoadTemplate}
-                              style={{
-                                padding: '10px 20px',
-                              }}
-                            >
-                              {isLoadingTask ? 'Loading…' : 'Load'}
-                            </button>
-                            <button className="load-template-clear" type="button" onClick={clearTemplate}>
-                              Clear
-                            </button>
-                          </div>
-
-                          <button
-                            type="submit"
-                            className="button-hover-scale-bg"
-                            disabled={globalLoading}
-                            style={{
-                              padding: '10px 28px',
-                              background: 'var(--color-primary)',
-                              borderRadius: '14px',
-                              color: 'var(--color-bg)',
-                              fontWeight: '600',
-                              fontSize: '0.9rem',
-                              border: 'none',
-                              cursor: globalLoading ? 'not-allowed' : 'pointer',
-                              transition: 'background 0.25s ease, transform 0.2s ease',
-                              boxShadow: '0 6px 18px -6px var(--shadow-primary)'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!globalLoading) {
-                                e.currentTarget.style.background = 'var(--color-primary-dark)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'var(--color-primary)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                          >
-                            {globalLoading ? 'Adding…' : 'Add Task'}
-                          </button>
-                        </div>
-                        {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginTop: '8px', textAlign: 'center' }}>{loadTaskError}</div>}
-                      </div>
+                    <input
+                      type="text"
+                      value={newSubtask}
+                      onChange={(e) => setNewSubtask(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newSubtask.trim()) {
+                          e.preventDefault();
+                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                          setNewSubtask('');
+                        }
+                      }}
+                      placeholder="Add subtask..."
+                      style={{
+                        flex: 1,
+                        background: 'var(--color-surface-light)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        color: 'var(--color-text)',
+                        fontSize: '0.875rem',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newSubtask.trim()) {
+                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                          setNewSubtask('');
+                        }
+                      }}
                       style={{
                         padding: '6px 12px',
                         background: 'var(--color-primary)',
