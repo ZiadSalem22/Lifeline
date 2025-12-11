@@ -49,6 +49,10 @@ export function useApi() {
       let token;
 
       try {
+        if (import.meta.env.DEV && !audienceWarned) {
+          console.debug('[useApi] Token options:', tokenOptions);
+        }
+
         if (!AUTH_AUDIENCE && !audienceWarned) {
           console.warn(
             "Auth warning: VITE_AUTH0_AUDIENCE is not set; tokens may be rejected by the API."
@@ -56,13 +60,13 @@ export function useApi() {
           audienceWarned = true;
         }
 
-        // 5-second timeout for silent token refresh
+        // 20-second timeout for silent token refresh (increased from 5s)
         token = await Promise.race([
           getAccessTokenSilently(tokenOptions),
           new Promise((_, reject) =>
             setTimeout(
               () => reject(new Error("SilentRefreshTimeout")),
-              5000
+              20000
             )
           ),
         ]);
@@ -71,14 +75,9 @@ export function useApi() {
 
         // Handle timeout
         if (msg === "SilentRefreshTimeout") {
-          console.warn("Silent refresh timed out — redirecting to login.");
-          return loginWithRedirect({
-            authorizationParams: {
-              audience: AUTH_AUDIENCE,
-              scope: AUTH_SCOPE,
-            },
-          });
-        
+          console.warn("Silent refresh timed out — NOT redirecting automatically. Check connection.");
+          // Do NOT force redirect here. Let the caller (AuthProvider) decide.
+          throw err;
         }
 
         // Existing missing refresh token logic

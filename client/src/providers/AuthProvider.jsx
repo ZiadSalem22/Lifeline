@@ -21,13 +21,13 @@ export function AuthProvider({ children }) {
     }
     try {
       const token = await Promise.race([
-  getAccessTokenSilently(createTokenOptions()),
+        getAccessTokenSilently(createTokenOptions()),
 
-  // Timeout after 5 seconds
-  new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("SilentRefreshTimeout")), 7000)
-  )
-]);
+        // Timeout after 20 seconds (matching useApi)
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("SilentRefreshTimeout")), 22000)
+        )
+      ]);
       // Use new fetchMe utility for user profile
       const { fetchMe } = await import('../utils/api');
       const data = await fetchMe(async (url, options) => {
@@ -39,21 +39,23 @@ export function AuthProvider({ children }) {
       }
       setGuestMode(false);
     } catch (err) {
-     if (err?.message === "SilentRefreshTimeout") {
-  console.warn("Silent token renewal timed out. Clearing stale Auth0 data.");
+      if (err?.message === "SilentRefreshTimeout") {
+        console.warn("Silent token renewal timed out. Retrying or waiting for network...");
+        // Do NOT clear storage or force login. Just stop loading.
+        // The user might be offline or on a slow connection.
+        setError("Network slow, retrying authentication...");
+        return; // Keep previous state or stay in loading state
+      }
 
-  // Clear stale Auth0 tokens
-  Object.keys(localStorage)
-    .filter(k => k.startsWith("auth0."))
-    .forEach(k => localStorage.removeItem(k));
-
-  // Force login if user was actually authenticated
-  if (isAuthenticated) {
-    return loginWithRedirect({
-      authorizationParams: createTokenOptions()?.authorizationParams,
-    });
-  }
-}
+      console.error("AuthProvider: Identity load failed", err);
+      // If it's a definitive "Login Required" error from Auth0, then we might want to redirect.
+      if (err?.error === 'login_required' || err?.message?.includes('Login required')) {
+        return loginWithRedirect({
+          authorizationParams: createTokenOptions()?.authorizationParams,
+        });
+      }
+      // Otherwise, set global error
+      setError("Failed to load user profile. check connection.");
     } finally {
       setCheckedIdentity(true);
     }
@@ -68,7 +70,7 @@ export function AuthProvider({ children }) {
       try {
         localStorage.removeItem('guest_todos');
         localStorage.removeItem('guest_tags');
-      } catch (_) {}
+      } catch (_) { }
     }
   }, [authLoading, isAuthenticated]);
 

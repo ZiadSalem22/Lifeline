@@ -80,13 +80,13 @@ async function attachCurrentUser(req, res, next) {
       subscription_status: user.subscription_status,
       profile: profile
         ? {
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            phone: profile.phone,
-            country: profile.country,
-            timezone: profile.timezone,
-            onboarding_completed:  !!profile.onboarding_completed
-          }
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          phone: profile.phone,
+          country: profile.country,
+          timezone: profile.timezone,
+          onboarding_completed: !!profile.onboarding_completed
+        }
         : { onboarding_completed: false }
       ,
       settings: settings || null
@@ -94,8 +94,10 @@ async function attachCurrentUser(req, res, next) {
     return next();
   } catch (err) {
     logger.error('[attachCurrentUser] upsert or profile load failed', { error: err.message });
-    req.currentUser = { id: req.auth?.payload?.sub, email: req.auth?.payload?.email || null };
-    return next();
+    // Critical Change: Do NOT swallow DB errors. Return 500.
+    // If we swallow errors, the frontend receives a partial user object and thinks "Onboarding Incomplete".
+    // Better to show an error page than to break the user account state.
+    res.status(500).json({ error: 'Internal Server Error (Profile Load Failed)' });
   }
 }
 
