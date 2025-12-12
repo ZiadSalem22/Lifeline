@@ -503,7 +503,7 @@ app.get('/api/me', requireAuth(), (req, res) => {
  *         description: Unauthorized
  */
 app.post('/api/profile', requireAuth(), async (req, res) => {
-   // try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
+    // try { await ensureDataSource(); } catch (e) { return res.status(500).json({ error: 'Database init failed' }); }
     const user = req.currentUser;
     if (!user || !user.id) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -530,7 +530,7 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
         onboarding_completed
     } = req.body || {};
     // Debug: log incoming profile payload to help diagnose week-start persistence
-    try { console.debug('[api/profile] incoming body:', { first_name, last_name, email, phone, country, city, birthday, avatar_url, timezone, start_day_of_week, onboarding_completed }); } catch (e) {}
+    try { console.debug('[api/profile] incoming body:', { first_name, last_name, email, phone, country, city, birthday, avatar_url, timezone, start_day_of_week, onboarding_completed }); } catch (e) { }
     // Normalize start_day_of_week to a canonical capitalized form (accept lowercase/mixed-case)
     let normalizedStartDay = null;
     if (start_day_of_week) {
@@ -613,7 +613,7 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
                 });
             }
             const saved = await profileRepo.save(profile);
-            try { console.debug('[api/profile] saved profile record:', saved); } catch (e) {}
+            try { console.debug('[api/profile] saved profile record:', saved); } catch (e) { }
         });
         res.json({
             first_name,
@@ -966,10 +966,11 @@ app.get('/api/todos/search', requireAuth(), async (req, res, next) => {
         const maxDuration = req.query.maxDuration || null;
         const flagged = typeof req.query.flagged !== 'undefined' ? (req.query.flagged === '1' || req.query.flagged === 'true') : undefined;
         const sortBy = req.query.sortBy || null;
+        const taskNumber = req.query.taskNumber || null;
         const page = parseInt(req.query.page || '1', 10) || 1;
         const limit = parseInt(req.query.limit || req.query.pageSize || '30', 10) || 30;
         const offset = (page - 1) * limit;
-        const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset };
+        const filters = { q, tags, priority, status, startDate, endDate, minDuration, maxDuration, flagged, sortBy, limit, offset, taskNumber };
         logger.info('[GET /api/todos/search] executing', { userId: req.currentUser.id, filters });
         const results = await searchTodos.execute(req.currentUser.id, filters);
         res.json({ todos: results.todos || [], total: results.total || 0, page, limit });
@@ -1290,13 +1291,13 @@ app.get('/api/stats', requireAuth(), async (req, res) => {
             const format = (d) => {
                 const date = new Date(d);
                 if (period === 'year') return `${date.getFullYear()}`;
-                if (period === 'month') return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+                if (period === 'month') return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 if (period === 'week') {
-                    const onejan = new Date(date.getFullYear(),0,1);
-                    const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay()+1) / 7);
-                    return `${date.getFullYear()}-${String(week).padStart(2,'0')}`;
+                    const onejan = new Date(date.getFullYear(), 0, 1);
+                    const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+                    return `${date.getFullYear()}-${String(week).padStart(2, '0')}`;
                 }
-                return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             };
             const map = {};
             todos.forEach(t => {
@@ -1304,7 +1305,7 @@ app.get('/api/stats', requireAuth(), async (req, res) => {
                 const key = format(t.dueDate);
                 map[key] = (map[key] || 0) + 1;
             });
-            const groups = Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([period, count]) => ({ period, count }));
+            const groups = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([period, count]) => ({ period, count }));
             // naive period totals equal overall totals (fallback)
             const periodTotals = { totalTodos: total, completedCount, completionRate, avgDuration: 0, timeSpentTotal: 0 };
             stats = { totalTodos: total, completedCount, completionRate, groups, periodTotals, topTagsInPeriod: [] };
@@ -1356,7 +1357,7 @@ app.get('/api/export', requireAuth(), async (req, res) => {
         }
 
         // Delegate stats calculation to repository for performance
-        let stats = { totalTodos: todos.length, completedCount: todos.filter(t=>t.isCompleted).length, completionRate: 0 };
+        let stats = { totalTodos: todos.length, completedCount: todos.filter(t => t.isCompleted).length, completionRate: 0 };
         try {
             const repoStats = await todoRepository.getExportStatsForUser(userId);
             if (repoStats) stats = repoStats;
@@ -1464,7 +1465,7 @@ app.post('/api/import', requireAuth(), async (req, res) => {
                     JOIN todos t ON tt.todo_id = t.id
                     WHERE t.user_id = @0
                 `, [userId]);
-            } catch (_) {}
+            } catch (_) { }
             await AppDataSource.manager.query('DELETE FROM todos WHERE user_id = @0', [userId]);
             // Delete only this user's custom tags (keep defaults)
             await AppDataSource.manager.query('DELETE FROM tags WHERE user_id = @0', [userId]);

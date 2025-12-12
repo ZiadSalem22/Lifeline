@@ -64,3 +64,16 @@
   .actions{ flex-wrap:wrap }
   .pager{ gap:8px }
 }
+
+.task-number {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+  font-family: monospace;
+  vertical-align: middle;
+  display: inline-block;
+  font-weight: 500;
+}

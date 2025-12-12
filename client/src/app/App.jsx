@@ -3,7 +3,7 @@ import { useLoading } from '../context/LoadingContext';
 import { createTag, getTodoByNumber } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { format, addDays } from 'date-fns';
+import { format, addDays, isValid } from 'date-fns';
 import * as guestApi from '../utils/guestApi';
 import { useGuestStorage } from '../hooks/useGuestStorage';
 import { useApi } from '../hooks/useApi';
@@ -444,35 +444,70 @@ function AppInner() {
     // Check if selectedDate is a valid date string before creating a Date object
     if (selectedDate && typeof selectedDate === 'string' && selectedDate.includes('-')) {
       const date = new Date(selectedDate + 'T00:00:00');
-      return format(date, 'EEEE, MMMM d');
+      // Defensive check: ensure date is valid before formatting
+      if (isValid(date)) {
+        return format(date, 'EEEE, MMMM d');
+      }
     }
     // Handle case where selectedDate is a Date object
     if (selectedDate instanceof Date) {
-      return format(selectedDate, 'EEEE, MMMM d');
+      if (isValid(selectedDate)) {
+        return format(selectedDate, 'EEEE, MMMM d');
+      }
     }
     return 'All Tasks'; // Fallback title
   }, [searchQuery, selectedDate]);
   const searchActive = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
 
-  const handleGoToDay = useCallback((dateString) => {
+  const handleGoToDay = useCallback((dateString, taskId) => {
     if (!dateString) return;
+
+    // Normalize dateString to YYYY-MM-DD if it comes in as ISO
+    let cleanDate = dateString;
+    if (typeof cleanDate === 'string' && cleanDate.includes('T')) {
+      cleanDate = cleanDate.split('T')[0];
+    }
+
     const today = format(new Date(), 'yyyy-MM-dd');
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-    if (dateString === today) handleSelectDate('today');
-    else if (dateString === tomorrow) handleSelectDate('tomorrow');
-    else handleSelectDate(dateString);
-    const token = (dateString === today) ? 'today' : (dateString === tomorrow) ? 'tomorrow' : dateString;
-    navigate(`/day/${token}`);
-  }, [navigate, handleSelectDate]);
+
+    // Determine the route token (today, tomorrow, or YYYY-MM-DD)
+    const token = (cleanDate === today) ? 'today' : (cleanDate === tomorrow) ? 'tomorrow' : cleanDate;
+
+    // Construct query params if taskId exists
+    const search = taskId ? `?taskId=${taskId}` : '';
+
+    // Navigate only - let the URL listener sync the state
+    console.log('[App] Navigating to:', `/day/${token}${search}`);
+    navigate(`/day/${token}${search}`);
+  }, [navigate]);
+
+  // Deep linking: Open task if taskId is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const taskId = params.get('taskId');
+    if (taskId && todos.length > 0) {
+      const todo = todos.find(t => t.id === taskId);
+      if (todo) {
+        handleStartEdit(todo);
+        // Optional: clear param to avoid re-opening on refresh, but keeping it allows bookmarking.
+        // For now, we leave it.
+      }
+    }
+  }, [location.search, todos, handleStartEdit]);
 
   // Keep selectedDate in sync with the URL when visiting /day/:day
   React.useEffect(() => {
     const m = location.pathname.match(/^\/day\/(today|tomorrow|\d{4}-\d{2}-\d{2})$/);
     if (m) {
       const token = m[1];
+      console.log('[App] URL Sync - Found token:', token, 'Current selectedDate:', selectedDate);
       if (selectedDate !== token) {
+        console.log('[App] UPDATING selectedDate to:', token);
         handleSelectDate(token);
       }
+    } else {
+      // console.log('[App] URL Sync - No match for:', location.pathname);
     }
   }, [location.pathname, selectedDate, handleSelectDate]);
 
@@ -523,7 +558,7 @@ function AppInner() {
 
   const sidebarProps = {
     selectedDate,
-    onSelectDate: handleSelectDate,
+    onSelectDate: (d) => handleGoToDay(d),
     isOpen: isMobileSidebarOpen,
     onClose: () => setIsMobileSidebarOpen(false),
     searchQuery,
@@ -1056,7 +1091,7 @@ function AppInner() {
             searchProps={{
               onBack: () => navigate('/'),
               onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) { }; navigate('/'); },
-              onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) { }; navigate('/'); },
+              onGoToDay: (date, taskId) => { try { handleGoToDay(date, taskId); } catch (e) { }; },
               fetchWithAuth,
               guestMode,
               guestTodos: todos,
@@ -1072,7 +1107,7 @@ function AppInner() {
             searchProps={{
               onBack: () => navigate('/'),
               onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) { }; navigate('/'); },
-              onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) { }; navigate('/'); },
+              onGoToDay: (date, taskId) => { try { handleGoToDay(date, taskId); } catch (e) { }; },
               fetchWithAuth,
               guestMode,
               guestTodos: todos,

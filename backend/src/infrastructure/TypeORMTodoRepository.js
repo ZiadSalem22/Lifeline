@@ -9,7 +9,7 @@ class TypeORMTodoRepository extends ITodoRepository {
         this.repo = AppDataSource.getRepository('Todo');
         this.tagRepo = AppDataSource.getRepository('Tag');
     }
- 
+
 
     async save(todo) {
         const entity = {
@@ -101,13 +101,23 @@ class TypeORMTodoRepository extends ITodoRepository {
             .leftJoinAndSelect('todo.tags', 'tag')
             .distinct(true);
 
-        qb.andWhere('ISNULL(todo.archived, 0) = 0');
+        // Only filter out archived items if we aren't searching for a specific task number
+        if (!filters.taskNumber) {
+            qb.andWhere('ISNULL(todo.archived, 0) = 0');
+        }
         if (userId) {
             qb.andWhere('todo.user_id = :userId', { userId });
         }
 
         if (q) {
             qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q)', { q: `%${q}%` });
+        }
+
+        if (filters.taskNumber) {
+            const tNum = parseInt(filters.taskNumber, 10);
+            if (!Number.isNaN(tNum)) {
+                qb.andWhere('todo.task_number = :tNum', { tNum });
+            }
         }
 
         if (priority) {
@@ -187,12 +197,16 @@ class TypeORMTodoRepository extends ITodoRepository {
             qb.orderBy('todo.duration', 'DESC');
         } else if (sortBy === 'name') {
             qb.orderBy('todo.title', 'ASC');
-                } else {
-                        // SQL Server compatible nulls-last ordering using a computed select alias
-                        qb.addSelect("CASE WHEN todo.due_date IS NULL THEN 1 ELSE 0 END", 'due_date_nulls')
-                            .orderBy('due_date_nulls', 'ASC')
-                            .addOrderBy('todo.due_date', 'ASC');
-                }
+        } else if (sortBy === 'date_desc') {
+            qb.addSelect("CASE WHEN todo.due_date IS NULL THEN 1 ELSE 0 END", 'due_date_nulls')
+                .orderBy('due_date_nulls', 'ASC')
+                .addOrderBy('todo.due_date', 'DESC');
+        } else {
+            // SQL Server compatible nulls-last ordering using a computed select alias
+            qb.addSelect("CASE WHEN todo.due_date IS NULL THEN 1 ELSE 0 END", 'due_date_nulls')
+                .orderBy('due_date_nulls', 'ASC')
+                .addOrderBy('todo.due_date', 'ASC');
+        }
 
         const [rows, total] = await qb.skip(offset).take(limit).getManyAndCount();
         const todos = rows.map(row => this._mapRowToDomain(row));
@@ -255,8 +269,8 @@ class TypeORMTodoRepository extends ITodoRepository {
             const today = new Date();
             const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const start = new Date(end.getTime() - (29 * 24 * 60 * 60 * 1000));
-            const startStr = start.toISOString().slice(0,10);
-            const endStr = end.toISOString().slice(0,10);
+            const startStr = start.toISOString().slice(0, 10);
+            const endStr = end.toISOString().slice(0, 10);
 
             const perDayRows = await AppDataSource.manager.query(
                 `SELECT strftime('%Y-%m-%d', due_date) as day, COUNT(*) as cnt
@@ -271,11 +285,11 @@ class TypeORMTodoRepository extends ITodoRepository {
             const tasksPerDay = [];
             for (let i = 0; i < 30; i++) {
                 const d = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000));
-                const key = d.toISOString().slice(0,10);
+                const key = d.toISOString().slice(0, 10);
                 tasksPerDay.push({ day: key, count: map[key] || 0 });
             }
 
-            return { totalTodos: total, completedCount, completionRate: total>0?Math.round((completedCount/total)*100):0, avgDuration, topTags, tasksPerDay };
+            return { totalTodos: total, completedCount, completionRate: total > 0 ? Math.round((completedCount / total) * 100) : 0, avgDuration, topTags, tasksPerDay };
         }
 
         // Default: MSSQL-style SQL (existing path)
@@ -306,8 +320,8 @@ class TypeORMTodoRepository extends ITodoRepository {
         const today = new Date();
         const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const start = new Date(end.getTime() - (29 * 24 * 60 * 60 * 1000));
-        const startStr = start.toISOString().slice(0,10);
-        const endStr = end.toISOString().slice(0,10);
+        const startStr = start.toISOString().slice(0, 10);
+        const endStr = end.toISOString().slice(0, 10);
         const perDayRows = await AppDataSource.manager.query(`
             SELECT CONVERT(varchar(10), due_date, 23) as day, COUNT(*) as cnt
             FROM todos
@@ -320,11 +334,11 @@ class TypeORMTodoRepository extends ITodoRepository {
         const tasksPerDay = [];
         for (let i = 0; i < 30; i++) {
             const d = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000));
-            const key = d.toISOString().slice(0,10);
+            const key = d.toISOString().slice(0, 10);
             tasksPerDay.push({ day: key, count: map[key] || 0 });
         }
 
-        return { totalTodos: total, completedCount, completionRate: total>0?Math.round((completedCount/total)*100):0, avgDuration, topTags, tasksPerDay };
+        return { totalTodos: total, completedCount, completionRate: total > 0 ? Math.round((completedCount / total) * 100) : 0, avgDuration, topTags, tasksPerDay };
     }
 
     async getStatisticsForUserInRange(userId, startDate, endDate) {
@@ -337,7 +351,7 @@ class TypeORMTodoRepository extends ITodoRepository {
                 d.setDate(d.getDate() + 1);
                 endPlusOne = d.toISOString().slice(0, 10);
             }
-        } catch (_) {}
+        } catch (_) { }
 
         if (dialect === 'sqlite') {
             // Totals and completed in range (end-exclusive)
@@ -443,7 +457,7 @@ class TypeORMTodoRepository extends ITodoRepository {
             end = new Date(today.getFullYear(), 11, 31);
         }
 
-        const toISO = (d) => d.toISOString().slice(0,10);
+        const toISO = (d) => d.toISOString().slice(0, 10);
 
         if (start && end) {
             return this.getStatisticsForUserInRange(userId, toISO(start), toISO(end));
@@ -463,7 +477,7 @@ class TypeORMTodoRepository extends ITodoRepository {
             const completedCount = parseInt(r.completed || 0, 10);
             const avgDuration = r.avgDur ? Math.round(r.avgDur) : 0;
             const timeSpentTotal = r.sumDur ? parseInt(r.sumDur, 10) : 0;
-            const completionRate = totalTodos > 0 ? Math.round((completedCount/totalTodos)*100) : 0;
+            const completionRate = totalTodos > 0 ? Math.round((completedCount / totalTodos) * 100) : 0;
             const topRows = await AppDataSource.manager.query(
                 `SELECT t.id, t.name, t.color, COUNT(*) as cnt
                  FROM todo_tags tt
@@ -490,8 +504,8 @@ class TypeORMTodoRepository extends ITodoRepository {
             const map = {};
             (perDayRows || []).forEach(r => { if (r.day) map[r.day] = r.cnt; });
             const groups = [];
-            for (let i=0;i<30;i++) {
-                const d = new Date(startD.getTime() + i*24*60*60*1000);
+            for (let i = 0; i < 30; i++) {
+                const d = new Date(startD.getTime() + i * 24 * 60 * 60 * 1000);
                 const key = toISO(d);
                 groups.push({ period: key, date: key, count: map[key] || 0 });
             }
@@ -510,7 +524,7 @@ class TypeORMTodoRepository extends ITodoRepository {
         const completedCount = parseInt(r.completed || 0, 10);
         const avgDuration = r.avgDur ? Math.round(r.avgDur) : 0;
         const timeSpentTotal = r.sumDur ? parseInt(r.sumDur, 10) : 0;
-        const completionRate = totalTodos > 0 ? Math.round((completedCount/totalTodos)*100) : 0;
+        const completionRate = totalTodos > 0 ? Math.round((completedCount / totalTodos) * 100) : 0;
 
         const topRows = await AppDataSource.manager.query(
             `SELECT t.id, t.name, t.color, COUNT(*) as cnt
@@ -539,8 +553,8 @@ class TypeORMTodoRepository extends ITodoRepository {
         const map = {};
         (perDayRows || []).forEach(x => { if (x.day) map[x.day] = x.cnt; });
         const groups = [];
-        for (let i=0;i<30;i++) {
-            const d = new Date(startD.getTime() + i*24*60*60*1000);
+        for (let i = 0; i < 30; i++) {
+            const d = new Date(startD.getTime() + i * 24 * 60 * 60 * 1000);
             const key = toISO(d);
             groups.push({ period: key, date: key, count: map[key] || 0 });
         }
@@ -568,7 +582,7 @@ class TypeORMTodoRepository extends ITodoRepository {
             row.next_recurrence_due || null,
             row.original_id || null,
             row.task_number || null,
-            row.user_id || null
+            row.user_id
         );
     }
 }

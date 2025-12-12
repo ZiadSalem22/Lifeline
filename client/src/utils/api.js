@@ -67,6 +67,7 @@ export const searchTodos = async (params = {}, fetchWithAuth) => {
     if (params.sortBy) searchParams.set('sortBy', params.sortBy);
     if (params.page) searchParams.set('page', params.page);
     if (params.limit) searchParams.set('limit', params.limit);
+    if (params.taskNumber) searchParams.set('taskNumber', params.taskNumber);
 
     const response = await executeFetch(`${TODOS_URL}/search?${searchParams.toString()}`);
     ensureOk(response, 'Failed to search todos', 'searchTodos');

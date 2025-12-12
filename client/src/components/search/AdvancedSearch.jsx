@@ -23,6 +23,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   const [status, setStatus] = useState('any');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [taskNumber, setTaskNumber] = useState('');
   const [minDuration, setMinDuration] = useState('');
   const [maxDuration, setMaxDuration] = useState('');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
@@ -51,8 +52,8 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     return format(d, fmt);
   };
 
-  const navigateToDay = useCallback((dueDate) => {
-    if (onGoToDay && dueDate) onGoToDay(dueDate);
+  const navigateToDay = useCallback((dueDate, id) => {
+    if (onGoToDay && dueDate) onGoToDay(dueDate, id);
   }, [onGoToDay]);
 
   useEffect(() => {
@@ -118,9 +119,16 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
 
   const filtered = useMemo(() => {
     let out = [...allTodos];
+
     if (query.trim()) {
       const q = query.toLowerCase();
       out = out.filter(t => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q));
+    }
+    if (taskNumber) {
+      const num = parseInt(taskNumber, 10);
+      if (!isNaN(num)) {
+        out = out.filter(t => t.taskNumber === num);
+      }
     }
     if (selectedTags.length) {
       out = out.filter(t => (t.tags || []).some(tag => selectedTags.includes(tag.id)));
@@ -135,18 +143,27 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     switch (sortBy) {
       case 'priority': {
         const order = { high: 3, medium: 2, low: 1 };
-        out.sort((a,b) => (order[b.priority]||2) - (order[a.priority]||2));
+        out.sort((a, b) => (order[b.priority] || 2) - (order[a.priority] || 2));
         break;
       }
       case 'duration':
-        out.sort((a,b) => (b.duration||0) - (a.duration||0));
+        out.sort((a, b) => (b.duration || 0) - (a.duration || 0));
         break;
       case 'name':
-        out.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+        out.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         break;
+      case 'date_desc':
+        out.sort((a, b) => {
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(b.dueDate) - new Date(a.dueDate);
+        });
+        break;
+      case 'date_asc':
       case 'date':
       default:
-        out.sort((a,b) => {
+        out.sort((a, b) => {
           if (!a.dueDate && !b.dueDate) return 0;
           if (!a.dueDate) return 1;
           if (!b.dueDate) return -1;
@@ -155,7 +172,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     }
 
     return out;
-  }, [allTodos, query, selectedTags, priority, status, startDate, endDate, minDuration, maxDuration, flaggedOnly, sortBy]);
+  }, [allTodos, taskNumber, query, selectedTags, priority, status, startDate, endDate, minDuration, maxDuration, flaggedOnly, sortBy]);
 
   // Display list (client preview vs live)
   const displayTodos = useMemo(() => (clientResults && clientResults.length) ? clientResults : filtered, [clientResults, filtered]);
@@ -237,7 +254,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     setAllTodos(prev => prev.filter(t => !selectedIds.includes(t.id)));
     // Also remove from client preview if present
     if (clientResults && clientResults.length) {
-      try { setClientResults(prev => prev.filter(t => !selectedIds.includes(t.id))); } catch {}
+      try { setClientResults(prev => prev.filter(t => !selectedIds.includes(t.id))); } catch { }
     }
     setSelectedIds([]);
     lastSelectedIndexRef.current = null;
@@ -247,7 +264,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     if (!selectedIds.length) return;
     setAllTodos(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, isCompleted: !!toCompleted } : t));
     if (clientResults && clientResults.length) {
-      try { setClientResults(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, isCompleted: !!toCompleted } : t)); } catch {}
+      try { setClientResults(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, isCompleted: !!toCompleted } : t)); } catch { }
     }
     setSelectedIds([]);
     lastSelectedIndexRef.current = null;
@@ -290,6 +307,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         endDate: endDate || undefined,
         minDuration: minDuration || undefined,
         maxDuration: maxDuration || undefined,
+        taskNumber: taskNumber || undefined,
         flagged: flaggedOnly ? true : undefined,
         sortBy: sortBy || undefined,
         page: p,
@@ -318,7 +336,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     } finally {
       if (searchId === latestSearchIdRef.current) setServerLoading(false);
     }
-  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, query, selectedTags, sortBy, startDate, status, endDate, priority]);
+  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, query, selectedTags, sortBy, startDate, status, endDate, priority, taskNumber]);
 
   // Client-side quick filter for current-month preload
   useEffect(() => {
@@ -366,9 +384,11 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
       status !== 'any' ||
       flaggedOnly ||
       startDate ||
+      startDate ||
       endDate ||
       minDuration ||
-      maxDuration
+      maxDuration ||
+      taskNumber
     );
 
     if (!hasFilters) return;
@@ -380,7 +400,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     }, 400);
 
     return () => clearTimeout(t);
-  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, performSearch, query, selectedTags, sortBy, startDate, status, endDate, priority]);
+  }, [fetchWithAuth, flaggedOnly, limit, maxDuration, minDuration, performSearch, query, selectedTags, sortBy, startDate, status, endDate, priority, taskNumber]);
 
   return (
     <div className={styles.root}>
@@ -398,15 +418,16 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
       <div className={styles.container}>
         <section className={styles.card}>
           <div className={styles["controls-row"]}>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search title or notes" className={`${styles.input} ${styles["search-input"]}`} />
-            <button onClick={() => { setQuery(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} className={styles["clear-btn"]}>Clear</button>
-            <button onClick={performSearch} className={styles["search-btn"]}>Search</button>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search title, notes..." className={`${styles.input} ${styles["search-input"]}`} />
+            <input value={taskNumber} onChange={e => setTaskNumber(e.target.value)} placeholder="Task #" className={styles.input} style={{ width: '85px', flex: '0 0 auto' }} type="number" />
+            <button onClick={() => { setQuery(''); setTaskNumber(''); setSelectedTags([]); setPriority('any'); setStatus('any'); setStartDate(''); setEndDate(''); setMinDuration(''); setMaxDuration(''); setFlaggedOnly(false); setAllTodos([]); }} className={styles["clear-btn"]}>Clear</button>
+            <button onClick={() => performSearch(1)} className={styles["search-btn"]}>Search</button>
           </div>
 
           <div className={styles["grid-row"]}>
             <div style={{ minWidth: '160px' }}>
               <label className={styles.label}>Priority</label>
-              <select value={priority} onChange={e=>setPriority(e.target.value)} className={styles.select}>
+              <select value={priority} onChange={e => setPriority(e.target.value)} className={styles.select}>
                 <option value="any">Any</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -416,7 +437,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
 
             <div style={{ minWidth: '160px' }}>
               <label className={styles.label}>Status</label>
-              <select value={status} onChange={e=>setStatus(e.target.value)} className={styles.select}>
+              <select value={status} onChange={e => setStatus(e.target.value)} className={styles.select}>
                 <option value="any">Any</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
@@ -427,7 +448,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
               <label className={styles.label}>Flagged</label>
               <div>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={flaggedOnly} onChange={e=>setFlaggedOnly(e.target.checked)} />
+                  <input type="checkbox" checked={flaggedOnly} onChange={e => setFlaggedOnly(e.target.checked)} />
                   <span style={{ color: 'var(--color-text-muted)' }}>Only flagged</span>
                 </label>
               </div>
@@ -437,26 +458,26 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           <div className={styles["grid-row"]}>
             <div style={{ flex: 1 }}>
               <label className={styles.label}>Start Date</label>
-              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className={styles.select} />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.select} />
             </div>
             <div style={{ flex: 1 }}>
               <label className={styles.label}>End Date</label>
-              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className={styles.select} />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={styles.select} />
             </div>
           </div>
 
           <div className={styles["grid-row"]}>
             <div style={{ minWidth: '120px' }}>
               <label className={styles.label}>Min Duration (min)</label>
-              <input type="number" value={minDuration} onChange={e=>setMinDuration(e.target.value)} className={styles.select} />
+              <input type="number" value={minDuration} onChange={e => setMinDuration(e.target.value)} className={styles.select} />
             </div>
             <div style={{ minWidth: '120px' }}>
               <label className={styles.label}>Max Duration (min)</label>
-              <input type="number" value={maxDuration} onChange={e=>setMaxDuration(e.target.value)} className={styles.select} />
+              <input type="number" value={maxDuration} onChange={e => setMaxDuration(e.target.value)} className={styles.select} />
             </div>
             <div style={{ minWidth: '160px' }}>
               <label className={styles.label}>Sort</label>
-              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className={styles.select}>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className={styles.select}>
                 <option value="date">Date</option>
                 <option value="priority">Priority</option>
                 <option value="duration">Duration</option>
@@ -472,10 +493,10 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                 <button
                   key={tag.id}
                   onClick={() => toggleTag(tag.id)}
-                      className={`${styles.tag} ${selectedTags.includes(tag.id) ? styles["tag-selected"] : ''}`}
+                  className={`${styles.tag} ${selectedTags.includes(tag.id) ? styles["tag-selected"] : ''}`}
                   style={selectedTags.includes(tag.id) ? { '--tag-color': tag.color } : undefined}
                 >
-                      <span className={styles["tag-dot"]} style={{ background: tag.color }} />
+                  <span className={styles["tag-dot"]} style={{ background: tag.color }} />
                   <span style={{ lineHeight: 1 }}>{tag.name}</span>
                 </button>
               ))}
@@ -488,6 +509,15 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
           <button onClick={() => { setPriority('high'); setStatus('any'); }} className={styles['quick-btn']}>High Priority</button>
           <button onClick={() => { setStatus('active'); setPriority('any'); }} className={styles['quick-btn']}>Active</button>
           <button onClick={() => { setStatus('completed'); setPriority('any'); }} className={styles['quick-btn']}>Completed</button>
+
+          {/* Sort Toggle */}
+          <button
+            onClick={() => setSortBy(prev => prev === 'date' || prev === 'date_desc' ? 'date_asc' : 'date_desc')}
+            className={styles['quick-btn']}
+            style={{ width: 'auto', padding: '0 12px' }}
+          >
+            Sort: {sortBy === 'date_asc' ? 'Oldest' : 'Newest'}
+          </button>
           {selectedIds.length > 0 && (
             <div className={styles["batch-buttons"]}>
               <button onClick={handleBatchDelete} className={styles['batch-delete']}>Delete</button>
@@ -513,12 +543,12 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                 key={todo.id}
                 onClick={(e) => handleRowClick(todo.id, idx, e)}
                 className={`${styles.row} ${isSelected(todo.id) ? styles["row-selected"] : ''}`}
-                onDoubleClick={() => navigateToDay(todo.dueDate)}
+                onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
                 onTouchStart={(e) => {
                   const now = Date.now();
                   if (now - lastTapRef.current < 300) {
                     e.preventDefault();
-                    navigateToDay(todo.dueDate);
+                    navigateToDay(todo.dueDate, todo.id);
                   }
                   lastTapRef.current = now;
                 }}
@@ -527,11 +557,13 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
                   <div className={styles.stack}>
                     <div className={styles["title-row"]}>
                       <span
-                        onDoubleClick={() => navigateToDay(todo.dueDate)}
+                        onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
                         title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
                         className={styles["todo-title"]}
                       >
-                        {todo.title}
+                        {todo.taskNumber && (
+                          <span className={styles["task-number"]}>#{todo.taskNumber}</span>
+                        )} {todo.title}
                       </span>
                       <div
                         title={todo.dueDate || 'No date'}

@@ -50,7 +50,7 @@ export function useApi() {
 
       try {
         if (import.meta.env.DEV && !audienceWarned) {
-          console.debug('[useApi] Token options:', tokenOptions);
+          // console.debug('[useApi] Token options:', tokenOptions);
         }
 
         if (!AUTH_AUDIENCE && !audienceWarned) {
