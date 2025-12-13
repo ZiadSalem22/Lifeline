@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { fetchTags, toggleTodo, searchTodos, fetchTodosForMonth, batchTodos } from '../../utils/api';
 import { FlagIcon, EditIcon, CalendarIcon } from '../../icons/Icons';
-import { parseISO, format, isValid, isToday, isTomorrow, isYesterday, isSameYear } from 'date-fns';
+import { parseISO, format, isValid, isToday, isTomorrow, isYesterday, isSameYear, isThisWeek } from 'date-fns';
 import styles from './AdvancedSearch.module.css';
 
 const formatDuration = (totalMinutes) => {
@@ -13,7 +13,7 @@ const formatDuration = (totalMinutes) => {
   return `${m}m`;
 };
 
-const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMode, guestTodos = [], guestTags = [] }) => {
+const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMode, guestTodos = [], guestTags = [], externalQuery = '' }) => {
   const [allTodos, setAllTodos] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -27,7 +27,7 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
   const [minDuration, setMinDuration] = useState('');
   const [maxDuration, setMaxDuration] = useState('');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('date');
+  const [sortBy, setSortBy] = useState('date_desc');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -90,6 +90,12 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     })();
   }, [fetchWithAuth, guestMode, guestTodos, guestTags]);
 
+  useEffect(() => {
+    if (typeof externalQuery === 'string') {
+      setQuery(externalQuery);
+    }
+  }, [externalQuery]);
+
   // When logged in and no filters, default results to monthTodos
   useEffect(() => {
     if (!guestMode && monthLoaded) {
@@ -122,7 +128,18 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
 
     if (query.trim()) {
       const q = query.toLowerCase();
-      out = out.filter(t => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q));
+      out = out.filter(t => {
+        const inTitle = (t.title || '').toLowerCase().includes(q);
+        const inDesc = (t.description || '').toLowerCase().includes(q);
+        const inSubtasks = (t.subtasks || []).some(st => (st.title || '').toLowerCase().includes(q));
+
+        // Check for task number match (stripping optional # from query)
+        const cleanQ = q.trim().replace(/^#/, '').trim();
+        // Allow partial match (includes) for client-side search comfort
+        const inTaskNum = t.taskNumber && String(t.taskNumber).includes(cleanQ);
+
+        return inTitle || inDesc || inSubtasks || inTaskNum;
+      });
     }
     if (taskNumber) {
       const num = parseInt(taskNumber, 10);
@@ -323,6 +340,9 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         setAllTodos(list);
         setTotal((results.total !== undefined) ? results.total : list.length);
         setPage(results.page || p);
+        // Clear client preview so server results take over
+        setClientResults([]);
+        setClientLoading(false);
       }
     } catch (err) {
       console.error('Server-side search failed', err);
@@ -360,7 +380,17 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
     clientDebounceRef.current = setTimeout(() => {
       try {
         const q = query.toLowerCase();
-        const results = monthTodos.filter(t => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q));
+        // Mirror the robust filtering logic of the main 'filtered' memo
+        const cleanQ = query.trim().replace(/^#/, '').trim();
+        // Actually, for number check we want the raw query or just stripped #
+
+        const results = monthTodos.filter(t => {
+          const inTitle = (t.title || '').toLowerCase().includes(q);
+          const inDesc = (t.description || '').toLowerCase().includes(q);
+          const inSubtasks = (t.subtasks || []).some(st => (st.title || '').toLowerCase().includes(q));
+          const inTaskNum = t.taskNumber && String(t.taskNumber).includes(cleanQ);
+          return inTitle || inDesc || inSubtasks || inTaskNum;
+        });
         setClientResults(results.slice(0, 50)); // limit preview
       } catch (e) {
         setClientResults([]);
@@ -538,55 +568,104 @@ const AdvancedSearch = ({ onBack, onOpenTodo, onGoToDay, fetchWithAuth, guestMod
         {/* Results */}
         <div className={styles["results-card"]}>
           <div className={styles.list}>
-            {pageTodos.map((todo, idx) => (
-              <div
-                key={todo.id}
-                onClick={(e) => handleRowClick(todo.id, idx, e)}
-                className={`${styles.row} ${isSelected(todo.id) ? styles["row-selected"] : ''}`}
-                onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
-                onTouchStart={(e) => {
-                  const now = Date.now();
-                  if (now - lastTapRef.current < 300) {
-                    e.preventDefault();
-                    navigateToDay(todo.dueDate, todo.id);
+            {(() => {
+              // Grouping logic (only if sorting by date/date_desc)
+              const shouldGroup = (sortBy === 'date' || sortBy === 'date_desc') && pageTodos.some(t => t.dueDate);
+
+              let groups = { 'This Week': [], 'Older': [] };
+              let ungrouped = [];
+
+              if (shouldGroup) {
+                pageTodos.forEach(todo => {
+                  if (todo.dueDate && isValid(parseISO(todo.dueDate)) && isThisWeek(parseISO(todo.dueDate))) {
+                    groups['This Week'].push(todo);
+                  } else if (todo.dueDate) {
+                    groups['Older'].push(todo);
+                  } else {
+                    // No date usually goes to 'Older' or separate, let's put in Older for simplicity or keep separate?
+                    // Requirement says "This Week" and "Older". No date effectively is 'Older' or undefined. 
+                    // Let's put them in "Older" or a "No Date" bucket if we wanted strictness.
+                    // For now, let's just dump them in 'Older' to match the binary 'This Week vs Older' request.
+                    groups['Older'].push(todo);
                   }
-                  lastTapRef.current = now;
-                }}
-              >
-                <div className={styles["row-left"]}>
-                  <div className={styles.stack}>
-                    <div className={styles["title-row"]}>
-                      <span
-                        onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
-                        title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
-                        className={styles["todo-title"]}
-                      >
-                        {todo.taskNumber && (
-                          <span className={styles["task-number"]}>#{todo.taskNumber}</span>
-                        )} {todo.title}
-                      </span>
-                      <div
-                        title={todo.dueDate || 'No date'}
-                        className={styles["date-pill"]}
-                      >
-                        <CalendarIcon />
-                        <span style={{ lineHeight: 1 }}>{formatDueDate(todo.dueDate)}</span>
+                });
+              } else {
+                ungrouped = pageTodos;
+              }
+
+              const renderTodo = (todo, idx) => (
+                <div
+                  key={todo.id}
+                  onClick={(e) => handleRowClick(todo.id, idx, e)}
+                  className={`${styles.row} ${isSelected(todo.id) ? styles["row-selected"] : ''}`}
+                  onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
+                  onTouchStart={(e) => {
+                    const now = Date.now();
+                    if (now - lastTapRef.current < 300) {
+                      e.preventDefault();
+                      navigateToDay(todo.dueDate, todo.id);
+                    }
+                    lastTapRef.current = now;
+                  }}
+                >
+                  <div className={styles["row-left"]}>
+                    <div className={styles.stack}>
+                      <div className={styles["title-row"]}>
+                        <span
+                          onDoubleClick={() => navigateToDay(todo.dueDate, todo.id)}
+                          title={todo.dueDate ? `Go to ${todo.dueDate}` : 'No date'}
+                          className={styles["todo-title"]}
+                        >
+                          {todo.taskNumber && (
+                            <span className={styles["task-number"]}>#{todo.taskNumber}</span>
+                          )} {todo.title}
+                        </span>
+                        <div
+                          title={todo.dueDate || 'No date'}
+                          className={styles["date-pill"]}
+                        >
+                          <CalendarIcon />
+                          <span style={{ lineHeight: 1 }}>{formatDueDate(todo.dueDate)}</span>
+                        </div>
+                      </div>
+                      {todo.description && <div className={styles.desc}>{todo.description}</div>}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {(todo.tags || []).map(t => (
+                          <span key={t.id} className={styles["tag-chip"]} style={{ '--tag-color': t.color, '--tag-color-bg': `${t.color}15`, '--tag-color-border': `${t.color}30` }}>{t.name}</span>
+                        ))}
                       </div>
                     </div>
-                    {todo.description && <div className={styles.desc}>{todo.description}</div>}
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {(todo.tags || []).map(t => (
-                        <span key={t.id} className={styles["tag-chip"]} style={{ '--tag-color': t.color, '--tag-color-bg': `${t.color}15`, '--tag-color-border': `${t.color}30` }}>{t.name}</span>
-                      ))}
-                    </div>
+                  </div>
+                  <div className={styles.actions}>
+                    {todo.isFlagged && <FlagIcon filled />}
+                    <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" className={styles["icon-btn"]}><EditIcon /></button>
                   </div>
                 </div>
-                <div className={styles.actions}>
-                  {todo.isFlagged && <FlagIcon filled />}
-                  <button onClick={(e) => { e.stopPropagation(); onOpenTodo && onOpenTodo(todo); }} title="Open/Edit" className={styles["icon-btn"]}><EditIcon /></button>
-                </div>
-              </div>
-            ))}
+              );
+
+              if (!shouldGroup) {
+                return ungrouped.map((t, i) => renderTodo(t, i));
+              }
+
+              return (
+                <>
+                  {groups['This Week'].length > 0 && (
+                    <div className={styles["group-container"]}>
+                      <div className={styles["group-header"]}>This Week</div>
+                      {groups['This Week'].map((t, i) => renderTodo(t, i))}
+                    </div>
+                  )}
+                  {groups['Older'].length > 0 && (
+                    <div className={styles["group-container"]}>
+                      <div className={styles["group-header"]}>Older</div>
+                      {groups['Older'].map((t, i) => renderTodo(t, i))}
+                    </div>
+                  )}
+                  {/* If both empty but pageTodos has items (edge case?), just map pageTodos */}
+                  {(groups['This Week'].length === 0 && groups['Older'].length === 0 && pageTodos.length > 0) && pageTodos.map((t, i) => renderTodo(t, i))}
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

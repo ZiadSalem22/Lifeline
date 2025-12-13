@@ -172,9 +172,19 @@ class SQLiteTodoRepository extends ITodoRepository {
             const params = [];
 
             if (q) {
-                clauses.push("(title LIKE ? OR description LIKE ?)");
-                const like = `%${q}%`;
-                params.push(like, like);
+                const cleanQ = q.trim().replace(/^#/, '').trim();
+                const asNum = parseInt(cleanQ, 10);
+                const isNum = !Number.isNaN(asNum) && String(asNum) === cleanQ;
+
+                if (isNum) {
+                    clauses.push("(title LIKE ? OR description LIKE ? OR subtasks LIKE ? OR task_number = ?)");
+                    const like = `%${q}%`;
+                    params.push(like, like, like, asNum);
+                } else {
+                    clauses.push("(title LIKE ? OR description LIKE ? OR subtasks LIKE ?)");
+                    const like = `%${q}%`;
+                    params.push(like, like, like);
+                }
             }
 
             if (priority) {
@@ -369,7 +379,7 @@ class SQLiteTodoRepository extends ITodoRepository {
                                     const today = new Date();
                                     const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
                                     const start = new Date(end.getTime() - (29 * 24 * 60 * 60 * 1000));
-                                    const fmt = (d) => d.toISOString().slice(0,10);
+                                    const fmt = (d) => d.toISOString().slice(0, 10);
                                     const startStr = fmt(start);
                                     const endStr = fmt(end);
                                     const perDaySql = `SELECT due_date as day, COUNT(*) as cnt FROM todos WHERE due_date BETWEEN ? AND ? GROUP BY due_date ORDER BY due_date ASC`;

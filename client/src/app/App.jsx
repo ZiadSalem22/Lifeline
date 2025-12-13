@@ -705,6 +705,21 @@ function AppInner() {
     </div>
   );
 
+
+  // Clear search when navigating away from search page
+  useEffect(() => {
+    if (location.pathname !== '/search' && searchQuery.trim().length > 0) {
+      setSearchQuery('');
+    }
+  }, [location.pathname, setSearchQuery]);
+
+  // Auto-navigate to search page when typing in top bar
+  useEffect(() => {
+    if (searchQuery.trim().length > 0 && location.pathname !== '/search') {
+      navigate('/search');
+    }
+  }, [searchQuery]); // Removed location.pathname/navigate to avoid loops
+
   if (loading || !checkedIdentity) {
     // If global overlay is active, let it present the loading UI.
     // Only render the local centered loader when the global overlay is NOT active.
@@ -732,12 +747,29 @@ function AppInner() {
     return null;
   }
 
-  // Use react-router routes so the URL controls the view
+
+
+
   return (
     <>
       <StatusBanner />
       <NotificationPoller onNotify={() => { /* future: show notification toast */ }} />
       <Routes>
+        <Route path="/search" element={
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              externalQuery: searchQuery,
+              fetchWithAuth,
+              guestMode,
+              guestTodos: todos,
+              guestTags: tags,
+              onOpenTodo: handleStartEdit, // Reuse main app edit handler
+              onGoToDay: handleGoToDay
+            }}
+          />
+        } />
         {/* Day-specific route mirrors the home dashboard but with URL reflecting the selected day */}
         <Route path="/day/:day" element={
           <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>

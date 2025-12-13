@@ -101,8 +101,18 @@ class TypeORMTodoRepository extends ITodoRepository {
             .leftJoinAndSelect('todo.tags', 'tag')
             .distinct(true);
 
-        // Only filter out archived items if we aren't searching for a specific task number
-        if (!filters.taskNumber) {
+        // Check if q matches a task number (e.g. "42", "#42", "# 42")
+        let qIsSpecificTask = false;
+        if (q) {
+            const cleanQ = q.trim().replace(/^#/, '').trim();
+            const asNum = parseInt(cleanQ, 10);
+            if (!Number.isNaN(asNum) && String(asNum) === cleanQ) {
+                qIsSpecificTask = true;
+            }
+        }
+
+        // Only filter out archived items if we aren't searching (q is empty) AND not looking for a specific task number
+        if (!q && !filters.taskNumber) {
             qb.andWhere('ISNULL(todo.archived, 0) = 0');
         }
         if (userId) {
@@ -110,7 +120,16 @@ class TypeORMTodoRepository extends ITodoRepository {
         }
 
         if (q) {
-            qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q)', { q: `%${q}%` });
+            const cleanQ = q.trim().replace(/^#/, '').trim();
+            const asNum = parseInt(cleanQ, 10);
+            // Check if it's a valid number AND the input was predominantly that number
+            const isNum = !Number.isNaN(asNum) && String(asNum) === cleanQ;
+
+            if (isNum) {
+                qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q OR todo.subtasks LIKE :q OR todo.task_number = :qNum)', { q: `%${q}%`, qNum: asNum });
+            } else {
+                qb.andWhere('(todo.title LIKE :q OR todo.description LIKE :q OR todo.subtasks LIKE :q)', { q: `%${q}%` });
+            }
         }
 
         if (filters.taskNumber) {
