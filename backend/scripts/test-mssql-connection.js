@@ -20,7 +20,7 @@ const parseConnString = (connString) => {
         database: config.DATABASE,
         port: config.PORT ? parseInt(config.PORT) : 1433,
         options: {
-            encrypt: false,               // change to true if using Azure SQL
+            encrypt: true,               // change to true if using Azure SQL
             trustServerCertificate: true  // allow self-signed certs
         }
     };
