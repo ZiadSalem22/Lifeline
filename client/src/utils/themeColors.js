@@ -6,7 +6,29 @@
  */
 
 export const getThemeColors = () => {
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const theme = document.documentElement.getAttribute('data-theme');
+
+    // Specific definition for Clean Beige
+    if (theme === 'clean-beige') {
+        return {
+            primary: '#8b7765',
+            primaryDark: '#6d5b4d',
+            primaryLight: '#a69382',
+            accent: '#c4b5a3',
+            bg: '#fdfbf7',
+            surface: '#f3eeda',
+            surfaceLight: '#f9f5ea',
+            surfaceHover: '#ebe4d0',
+            text: '#4a4036',
+            textMuted: '#8c7e72',
+            border: 'rgba(139, 119, 101, 0.25)',
+            borderHover: 'rgba(139, 119, 101, 0.4)',
+            shadowPrimary: 'rgba(139, 119, 101, 0.25)',
+            shadowDark: 'rgba(74, 64, 54, 0.1)',
+        };
+    }
+
+    const isDark = ['dark', 'blue-dark', 'midnight'].includes(theme);
 
     if (isDark) {
         return {

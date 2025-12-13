@@ -5,7 +5,7 @@ import { useAuthContext } from './AuthProvider.jsx';
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const themes = ['dark', 'blue-dark', 'white', 'pink', 'red', 'blue', 'midnight', 'sunset'];
+  const themes = ['dark', 'blue-dark', 'white', 'clean-beige', 'pink', 'red', 'blue', 'midnight', 'sunset'];
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'white');
   const [font, setFont] = useState(() => localStorage.getItem('font') || '"DM Sans", sans-serif');
   const { fetchWithAuth } = useApi();
