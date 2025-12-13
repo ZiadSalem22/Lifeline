@@ -789,7 +789,6 @@ function AppInner() {
                 </div>
               </div>
             )}
-            {/* Reuse the same dashboard content by rendering the same JSX as the home route below */}
             {/* Saved toast */}
             {savedMessage && (
               <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
@@ -855,7 +854,6 @@ function AppInner() {
                 )}
               </div>
 
-              {/* When searching: show results immediately below header; otherwise show filters first */}
               {!searchActive && (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                   {/* Tag Filter */}
@@ -931,19 +929,663 @@ function AppInner() {
 
                 </div>
               )}
-            </div>
-            {/* Task List (search results elevated if searching) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
+            </div>        {/* Add Task Form */}
+            {addTodoError && !searchActive && (
+              <div style={{
+                color: 'var(--color-danger)',
+                background: 'rgba(255,0,0,0.08)',
+                border: '1px solid var(--color-danger)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                marginBottom: '12px',
+                fontWeight: 500,
+                textAlign: 'center',
+                fontSize: '1rem',
+                letterSpacing: '0.01em',
+              }}>
+                {addTodoError}
+              </div>
+            )}
+            {/* Hide add task form when searching */}
+            {!searchActive && !isAddCardOpen && (
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  type="button"
+                  className="add-task-button"
+                  onClick={() => setIsAddCardOpen(true)}
+                  aria-label="Add Task"
+                  style={{
+                    display: 'inline-block',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Add Task
+                </button>
+              </div>
+            )}
+            {!searchActive && isAddCardOpen && (
+              <form
+                ref={addCardRef}
+                className="add-task-form add-task-form-animation"
+                onSubmit={handleAdd}
+                style={{
+                  marginBottom: '40px',
+                  background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
+                  backdropFilter: 'blur(12px) saturate(160%)',
+                  borderRadius: '20px',
+                  padding: '28px 28px 24px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
+                  transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
+                  opacity: prefilling ? 0.92 : 1,
+                }}
+              >
+                {/* Title on top, then description, then centered controls */}
+                <div style={{ marginBottom: '12px' }}>
+                  {/* Load Task UI: numeric input + Load button */}
+                  <div className="load-template-bar">
+                    <input
+                      className="load-template-input"
+                      ref={loadTaskInputRef}
+                      type="number"
+                      min={1}
+                      value={loadTaskNumber}
+                      onChange={(e) => setLoadTaskNumber(e.target.value)}
+                      placeholder="Load task #"
+                    />
+                    <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                      {isLoadingTask ? 'Loading…' : 'Load'}
+                    </button>
+                    <button className="load-template-clear" type="button" onClick={clearTemplate}>
+                      Clear Template
+                    </button>
+                  </div>
+                  <div style={{
+                    paddingLeft: '8px',
+                    marginTop: '5px',
+                    marginBottom: 'px',
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                    textAlign: 'left',
+                    fontStyle: 'initial',
+                    letterSpacing: '0.001em'
+                  }}>
+                    Repeating a Task? Enter its number to load a previous task instantly.
+                  </div>
+                  {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
+
+
+                  <div style={{
+                    height: '1px',
+                    backgroundColor: 'var(--color-border)',
+                    margin: '20px 0 16px'
+                  }} />
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Title — What do you want to accomplish?"
+                    style={{
+                      width: '100%',
+                      background: 'var(--color-surface-light)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.9rem',
+                      fontFamily: 'var(--font-family-base)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      outline: 'none',
+                      boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
+                      fontWeight: 300
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <textarea
+                    value={inputDescription}
+                    onChange={e => setInputDescription(e.target.value)}
+                    placeholder="Add notes or description (optional)"
+                    style={{
+                      width: '100%',
+                      minHeight: '64px',
+                      background: 'var(--color-surface-light)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.83rem',
+                      fontFamily: 'var(--font-family-base)',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                  <select
+                    value={hours}
+                    onChange={e => setHours(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
+                  </select>
+
+                  <select
+                    value={minutes}
+                    onChange={e => setMinutes(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setIsFlagged(!isFlagged)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.1s ease-out',
+                      border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                      background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
+                      color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FlagIcon filled={isFlagged} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setShowTagInput(!showTagInput)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text)';
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text-muted)';
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }}
+                  >
+                    #
+                  </button>
+
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
+
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                    placeholder="Time"
+                  />
+
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
+                    <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
+                    <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRecurrenceSelector(true)}
+                    title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
+                      border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '8px',
+                      color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
+                      fontWeight: currentRecurrence ? '600' : '500',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                      }
+                    }}
+                  >
+                    {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="button-hover-scale-bg"
+                    disabled={globalLoading}
+                    style={{
+                      padding: '10px 28px',
+                      background: 'var(--color-primary)',
+                      borderRadius: '14px',
+                      color: 'var(--color-bg)',
+                      fontWeight: '600',
+                      fontSize: '0.9rem',
+                      border: 'none',
+                      cursor: globalLoading ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.25s ease, transform 0.2s ease',
+                      boxShadow: '0 6px 18px -6px var(--shadow-primary)',
+                      margin: '12px auto 0'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!globalLoading) {
+                        e.currentTarget.style.background = 'var(--color-primary-dark)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--color-primary)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {globalLoading ? 'Adding…' : 'Add Task'}
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                  {/* Subtasks */}
+                  <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newSubtask.trim()) {
+                            e.preventDefault();
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        placeholder="Add subtask..."
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-surface-light)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          color: 'var(--color-text)',
+                          fontSize: '0.875rem',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newSubtask.trim()) {
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'var(--color-primary)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: 'var(--color-bg)',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {subtasks.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {subtasks.map((subtask, idx) => (
+                          <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
+                            <input
+                              type="checkbox"
+                              checked={subtask.isCompleted}
+                              onChange={() => {
+                                const updated = [...subtasks];
+                                updated[idx].isCompleted = !updated[idx].isCompleted;
+                                setSubtasks(updated);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
+                              {subtask.title}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
+                              style={{
+                                padding: '4px 8px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  {showTagInput && (
+                    <div
+                      className="fade-in-height-auto"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Plus icon button for new tag */}
+                      <button
+                        type="button"
+                        aria-label="Add new tag"
+                        onClick={() => setShowNewTagModal(true)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          border: '1.5px solid var(--color-border)',
+                          background: 'var(--color-surface-light)',
+                          color: 'var(--color-primary)',
+                          fontSize: 20,
+                          cursor: 'pointer',
+                          marginRight: 2,
+                          boxShadow: '0 2px 8px 0 var(--shadow-light)'
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="10" y1="4" x2="10" y2="16" />
+                          <line x1="4" y1="10" x2="16" y2="10" />
+                        </svg>
+                      </button>
+                      {/* Tag buttons */}
+                      {tags.map((tag, i) => {
+                        const active = !!selectedTags.find(t => t.id === tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            className="tag-button-fade-in-scale"
+                            type="button"
+                            onClick={() => toggleTagSelection(tag)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '999px',
+                              border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                              background: active ? `${tag.color}20` : 'transparent',
+                              color: active ? tag.color : 'var(--color-text-muted)',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              transition: 'all 0.12s ease-out',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                            <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                          </button>
+                        );
+                      })}
+                      {tags.length === 0 && (
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: 'var(--color-text-muted)',
+                          margin: 0
+                        }}>
+                          No tags yet.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* Render New Tag Modal at the end of App for full overlay */}
+                  {showNewTagModal && (
+                    <div
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 1200,
+                        background: 'rgba(0,0,0,0.32)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background 0.2s',
+                      }}
+                      onClick={() => setShowNewTagModal(false)}
+                    >
+                      <div
+                        style={{
+                          background: 'var(--color-surface)',
+                          borderRadius: 18,
+                          boxShadow: '0 8px 32px 0 var(--shadow-dark)',
+                          padding: '32px 28px 24px 28px',
+                          minWidth: 340,
+                          maxWidth: 400,
+                          width: '90vw',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 18,
+                          position: 'relative',
+                          animation: 'fadeInScale 0.18s cubic-bezier(.4,1.3,.6,1)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          aria-label="Close"
+                          onClick={() => setShowNewTagModal(false)}
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            fontSize: 22,
+                            cursor: 'pointer',
+                            zIndex: 2
+                          }}
+                        >
+                          ×
+                        </button>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)' }}>Create New Tag</h3>
+                        <input
+                          type="text"
+                          placeholder="Tag name"
+                          value={newTagName}
+                          onChange={e => setNewTagName(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: '1px solid var(--color-border)',
+                            fontSize: '1rem',
+                            marginBottom: 8,
+                          }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <label style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>Color:</label>
+                          <input
+                            type="color"
+                            value={newTagColor}
+                            onChange={e => setNewTagColor(e.target.value)}
+                            style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.95rem', color: newTagColor }}>{newTagColor}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowNewTagModal(false)}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-surface-light)',
+                              color: 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!newTagName.trim()) return;
+                              try {
+                                const newTag = guestMode
+                                  ? await guestApi.createTag(newTagName.trim(), newTagColor)
+                                  : await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
+                                setTags(prev => [...prev, newTag]);
+                                setShowNewTagModal(false);
+                                setNewTagName('');
+                                setNewTagColor('#6C63FF');
+                              } catch (err) {
+                                alert('Failed to create tag.');
+                              }
+                            }}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-primary)',
+                              color: 'var(--color-bg)',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                            disabled={!newTagName.trim()}
+                          >
+                            Create
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+            )}
+
+            {/* Task List */}
+            <div className="task-list-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
               {filteredTodos.length === 0 && (
                 <div
-                  className="fade-in-scale-up"
+                  className="fade-in-scale-up empty-state"
                   style={{
                     textAlign: 'center',
                     padding: '80px 0'
                   }}
                 >
                   <div
-                    className="rotate-scale-infinite"
+                    className="rotate-scale-infinite empty-state-icon"
                     style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
                   >
                     <SparklesIcon />
@@ -1010,96 +1652,6 @@ function AppInner() {
               ))}
 
             </div>
-            {/* Add Task Form hidden when searching */}
-            {!searchActive && !isAddCardOpen && (
-              <div className="add-task-button-wrap" style={{ marginTop: '24px', marginBottom: '16px' }}>
-                <button
-                  type="button"
-                  className="add-task-button"
-                  onClick={() => setIsAddCardOpen(true)}
-                  aria-label="Add Task"
-                >
-                  <span className="add-task-button__icon" aria-hidden>+</span>
-                  <span className="add-task-button__label">Add Task</span>
-                </button>
-              </div>
-            )}
-            {!searchActive && isAddCardOpen && (
-              <form
-                ref={addCardRef}
-                className="add-task-form add-task-form-animation"
-                onSubmit={handleAdd}
-                style={{
-                  marginTop: '32px',
-                  marginBottom: '40px',
-                  background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
-                  backdropFilter: 'blur(12px) saturate(160%)',
-                  borderRadius: '20px',
-                  padding: '28px 28px 24px',
-                  border: '1px solid var(--color-border)',
-                  boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-                  transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
-                  opacity: prefilling ? 0.92 : 1
-                }}
-              >
-                {/* Title on top, then description, then centered controls */}
-                <div style={{ marginBottom: '12px' }}>
-                  {/* Load Task UI: numeric input + Load button */}
-                  <div className="load-template-bar">
-                    <input
-                      className="load-template-input"
-                      ref={loadTaskInputRef}
-                      type="number"
-                      min={1}
-                      value={loadTaskNumber}
-                      onChange={(e) => setLoadTaskNumber(e.target.value)}
-                      placeholder="Load task #"
-                    />
-                    <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
-                      {isLoadingTask ? 'Loading…' : 'Load'}
-                    </button>
-                    <button className="load-template-clear" type="button" onClick={clearTemplate}>
-                      Clear Template
-                    </button>
-                  </div>
-                  <div style={{
-                    marginTop: '6px',
-                    marginBottom: '4px',
-                    fontSize: '0.97rem',
-                    color: 'var(--color-text-muted)',
-                    textAlign: 'left',
-                    fontStyle: 'italic',
-                    letterSpacing: '0.01em'
-                  }}>
-                    Repeating a task? Just enter the number and we got you. We’ll make it easier.
-                  </div>
-                  {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Title — What do you want to accomplish?"
-                    style={{
-                      width: '100%',
-                      background: 'var(--color-surface-light)',
-                      color: 'var(--color-text)',
-                      fontSize: '1.125rem',
-                      fontFamily: 'var(--font-family-base)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '12px',
-                      padding: '12px 14px',
-                      outline: 'none',
-                      boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
-                      fontWeight: 600
-                    }}
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                  />
-                </div>
-                {/* (rest of form remains unchanged; omitted for brevity) */}
-              </form>
-            )}
           </DashboardPage>
         } />
         <Route path="/profile" element={
