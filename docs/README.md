@@ -27,5 +27,6 @@ This directory contains the repository’s organized documentation surface after
 ## Recommended Starting Points
 - Project overview: [../README.md](../README.md)
 - Quick start: [guides/QUICK_START.md](guides/QUICK_START.md)
+- Deploy-branch CD: [guides/DEPLOY_BRANCH_CD.md](guides/DEPLOY_BRANCH_CD.md)
 - Testing reference: [reference/TESTING_CHECKLIST.md](reference/TESTING_CHECKLIST.md)
 - Historical integration material: [archive/](archive)

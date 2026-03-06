@@ -157,6 +157,17 @@ Guest sessions (no `Authorization` header) do not create surrogate users and nev
 
 Use `/api/public/info` to detect server availability without authentication.
 
+### Production Deploy Branch
+
+Production deployment now uses a deploy-branch CD model.
+
+- `main` remains the normal development branch.
+- `deploy` is the production deployment branch.
+- pushes to `deploy` trigger the VPS deployment workflow in [.github/workflows/deploy-production.yml](.github/workflows/deploy-production.yml)
+- production runtime secrets remain on the VPS in `/opt/lifeline/shared/.env.production`
+
+See [docs/guides/DEPLOY_BRANCH_CD.md](docs/guides/DEPLOY_BRANCH_CD.md) for the operator flow, required deployment secrets, and rollback notes.
+
 ---
 
 ## 📖 Documentation
