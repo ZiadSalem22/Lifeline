@@ -1,0 +1,34 @@
+{
+  "metadata": {
+    "runId": "2026-03-06T11-29-47-387Z",
+    "generatedAt": "2026-03-06T11:29:48.093Z",
+    "sourceRunId": "2026-03-06T11-29-47-387Z"
+  },
+  "counts": {
+    "source": {
+      "users": 7,
+      "user_profiles": 5,
+      "user_settings": 2,
+      "todos": 536,
+      "tags": 17,
+      "todo_tags": 564
+    },
+    "transformed": {
+      "users": 7,
+      "user_profiles": 7,
+      "user_settings": 7,
+      "todos": 536,
+      "tags": 17,
+      "todo_tags": 564
+    }
+  },
+  "rejects": [],
+  "dropped": {
+    "orphanedTodoTags": 0,
+    "duplicateTodoTags": 0,
+    "backfilledProfiles": 2,
+    "backfilledSettings": 5,
+    "seededDefaultTags": 0
+  },
+  "success": true
+}

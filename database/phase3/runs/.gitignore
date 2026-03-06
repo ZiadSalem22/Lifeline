@@ -1,0 +1,6 @@
+# Ignore generated rehearsal runs by default.
+# Only explicitly preserved evidence runs should be tracked here.
+*
+!.gitignore
+!2026-03-06T11-29-47-387Z/
+!2026-03-06T11-29-47-387Z/**

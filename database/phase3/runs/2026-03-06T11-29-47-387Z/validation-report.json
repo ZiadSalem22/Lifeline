@@ -1,0 +1,43 @@
+{
+  "runId": "2026-03-06T11-29-47-387Z",
+  "validatedAt": "2026-03-06T11:29:48.525Z",
+  "counts": {
+    "users": 7,
+    "user_profiles": 7,
+    "user_settings": 7,
+    "todos": 536,
+    "tags": 17,
+    "todo_tags": 564
+  },
+  "expectedCounts": {
+    "users": 7,
+    "user_profiles": 7,
+    "user_settings": 7,
+    "todos": 536,
+    "tags": 17,
+    "todo_tags": 564
+  },
+  "baselineCounts": {
+    "users": 7,
+    "user_profiles": 5,
+    "user_settings": 2,
+    "todos": 536,
+    "tags": 17,
+    "todo_tags": 564
+  },
+  "checks": {
+    "duplicateAuth0Sub": 0,
+    "duplicateEmail": 0,
+    "duplicateTaskNumbers": 0,
+    "orphanedProfiles": 0,
+    "orphanedSettings": 0,
+    "orphanedTodos": 0,
+    "orphanedTodoTags": 0,
+    "missingProfiles": 0,
+    "missingSettings": 0,
+    "invalidLayout": 0,
+    "invalidSubtasks": 0,
+    "invalidRecurrence": 0
+  },
+  "success": true
+}
