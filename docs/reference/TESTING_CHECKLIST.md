@@ -1,5 +1,7 @@
 # Testing Checklist - Recurring Tasks, Notifications, Export/Import
 
+> Historical reference only. This checklist reflects an earlier integration/testing phase and is not a canonical current-state test specification. Verify all runtime, persistence, and feature assumptions against the current implementation before reusing any part of this file.
+
 ## Environment Setup
 - ✅ Backend running on `http://localhost:3000`
 - ✅ Frontend running on `http://localhost:5174`

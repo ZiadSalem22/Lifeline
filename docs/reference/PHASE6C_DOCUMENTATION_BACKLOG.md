@@ -1,5 +1,10 @@
 # Phase 6C Documentation Backlog
 
+## Workstream 6C.1 normalization inputs
+- consult [PHASE6C_SOURCE_OF_TRUTH_MAP.md](PHASE6C_SOURCE_OF_TRUTH_MAP.md) before starting later workstreams
+- preserve canonical terminology defined during Workstream 6C.1
+- do not treat retained reference, archive, Azure-era, SQLite-era, or MSSQL-era materials as canonical truth without implementation verification
+
 ## Product
 - document core product concepts
 - document task lifecycle behavior
