@@ -166,14 +166,16 @@ Production deployment now uses a deploy-branch CD model.
 - pushes to `deploy` trigger the VPS deployment workflow in [.github/workflows/deploy-production.yml](.github/workflows/deploy-production.yml)
 - production runtime secrets remain on the VPS in `/opt/lifeline/shared/.env.production`
 
-See [docs/guides/DEPLOY_BRANCH_CD.md](docs/guides/DEPLOY_BRANCH_CD.md) for the operator flow, required deployment secrets, and rollback notes.
+See [docs/operations/DEPLOY_BRANCH_CD.md](docs/operations/DEPLOY_BRANCH_CD.md) for the operator flow, required deployment secrets, and rollback notes.
 
 ---
 
 ## 📖 Documentation
 
 - See [docs/README.md](docs/README.md) for the current documentation entrypoint.
-- Active guides live under [docs/guides](docs/guides).
+- Active operational guides live under [docs/operations](docs/operations).
+- Feature documentation lives under [docs/features](docs/features).
+- Architecture and design material lives under [docs/architecture](docs/architecture).
 - Reference material lives under [docs/reference](docs/reference).
 - Historical phase and cleanup artifacts live under [docs/issues](docs/issues).
 - Archived legacy integration documents live under [docs/archive](docs/archive).
