@@ -16,8 +16,12 @@ This directory contains the repository’s organized documentation surface after
 - [DB migration prep](issues/db-migration-prep)
   - [Phase 1](issues/db-migration-prep/phase-1)
   - [Phase 2](issues/db-migration-prep/phase-2)
+  - [Phase 3](issues/db-migration-prep/phase-3)
 - [Repo hygiene](issues/repo-hygiene)
   - [Phase 2.5](issues/repo-hygiene/phase-25)
+  - [Phase 3.5 cleanup](issues/repo-hygiene/phase-35)
+- [Deployment prep](issues/deployment-prep)
+  - [Phase 4](issues/deployment-prep/phase-4)
 - [Repo history notes](issues/repo-history)
 
 ## Recommended Starting Points
