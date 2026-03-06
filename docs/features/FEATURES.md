@@ -1,251 +1,137 @@
-# Todo App - Feature Suggestions
+# Lifeline Feature Canon
 
-This document contains a comprehensive list of potential features to enhance the todo app.
+## Purpose
 
-## 🎯 High Priority - Core Functionality
+This file is the canonical current-state feature inventory for Lifeline.
 
-### ✅ 1. **Edit Todo Titles** - COMPLETED
-- Allow users to edit todo titles inline or via modal
-- Double-click to edit or add edit button
-- Save changes to backend
+It replaces the older suggestions-style feature list with an implementation-verified inventory of what the product currently supports.
 
-### ✅ 2. **Todo Descriptions/Notes** - COMPLETED
-- Add a notes/description field to each todo
-- Expandable section to view/edit notes
-- Rich text or markdown support (optional)
+## Canonical sources used for this document
 
-### ✅ 3. **Priority Levels** - COMPLETED
-- Add priority system: High/Medium/Low (beyond just flagged)
-- Visual indicators (colors, icons)
-- Sort and filter by priority
+- [docs/product/core-product-concepts.md](../product/core-product-concepts.md)
+- [docs/product/task-lifecycle.md](../product/task-lifecycle.md)
+- [docs/product/recurrence-behavior.md](../product/recurrence-behavior.md)
+- [client/src/app/App.jsx](../../client/src/app/App.jsx)
+- [client/src/pages](../../client/src/pages)
+- [client/src/components](../../client/src/components)
+- [client/src/providers](../../client/src/providers)
+- [backend/src/index.js](../../backend/src/index.js)
+- [backend/src/application](../../backend/src/application)
 
-### ✅ 4. **Filter by Tags** - COMPLETED
-- Filter todo list by selected tags
-- Multiple tag selection
-- Clear filter button
+## Feature status model
 
-### ✅ 5. **Sort Options** - COMPLETED
-- Sort by: Date, Priority, Duration, Name, Creation Date
-- Ascending/Descending toggle
-- Remember user preference
+This inventory uses these labels:
 
-### ✅ 6. **Archive Completed Tasks** - COMPLETED
-- Completed tasks shown by default (transparent)
-- Visual distinction for completed items
+- `Current` = implemented and part of the current product surface
+- `Current with constraints` = implemented, but important limits or caveats apply
+- `Compatibility only` = supported mainly for legacy payloads or retained behavior, not as the preferred current UX
+- `Not current` = not part of the canonical current product, even if older docs mentioned it
 
-### ✅ 7. **Recurring Tasks** - COMPLETED
-- Set tasks to repeat: Daily, Weekly, Monthly, Custom
-- Auto-create next occurrence when completed
-- Edit recurrence pattern
+## Current core features
 
----
+### Identity and account modes
 
-## ⚡ Medium Priority - Productivity Features
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Guest-mode task management | Current | Local browser storage with seeded default tags and local task numbering |
+| Authenticated account mode | Current | Auth0-backed identity, server persistence, profile/settings support |
+| Onboarding gate for authenticated users | Current | Authenticated users are redirected to onboarding until required profile fields are completed |
+| Profile management | Current | Profile fields include name, email, phone, country, city, timezone, avatar URL, and start day of week |
 
-### ✅ 8. **Subtasks/Checklists** - COMPLETED
-- Break down todos into smaller subtasks
-- Check off subtasks individually
-- Progress indicator for parent task
+### Task management
 
-### ✅ 9. **Due Time** - COMPLETED
-- Add time to due dates (not just date)
-- Time picker component
-- Show time in task display
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Create tasks with rich metadata | Current | Supports title, due date, due time, notes, tags, priority, duration, subtasks, and recurrence |
+| Edit tasks | Current | Mutable task fields can be updated after creation |
+| Complete and reopen tasks | Current | Completion toggles are supported; recurrence helper logic exists, but the main toggle path does not universally auto-create the next occurrence |
+| Flag tasks | Current | Flagging is independent from completion and priority |
+| Drag-and-drop ordering | Current | Display ordering can be rearranged in the dashboard |
+| Task template loading by number | Current | Existing task data can prefill a new draft via `taskNumber` lookup |
+| Archive-oriented deletion | Current with constraints | Normal authenticated delete behavior archives the task rather than hard-deleting the record |
+| Per-user sequential task number | Current | Used for lookup, search, and template-loading workflows |
 
-### ✅ 10. **Drag & Drop Reordering** - COMPLETED
-- Reorder tasks by dragging
-- Save order preference
-- Visual feedback during drag
+### Organization and filtering
 
-### 11. **Bulk Operations**
-- Select multiple todos (checkbox or shift-click)
-- Bulk actions: Delete, Complete, Tag, Archive
-- Select all/none options
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Default tags | Current | Seeded for guest and authenticated use |
+| Custom tags | Current with constraints | Authenticated free-tier users are limited to 50 custom tags |
+| Tag filtering | Current | Task filtering can require selected tags |
+| Search by title and description | Current | Search is supported in both normal and advanced flows |
+| Task-number-aware lookup and search | Current | Numeric task search is part of the product model |
+| Priority sorting and filtering | Current | Priority is both display and search/filter metadata |
 
-### 12. **Advanced Search Filters**
-- Combine search with date/tag filters
-- Search in notes/descriptions
-- Save search queries
+### Recurrence
 
-### ✅ 13. **Statistics Dashboard** - COMPLETED
-- Completion rates over time
-- Time spent tracking
-- Productivity trends
-- Most used tags
-- Tasks completed per day/week/month
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `daily` recurrence mode | Current | Current UI-supported mode |
+| `dateRange` recurrence mode | Current | Logical spanning task across a date range |
+| `specificDays` recurrence mode | Current | Weekday-based recurrence within a range |
+| Legacy `weekly`, `monthly`, and `custom` recurrence payloads | Compatibility only | Backend and import compatibility, not the primary current UI vocabulary |
 
-### 14. **Quick Actions**
-- Keyboard shortcuts for common actions
-- Command palette (Cmd/Ctrl+K)
-- Quick add with natural language parsing
+### Insight and data management
 
----
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Statistics dashboard | Current | Supports overall and ranged metrics, with guest fallback calculation |
+| Export to JSON | Current | Authenticated export includes user-scoped task, tag, and stats data |
+| Export to CSV | Current | Authenticated export alternative |
+| Import with merge mode | Current | Adds imported tasks into existing account data |
+| Import with replace mode | Current | Replaces account task and custom-tag data for the user |
+| Reset account data | Current | Deletes authenticated user todos, custom tags, and saved settings |
 
-## ✨ Nice to Have - Polish & UX
+### Personalization
 
-### ✅ 15. **Export/Import** - COMPLETED
-- Export todos to JSON/CSV
-- Import from other todo apps
-- Backup/restore functionality
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Theme selection | Current | Local persistence for all users, server persistence for authenticated users when available |
+| Font selection | Current | Part of layout-oriented settings persistence |
+| Week-start preference | Current | Derived from profile and settings, used by statistics/week-based behavior |
 
-### 16. **Undo/Redo**
-- Undo last action (delete, complete, etc.)
-- Redo support
-- Action history
+## Current constraints and caveats
 
-### 17. **Templates**
-- Save todo templates
-- Quick create from template
-- Share templates
+### Free-tier limits
 
-### 18. **Time Tracking**
-- Start/stop timer for tasks
-- Track actual time vs estimated
-- Time logs per task
+The current backend enforces these authenticated free-tier limits:
 
-### 19. **Calendar View**
-- Monthly calendar view
-- See todos on specific dates
-- Drag todos to different dates
+- 200 active non-archived tasks
+- 50 custom tags
 
-### 20. **Focus Mode**
-- Hide completed tasks
-- Minimal UI distraction
-- Pomodoro timer integration (optional)
+### Notifications
 
----
+Notifications are **not** a current active feature.
 
-## 🚀 Advanced Features
+Older documentation referenced notifications as live, but current backend behavior treats notification endpoints as disabled.
 
-### 21. **Projects/Categories**
-- Group todos into projects/categories
-- Project-level progress tracking
-- Nested organization
+### Default versus custom tags
 
-### 22. **Attachments**
-- Attach files/images to todos
-- File upload and storage
-- Preview attachments
+Default tags are part of the shared baseline experience. Custom tags are user-owned and subject to limits.
 
-### ✅ 23. **Reminders/Notifications** - COMPLETED
-- Browser notifications for due tasks
-- Custom reminder times
-- Notification settings
+### Guest versus authenticated parity
 
-### 24. **Collaboration**
-- Share todo lists with others
-- Real-time collaboration
-- Comments on tasks
-- Requires authentication system
+Guest mode mirrors much of the task workflow, but it is not a full substitute for account-backed features such as profile persistence, export/import, or backend settings storage.
 
-### 25. **Dark Mode Quick Toggle**
-- Quick toggle button in top bar
-- Keyboard shortcut
-- System preference detection
+## Explicitly not part of the canonical current feature set
 
----
+These items should not be described as active current features unless the implementation changes:
 
-## 🎨 UI/UX Enhancements
+- live browser notification workflow
+- collaboration or shared lists
+- attachments
+- project/category hierarchy
+- command palette or keyboard-shortcut system as a named primary feature
+- alternate board or timeline views as a shipped mode
 
-### 26. **Animations & Transitions**
-- Smooth page transitions
-- Micro-interactions
-- Loading states
+## Cross-reference map
 
-### 27. **Accessibility**
-- Screen reader support
-- Keyboard navigation
-- High contrast mode
-- Focus indicators
+- product semantics: [../product/README.md](../product/README.md)
+- frontend behavior: [../frontend/README.md](../frontend/README.md)
+- backend behavior: [../backend/README.md](../backend/README.md)
+- API contracts: [../api/README.md](../api/README.md)
 
-### 28. **Mobile App**
-- PWA (Progressive Web App)
-- Offline support
-- Mobile-optimized UI
+## Historical note
 
-### 29. **Customizable Views**
-- List view
-- Board/Kanban view
-- Timeline view
-- Custom view preferences
-
-### 30. **Smart Suggestions**
-- AI-powered task suggestions
-- Auto-categorization
-- Due date suggestions based on patterns
-
----
-
-## 🔧 Technical Improvements
-
-### 31. **Performance**
-- Virtual scrolling for large lists
-- Lazy loading
-- Optimistic UI updates
-- Caching strategies
-
-### 32. **Data Sync**
-- Real-time sync across devices
-- Conflict resolution
-- Offline-first architecture
-
-### 33. **Testing**
-- Unit tests
-- Integration tests
-- E2E tests
-- Performance testing
-
-### 34. **Documentation**
-- User guide
-- API documentation
-- Developer documentation
-
----
-
-## 📝 Quick Wins (Easy to Implement)
-
-These are the easiest features to add that would provide immediate value:
-
-1. ✅ **Edit Todo Titles** - Simple inline editing
-2. ✅ **Filter by Tags** - Add filter dropdown
-3. ✅ **Sort Options** - Add sort dropdown
-4. ✅ **Archive Completed Tasks** - Toggle visibility
-5. ✅ **Priority Levels** - Add priority field and UI
-
----
-
-## 🎯 Recommended Starting Points
-
-### Phase 1 (Quick Wins)
-1. Edit Todo Titles
-2. Filter by Tags
-3. Sort Options
-4. Archive Completed Tasks
-
-### Phase 2 (Core Features)
-1. Priority Levels
-2. Todo Descriptions/Notes
-3. Subtasks/Checklists
-4. Due Time
-
-### Phase 3 (Advanced)
-1. Recurring Tasks
-2. Drag & Drop
-3. Statistics Dashboard
-4. Export/Import
-
----
-
-## 💡 Implementation Notes
-
-- Consider user feedback and usage patterns
-- Prioritize features that improve daily workflow
-- Maintain clean code architecture
-- Keep UI consistent with existing design system
-- Test thoroughly before releasing new features
-
----
-
-**Last Updated:** 2024
-**Status:** Planning & Development
+The previous version of this file mixed implemented features, suggestions, and aspirational backlog ideas. That older approach is no longer canonical for current-state documentation.
 

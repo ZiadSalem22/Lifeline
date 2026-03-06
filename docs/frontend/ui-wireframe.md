@@ -1,5 +1,17 @@
 # Lifeline UI Wireframe & Layout Structure
 
+## Scope status
+
+This file is companion design-support material for the frontend shell.
+
+It is **not** the sole canonical source of truth for current frontend behavior. The active implementation and the canonical frontend docs now lead:
+
+- [routes-and-pages.md](routes-and-pages.md)
+- [dashboard-and-day-routing.md](dashboard-and-day-routing.md)
+- [layout-navigation-and-responsive-behavior.md](layout-navigation-and-responsive-behavior.md)
+
+Use this file for layout intent and responsive framing, then verify against the current components.
+
 This documents the target layout behavior for Desktop and Mobile, focusing on TopBar, Sidebar, and the Main Content (center panel).
 
 ## Desktop (≥ 1024px)
@@ -54,3 +66,7 @@ This documents the target layout behavior for Desktop and Mobile, focusing on To
 - Use truncation for Title and Identity Name to avoid layout shifts.
 - Keep `.top-bar-search` spacing with `margin: 0 12px` so it doesn’t collide.
 - Maintain z-index layering: TopBar (60), Mobile Sidebar (10001), Overlay (10000), Dropdowns (200).
+
+## Current Phase 6C companion decision
+
+This file remains retained companion material because its shell intent still broadly matches the current `TopBar` and `Sidebar` design, but implementation files and the canonical frontend docs control any current-state claims.

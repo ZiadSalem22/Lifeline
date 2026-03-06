@@ -1,5 +1,15 @@
 # API Documentation
 
-Use this section for API surface documentation, endpoint catalogs, auth expectations, and contract notes.
+Canonical API contract documentation for Lifeline lives in this folder.
 
-Relevant source artifacts currently live in [backend/swagger.json](../../backend/swagger.json) and the backend route/middleware code.
+Current API documents:
+
+- [public-and-health-endpoints.md](public-and-health-endpoints.md)
+- [auth-profile-and-settings-endpoints.md](auth-profile-and-settings-endpoints.md)
+- [todo-endpoints.md](todo-endpoints.md)
+- [tag-endpoints.md](tag-endpoints.md)
+- [stats-endpoints.md](stats-endpoints.md)
+- [export-import-endpoints.md](export-import-endpoints.md)
+- [validation-auth-and-error-behavior.md](validation-auth-and-error-behavior.md)
+
+Route code, middleware, and validators remain the primary source of truth ahead of the base Swagger file alone.

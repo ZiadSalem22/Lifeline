@@ -22,6 +22,15 @@ The workflow performs the following steps:
 7. Runs `docker compose` with [compose.production.yaml](../../compose.production.yaml) and `/opt/lifeline/shared/.env.production`.
 8. Verifies container health, public health, homepage availability, and the private `127.0.0.1:3020` bind.
 
+## Production runtime topology
+
+The current production path is:
+
+- public traffic enters through Nginx on the VPS
+- Nginx proxies to `127.0.0.1:3020`
+- Docker maps that loopback port to the app container's internal port `3000`
+- the app container connects to the `lifeline-postgres` container over the compose network
+
 ## Required GitHub deployment secrets
 
 Production runtime secrets stay on the VPS in `/opt/lifeline/shared/.env.production`.
@@ -49,3 +58,9 @@ The workflow expects these secrets in the `production` GitHub environment.
 - The deploy helper restores `/opt/lifeline/current` to the previous release automatically if the new deployment fails.
 - For a manual rollback, repoint `/opt/lifeline/current` to a previous release and rerun:
   - `docker compose -p lifeline --env-file /opt/lifeline/shared/.env.production -f compose.production.yaml up -d --build`
+
+## Related canonical documents
+
+- [production-runtime-and-rollback.md](production-runtime-and-rollback.md)
+- [deployment-verification-and-smoke-checks.md](deployment-verification-and-smoke-checks.md)
+- [../architecture/runtime-topology.md](../architecture/runtime-topology.md)

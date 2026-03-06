@@ -1,6 +1,20 @@
 # Feature Documentation
 
-Use this section for feature inventory, backlog-style summaries, and feature-specific reference material.
+This folder holds the canonical feature inventory for the current Lifeline product surface.
 
-Current retained file:
+Current canonical file:
+
 - [FEATURES.md](FEATURES.md)
+
+Use `docs/features/` for:
+
+- feature inventory
+- current-scope summaries
+- cross-links to deeper product and frontend docs
+
+Do not use `docs/features/` for:
+
+- vague backlog dumping
+- API contract details
+- backend implementation notes
+- deployment procedures
