@@ -16,3 +16,4 @@ These skills are intentionally narrower than agents.
 
 - Skills encode repo-specific judgment, safeguards, routing rules, and review heuristics.
 - Agents execute domain workflows using those skills plus the instruction/prompt system.
+- Teams coordinate grouped responsibilities above the agent layer.

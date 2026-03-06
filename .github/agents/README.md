@@ -20,6 +20,8 @@ These are governance agents, not execution workflows.
 - They make routing, risk, and update decisions.
 - They prepare the system for later team and workflow layers.
 
+Teams come after agents and coordinate grouped responsibilities above the agent layer.
+
 ## Existing domain agent scaffolding
 
 Other agent files in this directory remain as domain scaffolding from the earlier system setup.

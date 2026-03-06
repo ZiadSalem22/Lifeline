@@ -19,4 +19,4 @@ Lifeline's engineering agents build on repo-native skills and sit one layer abov
 - agents use repo-native skills as core dependencies
 - agents produce scoped governance decisions and structured outputs
 - governance agents are not the same as delivery workflows
-- teams and workflows should later build on these agent-level rules rather than bypassing them
+- teams now build on these agent-level rules, and workflows will later build on top of both
