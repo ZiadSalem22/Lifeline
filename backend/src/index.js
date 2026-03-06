@@ -15,8 +15,6 @@ const logger = require('./config/logger');
 
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
 const TypeORMTagRepository = require('./infrastructure/TypeORMTagRepository');
-const SQLiteTodoRepository = require('./infrastructure/SQLiteTodoRepository');
-const SQLiteTagRepository = require('./infrastructure/SQLiteTagRepository');
 const TypeORMUserSettingsRepository = require('./infrastructure/TypeORMUserSettingsRepository');
 const { AppDataSource } = require('./infra/db/data-source');
 const NotificationService = require('./application/NotificationService');
@@ -29,6 +27,8 @@ const CompleteRecurringTodo = require('./application/CompleteRecurringTodo');
 const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('./application/TagUseCases');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 // Build allowed CORS origins from multiple env vars (comma-separated supported)
 function splitOrigins(value) {
     if (!value) return [];
@@ -38,11 +38,57 @@ function splitOrigins(value) {
         .filter(Boolean);
 }
 
+function isReservedFrontendPath(requestPath) {
+    return [
+        '/api',
+        '/api-docs',
+        '/swagger-ui',
+        '/swagger.json'
+    ].some((prefix) => requestPath === prefix || requestPath.startsWith(`${prefix}/`));
+}
+
+function registerFrontendServing(expressApp) {
+    const frontendDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
+
+    if (!require('fs').existsSync(frontendDistPath)) {
+        logger.info('[frontend] built client assets not found; skipping static asset serving', {
+            frontendDistPath
+        });
+        return;
+    }
+
+    const indexFilePath = path.join(frontendDistPath, 'index.html');
+
+    expressApp.use(express.static(frontendDistPath, {
+        index: false,
+        maxAge: '1h'
+    }));
+
+    expressApp.get(/^(?!\/api(?:\/|$))(?!\/api-docs(?:\/|$))(?!\/swagger-ui(?:\/|$))(?!\/swagger\.json$).*/, (req, res, next) => {
+        if (req.method !== 'GET') {
+            return next();
+        }
+
+        if (isReservedFrontendPath(req.path) || path.extname(req.path)) {
+            return next();
+        }
+
+        return res.sendFile(indexFilePath);
+    });
+
+    logger.info('[frontend] serving built client assets', { frontendDistPath });
+}
+
 const allowedOrigins = [
+    `http://localhost:${PORT}`,
+    `https://localhost:${PORT}`,
+    `http://127.0.0.1:${PORT}`,
+    `https://127.0.0.1:${PORT}`,
     'http://localhost:5173',
     'https://localhost:5173',
     'https://192.168.1.153:5173',
     'https://172.26.176.1:5173',
+    ...splitOrigins(process.env.APP_ORIGIN),
     ...splitOrigins(process.env.FRONTEND_URL),      // for Azure (single or multiple)
     ...splitOrigins(process.env.WEB_CLIENT_URL),    // optional second domain(s)
     ...splitOrigins(process.env.CORS_ORIGIN),       // compatibility with existing .env
@@ -63,7 +109,6 @@ app.use(cors({
     },
     credentials: true
 }));
-const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
@@ -81,12 +126,9 @@ app.post('/api/reset-account', checkJwt, attachCurrentUser, requireAuth(), async
         const userId = req.currentUser && req.currentUser.id;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-        // Delete all todos for user
-        await AppDataSource.manager.query('DELETE FROM todos WHERE user_id = @0', [userId]);
-        // Delete all tags for user
-        await AppDataSource.manager.query('DELETE FROM tags WHERE user_id = @0', [userId]);
-        // Delete user settings (theme, etc)
-        await AppDataSource.manager.query('DELETE FROM user_settings WHERE user_id = @0', [userId]);
+        await AppDataSource.getRepository('Todo').delete({ user_id: userId });
+        await AppDataSource.getRepository('Tag').delete({ user_id: userId, is_default: false });
+        await AppDataSource.getRepository('UserSettings').delete({ user_id: userId });
 
         res.json({ success: true, message: 'Account data reset: todos, tags, and theme deleted.' });
     } catch (err) {
@@ -144,7 +186,7 @@ app.get('/api/health/db', async (req, res) => {
 
         res.status(200).json({ db: 'ok' });
     } catch (err) {
-        logger.error('[health/db] MSSQL connection error', { error: err.message });
+        logger.error('[health/db] PostgreSQL connection error', { error: err.message });
         res.status(500).json({
             db: 'error',
             message: err.message
@@ -220,38 +262,24 @@ app.post('/api/settings', checkJwt, attachCurrentUser, requireAuth(), async (req
  *         description: Schema inspection failed
  */
 app.get('/api/health/db/schema', async (req, res) => {
-    // Build connection from current TypeORM DataSource options
-    const sql = require('mssql');
-    const opts = AppDataSource.options || {};
-    const config = {
-        server: opts.host || 'localhost',
-        port: opts.port || 1433,
-        database: opts.database,
-        user: opts.username,
-        password: opts.password,
-        options: {
-            encrypt: true,
-            trustServerCertificate: true,
-            instanceName: (opts.extra && opts.extra.instanceName) || process.env.MSSQL_INSTANCE || 'SQLEXPRESS'
-        }
-    };
     try {
-        const pool = await sql.connect(config);
+        if (!AppDataSource.isInitialized) {
+            await AppDataSource.initialize();
+        }
         const [todos, tags, todo_tags, users] = await Promise.all([
-            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todos'`),
-            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tags'`),
-            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'todo_tags'`),
-            pool.request().query(`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users'`)
+            AppDataSource.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'todos' ORDER BY ordinal_position`),
+            AppDataSource.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'tags' ORDER BY ordinal_position`),
+            AppDataSource.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'todo_tags' ORDER BY ordinal_position`),
+            AppDataSource.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position`)
         ]);
         res.json({
-            todos: todos.recordset,
-            tags: tags.recordset,
-            todo_tags: todo_tags.recordset,
-            users: users.recordset
+            todos,
+            tags,
+            todo_tags,
+            users
         });
-        await pool.close();
     } catch (err) {
-        logger.error('[health/db/schema] MSSQL schema check failed', { error: err.message });
+        logger.error('[health/db/schema] PostgreSQL schema check failed', { error: err.message });
         res.status(500).json({ error: err.message });
     }
 });
@@ -263,10 +291,7 @@ try {
     console.warn('Swagger UI not available:', e.message);
 }
 
-// Database Setup: try TypeORM (MSSQL). If it fails (dev machine without Azure),
-// fall back to a local SQLite DB so the dev server can start for manual testing.
-const USE_TYPEORM = true;
-let db = null; // For SQLite fallback this will be a sqlite3.Database instance
+let db = null;
 
 // Repository & Use Cases (set below after choosing backend)
 let todoRepository;
@@ -285,57 +310,14 @@ let listTags;
 let deleteTag;
 let updateTag;
 
-// Ensure TypeORM is initialized before repositories are used. If it fails,
-// create a local SQLite DB at backend/db/dev.sqlite and wire SQLite repos.
-const sqlite3 = require('sqlite3').verbose();
 async function initDataSources() {
-    try {
-        if (!AppDataSource.isInitialized) {
-            await AppDataSource.initialize();
-            console.log('[TypeORM] DataSource initialized (MSSQL)');
-        }
-        // Use TypeORM-backed repositories
-        todoRepository = new TypeORMTodoRepository();
-        tagRepository = new TypeORMTagRepository();
-        db = null;
-    } catch (err) {
-        // Fallback to SQLite for local/dev usage
-        console.warn('[startup] TypeORM initialization failed, falling back to local SQLite for dev:', err.message || err);
-        const path = require('path');
-        const dbFile = path.join(__dirname, '..', '..', 'db', 'dev.sqlite');
-        // Ensure db directory exists
-        const fs = require('fs');
-        const dir = path.dirname(dbFile);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        db = new sqlite3.Database(dbFile);
-
-        // Create minimal tables if they don't exist
-        await new Promise((resolve, reject) => db.serialize(() => {
-            db.run(`CREATE TABLE IF NOT EXISTS todos (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT,
-                is_completed INTEGER DEFAULT 0,
-                due_date TEXT,
-                is_flagged INTEGER DEFAULT 0,
-                duration INTEGER DEFAULT 0,
-                priority TEXT DEFAULT 'medium',
-                due_time TEXT,
-                subtasks TEXT,
-                "order" INTEGER DEFAULT 0,
-                recurrence TEXT,
-                next_recurrence_due TEXT,
-                original_id TEXT,
-                task_number INTEGER,
-                user_id TEXT
-            )`, (e) => e ? reject(e) : resolve());
-        }));
-        await new Promise((resolve, reject) => db.run(`CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL)`, (e) => e ? reject(e) : resolve()));
-        await new Promise((resolve, reject) => db.run(`CREATE TABLE IF NOT EXISTS todo_tags (todo_id TEXT, tag_id TEXT, PRIMARY KEY (todo_id, tag_id))`, (e) => e ? reject(e) : resolve()));
-
-        todoRepository = new SQLiteTodoRepository(db);
-        tagRepository = new SQLiteTagRepository(db);
+    if (!AppDataSource.isInitialized) {
+        await AppDataSource.initialize();
+        console.log('[TypeORM] DataSource initialized (PostgreSQL)');
     }
+    todoRepository = new TypeORMTodoRepository();
+    tagRepository = new TypeORMTagRepository();
+    db = null;
 }
 
 // Initialize proactively at startup (no crash on failure)
@@ -343,8 +325,7 @@ async function initDataSources() {
 initDataSources()
     .then(() => {
         console.log('[startup] data sources initialized, wiring application services');
-        // NotificationService may use the sqlite `db` handle
-        notificationService = new NotificationService(db);
+        notificationService = new NotificationService();
 
         createTodo = new CreateTodo(todoRepository);
         listTodos = new ListTodos(todoRepository);
@@ -523,26 +504,25 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
         phone = null,
         country = null,
         city = null,
-        birthday = null,
         avatar_url = null,
         timezone = null,
         start_day_of_week = null,
         onboarding_completed
     } = req.body || {};
     // Debug: log incoming profile payload to help diagnose week-start persistence
-    try { console.debug('[api/profile] incoming body:', { first_name, last_name, email, phone, country, city, birthday, avatar_url, timezone, start_day_of_week, onboarding_completed }); } catch (e) { }
+    try { console.debug('[api/profile] incoming body:', { first_name, last_name, email, phone, country, city, avatar_url, timezone, start_day_of_week, onboarding_completed }); } catch (e) { }
     // Normalize start_day_of_week to a canonical capitalized form (accept lowercase/mixed-case)
     let normalizedStartDay = null;
     if (start_day_of_week) {
         const raw = String(start_day_of_week).trim();
         const lower = raw.toLowerCase();
-        const mapping = { sunday: 'Sunday', monday: 'Monday', saturday: 'Saturday' };
+        const mapping = { sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday' };
         normalizedStartDay = mapping[lower] || (raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase());
     }
     // Validate normalized value
-    const allowedStartDays = ['Saturday', 'Sunday', 'Monday'];
+    const allowedStartDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     if (normalizedStartDay && !allowedStartDays.includes(normalizedStartDay)) {
-        return res.status(400).json({ error: 'start_day_of_week must be one of: Saturday, Sunday, Monday' });
+        return res.status(400).json({ error: 'start_day_of_week must be one of: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday' });
     }
     if (!first_name || !last_name) {
         return res.status(400).json({ error: 'first_name and last_name are required' });
@@ -593,9 +573,8 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
                     phone,
                     country,
                     city,
-                    birthday,
                     avatar_url,
-                    start_day_of_week: normalizedStartDay || null,
+                    start_day_of_week: normalizedStartDay || 'Monday',
                     onboarding_completed: !!onboardingFlag
                 });
             } else {
@@ -606,9 +585,8 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
                     phone,
                     country,
                     city,
-                    birthday,
                     avatar_url,
-                    start_day_of_week: normalizedStartDay || profile.start_day_of_week || null,
+                    start_day_of_week: normalizedStartDay || profile.start_day_of_week || 'Monday',
                     ...(onboardingFlag ? { onboarding_completed: true } : {})
                 });
             }
@@ -622,8 +600,8 @@ app.post('/api/profile', requireAuth(), async (req, res) => {
             phone,
             country,
             city,
-            birthday,
             avatar_url,
+            start_day_of_week: normalizedStartDay || 'Monday',
             onboarding_completed: !!onboardingFlag
         });
     } catch (err) {
@@ -665,10 +643,7 @@ app.get('/api/me/raw', (req, res) => {
     });
 });
 
-// Notifications: in MSSQL/TypeORM mode notifications are effectively
-// disabled (NotificationService is a no-op without SQLite), but the
-// endpoint should still exist and return an empty list so the
-// frontend polling does not fail.
+// Notifications are intentionally disabled in the PostgreSQL-only runtime.
 /**
  * @openapi
  * /api/notifications/pending:
@@ -685,12 +660,7 @@ app.get('/api/me/raw', (req, res) => {
  *               items: { type: object }
  */
 app.get('/api/notifications/pending', async (req, res) => {
-    try {
-        const pending = await notificationService.getPendingNotifications();
-        res.json(pending || []);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    return res.json([]);
 });
 
 
@@ -1148,8 +1118,7 @@ app.get('/api/tags', async (req, res, next) => {
             return res.json(tags);
         }
         // Otherwise return only default tags
-        await ensureDataSource();
-        const rows = await AppDataSource.getRepository('Tag').find({ where: { is_default: 1 } });
+        const rows = await AppDataSource.getRepository('Tag').find({ where: { is_default: true } });
         const payload = rows.map(r => ({ id: r.id, name: r.name, color: r.color, isDefault: true }));
         return res.json(payload);
     } catch (err) {
@@ -1457,18 +1426,14 @@ app.post('/api/import', requireAuth(), async (req, res) => {
 
         // If mode is 'replace', clear existing data for THIS user only
         if (mode === 'replace') {
-            try {
-                // Delete tag relations for this user's todos
-                await AppDataSource.manager.query(`
-                    DELETE tt
-                    FROM todo_tags tt
-                    JOIN todos t ON tt.todo_id = t.id
-                    WHERE t.user_id = @0
-                `, [userId]);
-            } catch (_) { }
-            await AppDataSource.manager.query('DELETE FROM todos WHERE user_id = @0', [userId]);
-            // Delete only this user's custom tags (keep defaults)
-            await AppDataSource.manager.query('DELETE FROM tags WHERE user_id = @0', [userId]);
+            await AppDataSource.manager.transaction(async (manager) => {
+                await manager.query(
+                    'DELETE FROM todo_tags WHERE todo_id IN (SELECT id FROM todos WHERE user_id = $1)',
+                    [userId]
+                );
+                await manager.query('DELETE FROM todos WHERE user_id = $1', [userId]);
+                await manager.query('DELETE FROM tags WHERE user_id = $1 AND is_default = false', [userId]);
+            });
         }
 
         // Build existing tag maps (default + user custom)
@@ -1553,7 +1518,7 @@ app.post('/api/import', requireAuth(), async (req, res) => {
 });
 
 // Notification endpoints
-// (MSSQL mode: NotificationService is no-op; endpoints retained)
+// (disabled in PostgreSQL-only Phase 3 runtime)
 
 // Schedule notification for a todo
 /**
@@ -1586,32 +1551,7 @@ app.post('/api/import', requireAuth(), async (req, res) => {
  *                 delayMs: { type: integer }
  */
 app.post('/api/notifications/schedule', async (req, res) => {
-    try {
-        const { todoId, minutesBefore = 0 } = req.body;
-        const todo = await todoRepository.findById(todoId);
-
-        if (!todo) {
-            return res.status(404).json({ error: 'Todo not found' });
-        }
-
-        const notificationInfo = notificationService.scheduleNotification(todo, minutesBefore);
-        if (!notificationInfo) {
-            return res.status(400).json({ error: 'Cannot schedule notification - due date is in the past' });
-        }
-
-        const message = notificationService.getNotificationMessage(todo);
-        const notificationId = await notificationService.saveNotification(todoId, message, notificationInfo.scheduledTime);
-
-        res.json({
-            id: notificationId,
-            todoId,
-            message,
-            scheduledTime: notificationInfo.scheduledTime,
-            delayMs: notificationInfo.delayMs
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    return res.status(410).json(notificationService.getDisabledResponse());
 });
 
 // Mark notification as sent
@@ -1630,13 +1570,7 @@ app.post('/api/notifications/schedule', async (req, res) => {
  *       '200': { description: Success flag }
  */
 app.patch('/api/notifications/:id/sent', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await notificationService.markNotificationSent(id);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    return res.status(410).json(notificationService.getDisabledResponse());
 });
 
 // Delete notification
@@ -1655,25 +1589,23 @@ app.patch('/api/notifications/:id/sent', async (req, res) => {
  *       '204': { description: Deleted }
  */
 app.delete('/api/notifications/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await notificationService.deleteNotification(id);
-        res.status(204).send();
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    return res.status(410).json(notificationService.getDisabledResponse());
 });
 
 
 // (Removed duplicate health route; consolidated at top)
+
+registerFrontendServing(app);
 
 // Fallback handlers
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`Backend running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Backend running on port ${PORT}`);
+    });
+}
 
 module.exports = app;

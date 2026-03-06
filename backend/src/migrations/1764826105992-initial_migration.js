@@ -1,60 +1,169 @@
-/**
- * @typedef {import('typeorm').MigrationInterface} MigrationInterface
- * @typedef {import('typeorm').QueryRunner} QueryRunner
- */
+const { DEFAULT_TAGS } = require('../infra/db/defaultTags');
 
-/**
- * @class
- * @implements {MigrationInterface}
- */
-module.exports = class InitialMigration1764826105992 {
-    name = 'InitialMigration1764826105992'
+module.exports = class InitialPostgresSchema1764826105992 {
+  name = 'InitialPostgresSchema1764826105992';
 
-    /**
-     * @param {QueryRunner} queryRunner
-     */
-    async up(queryRunner) {
-        await queryRunner.query(`CREATE TABLE "user_settings" ("id" uniqueidentifier NOT NULL CONSTRAINT "DF_00f004f5922a0744d174530d639" DEFAULT NEWSEQUENTIALID(), "user_id" nvarchar(64) NOT NULL, "theme" nvarchar(32), "locale" nvarchar(10), "layout" nvarchar(max), "created_at" datetime NOT NULL CONSTRAINT "DF_0d253ce8f3da839c8a8863847e5" DEFAULT GETDATE(), "updated_at" datetime NOT NULL CONSTRAINT "DF_8c6f52c7074bec4bb38d92ea525" DEFAULT GETDATE(), CONSTRAINT "PK_00f004f5922a0744d174530d639" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "user_profiles" ("id" uniqueidentifier NOT NULL CONSTRAINT "DF_1ec6662219f4605723f1e41b6cb" DEFAULT NEWSEQUENTIALID(), "user_id" nvarchar(64) NOT NULL, "first_name" nvarchar(100), "last_name" nvarchar(100), "phone" nvarchar(32), "country" nvarchar(64), "city" nvarchar(64), "timezone" nvarchar(64), "avatar_url" nvarchar(255), "onboarding_completed" bit NOT NULL CONSTRAINT "DF_7f0a9be275ee9be1f54aef4964c" DEFAULT 0, "created_at" datetime NOT NULL CONSTRAINT "DF_09682a1c7fc4702bced05136ad0" DEFAULT GETDATE(), "updated_at" datetime NOT NULL CONSTRAINT "DF_6152765ab87dce7a3784da40f20" DEFAULT GETDATE(), CONSTRAINT "PK_1ec6662219f4605723f1e41b6cb" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "REL_6ca9503d77ae39b4b5a6cc3ba8" ON "user_profiles" ("user_id") WHERE "user_id" IS NOT NULL`);
-        await queryRunner.query(`CREATE TABLE "users" ("id" nvarchar(64) NOT NULL, "email" nvarchar(255) NOT NULL, "name" nvarchar(255), "picture" nvarchar(512), "created_at" datetime NOT NULL CONSTRAINT "DF_c9b5b525a96ddc2c5647d7f7fa5" DEFAULT GETDATE(), "updated_at" datetime NOT NULL CONSTRAINT "DF_6d596d799f9cb9dac6f7bf7c23c" DEFAULT GETDATE(), "role" nvarchar(32), "subscription_status" nvarchar(32) NOT NULL CONSTRAINT "DF_819b17e2c9f594d16ec29b25839" DEFAULT 'none', CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "todo_tags" ("todo_id" varchar(255) NOT NULL, "tag_id" varchar(255) NOT NULL, CONSTRAINT "PK_e9221a8ac3b2a7411a60500a638" PRIMARY KEY ("todo_id", "tag_id"))`);
-        await queryRunner.query(`CREATE TABLE "todos" ("id" varchar(64) NOT NULL, "title" nvarchar(200) NOT NULL, "description" nvarchar(2000), "due_date" datetime, "is_completed" int NOT NULL CONSTRAINT "DF_ad2c5b4967dd89e27c96945c41c" DEFAULT 0, "is_flagged" int NOT NULL CONSTRAINT "DF_66bea936161c148657f34aed3f5" DEFAULT 0, "duration" int NOT NULL CONSTRAINT "DF_49055f6e0c4f2cbb0bd2500ab71" DEFAULT 0, "priority" nvarchar(16) NOT NULL CONSTRAINT "DF_ff8ff02cfdf0c6a08561bf3f407" DEFAULT 'medium', "due_time" nvarchar(16), "subtasks" nvarchar(MAX) NOT NULL CONSTRAINT "DF_3a0952b6fc0d77333e4e46de5a3" DEFAULT '[]', "order" int NOT NULL CONSTRAINT "DF_1a372408943e8a1a4e42912ed4b" DEFAULT 0, "recurrence" nvarchar(MAX), "next_recurrence_due" datetime, "original_id" nvarchar(64), "archived" int NOT NULL CONSTRAINT "DF_b223a97ece6bbdae79e25a1dab3" DEFAULT 0, "user_id" nvarchar(128) NOT NULL, CONSTRAINT "PK_ca8cafd59ca6faaf67995344225" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "tags" ("id" varchar(255) NOT NULL, "name" nvarchar(255) NOT NULL, "color" nvarchar(255) NOT NULL, "user_id" nvarchar(128), "is_default" int NOT NULL CONSTRAINT "DF_7638809978a93e5d5a002b287f6" DEFAULT 0, CONSTRAINT "PK_e7dc17249a1148a1970748eda99" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "PK_e9221a8ac3b2a7411a60500a638"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "PK_425e9a5498a6e434e3c6335b289" PRIMARY KEY ("tag_id")`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP COLUMN "todo_id"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD "todo_id" varchar(64) NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "PK_425e9a5498a6e434e3c6335b289"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "PK_e9221a8ac3b2a7411a60500a638" PRIMARY KEY ("tag_id", "todo_id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_995af982f546b93672fe0ae652" ON "todo_tags" ("todo_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_425e9a5498a6e434e3c6335b28" ON "todo_tags" ("tag_id") `);
-        await queryRunner.query(`ALTER TABLE "user_profiles" ADD CONSTRAINT "FK_6ca9503d77ae39b4b5a6cc3ba88" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "FK_995af982f546b93672fe0ae6525" FOREIGN KEY ("todo_id") REFERENCES "todos"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "FK_425e9a5498a6e434e3c6335b289" FOREIGN KEY ("tag_id") REFERENCES "tags"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+  async up(queryRunner) {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id text PRIMARY KEY,
+        auth0_sub text NOT NULL,
+        email text NULL,
+        name text NULL,
+        picture text NULL,
+        role text NOT NULL DEFAULT 'free',
+        subscription_status text NOT NULL DEFAULT 'none',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT chk_users_id_not_blank CHECK (char_length(trim(id)) > 0),
+        CONSTRAINT chk_users_auth0_sub_not_blank CHECK (char_length(trim(auth0_sub)) > 0),
+        CONSTRAINT chk_users_email_not_blank CHECK (email IS NULL OR char_length(trim(email)) > 0)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_users_auth0_sub ON users (auth0_sub)
+    `);
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_not_null ON users (lower(email)) WHERE email IS NOT NULL
+    `);
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)
+    `);
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS ix_users_subscription_status ON users (subscription_status)
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id text PRIMARY KEY,
+        first_name text NULL,
+        last_name text NULL,
+        phone text NULL,
+        country text NULL,
+        city text NULL,
+        timezone text NULL,
+        avatar_url text NULL,
+        onboarding_completed boolean NOT NULL DEFAULT false,
+        start_day_of_week text NOT NULL DEFAULT 'Monday',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT chk_user_profiles_start_day_of_week CHECK (start_day_of_week IN ('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'))
+      )
+    `);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_user_profiles_onboarding_completed ON user_profiles (onboarding_completed)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_user_profiles_start_day ON user_profiles (start_day_of_week)`);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id text PRIMARY KEY,
+        theme text NOT NULL DEFAULT 'system',
+        locale text NOT NULL DEFAULT 'en',
+        layout jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT fk_user_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT chk_user_settings_theme_not_blank CHECK (char_length(trim(theme)) > 0),
+        CONSTRAINT chk_user_settings_locale_not_blank CHECK (char_length(trim(locale)) > 0),
+        CONSTRAINT chk_user_settings_layout_object CHECK (jsonb_typeof(layout) = 'object')
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS todos (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        task_number integer NOT NULL,
+        title text NOT NULL,
+        description text NULL,
+        due_date timestamptz NULL,
+        due_time text NULL,
+        is_completed boolean NOT NULL DEFAULT false,
+        is_flagged boolean NOT NULL DEFAULT false,
+        duration integer NOT NULL DEFAULT 0,
+        priority text NOT NULL DEFAULT 'medium',
+        subtasks jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "order" integer NOT NULL DEFAULT 0,
+        recurrence jsonb NULL,
+        next_recurrence_due timestamptz NULL,
+        original_id text NULL,
+        archived boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT fk_todos_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT fk_todos_original FOREIGN KEY (original_id) REFERENCES todos(id) ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT chk_todos_id_not_blank CHECK (char_length(trim(id)) > 0),
+        CONSTRAINT chk_todos_title_not_blank CHECK (char_length(trim(title)) > 0),
+        CONSTRAINT chk_todos_task_number_positive CHECK (task_number > 0),
+        CONSTRAINT chk_todos_duration_non_negative CHECK (duration >= 0),
+        CONSTRAINT chk_todos_priority CHECK (priority IN ('low', 'medium', 'high')),
+        CONSTRAINT chk_todos_subtasks_array CHECK (jsonb_typeof(subtasks) = 'array'),
+        CONSTRAINT chk_todos_recurrence_object CHECK (recurrence IS NULL OR jsonb_typeof(recurrence) = 'object')
+      )
+    `);
+    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_todos_user_task_number ON todos (user_id, task_number)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_user_archived_completed ON todos (user_id, archived, is_completed)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_user_due_date ON todos (user_id, due_date)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_user_flagged ON todos (user_id, is_flagged)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_next_recurrence_due ON todos (user_id, next_recurrence_due) WHERE next_recurrence_due IS NOT NULL`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_original_id ON todos (original_id)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_subtasks_gin ON todos USING GIN (subtasks)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todos_recurrence_gin ON todos USING GIN (recurrence)`);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id text PRIMARY KEY,
+        name text NOT NULL,
+        color text NOT NULL,
+        user_id text NULL,
+        is_default boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT fk_tags_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT chk_tags_name_not_blank CHECK (char_length(trim(name)) > 0),
+        CONSTRAINT chk_tags_color_not_blank CHECK (char_length(trim(color)) > 0),
+        CONSTRAINT chk_tags_default_ownership CHECK ((is_default = true AND user_id IS NULL) OR (is_default = false AND user_id IS NOT NULL))
+      )
+    `);
+    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_default_name ON tags ((lower(name))) WHERE is_default = true AND user_id IS NULL`);
+    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_custom_name_per_user ON tags (user_id, lower(name)) WHERE is_default = false AND user_id IS NOT NULL`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_tags_default_user ON tags (is_default, user_id)`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_tags_user_id ON tags (user_id) WHERE user_id IS NOT NULL`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_tags_defaults_only ON tags (is_default) WHERE is_default = true`);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS todo_tags (
+        todo_id text NOT NULL,
+        tag_id text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (todo_id, tag_id),
+        CONSTRAINT fk_todo_tags_todo FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT fk_todo_tags_tag FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS ix_todo_tags_tag_id ON todo_tags (tag_id)`);
+
+    for (const tag of DEFAULT_TAGS) {
+      const safeId = tag.id.replace(/'/g, "''");
+      const safeName = tag.name.replace(/'/g, "''");
+      const safeColor = tag.color.replace(/'/g, "''");
+      await queryRunner.query(`
+        INSERT INTO tags (id, name, color, user_id, is_default)
+        SELECT '${safeId}', '${safeName}', '${safeColor}', NULL, true
+        WHERE NOT EXISTS (
+          SELECT 1 FROM tags WHERE is_default = true AND user_id IS NULL AND lower(name) = lower('${safeName}')
+        )
+      `);
     }
+  }
 
-    /**
-     * @param {QueryRunner} queryRunner
-     */
-    async down(queryRunner) {
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "FK_425e9a5498a6e434e3c6335b289"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "FK_995af982f546b93672fe0ae6525"`);
-        await queryRunner.query(`ALTER TABLE "user_profiles" DROP CONSTRAINT "FK_6ca9503d77ae39b4b5a6cc3ba88"`);
-        await queryRunner.query(`DROP INDEX "IDX_425e9a5498a6e434e3c6335b28" ON "todo_tags"`);
-        await queryRunner.query(`DROP INDEX "IDX_995af982f546b93672fe0ae652" ON "todo_tags"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "PK_e9221a8ac3b2a7411a60500a638"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "PK_425e9a5498a6e434e3c6335b289" PRIMARY KEY ("tag_id")`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP COLUMN "todo_id"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD "todo_id" varchar(255) NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" DROP CONSTRAINT "PK_425e9a5498a6e434e3c6335b289"`);
-        await queryRunner.query(`ALTER TABLE "todo_tags" ADD CONSTRAINT "PK_e9221a8ac3b2a7411a60500a638" PRIMARY KEY ("todo_id", "tag_id")`);
-        await queryRunner.query(`DROP TABLE "tags"`);
-        await queryRunner.query(`DROP TABLE "todos"`);
-        await queryRunner.query(`DROP TABLE "todo_tags"`);
-        await queryRunner.query(`DROP TABLE "users"`);
-        await queryRunner.query(`DROP INDEX "REL_6ca9503d77ae39b4b5a6cc3ba8" ON "user_profiles"`);
-        await queryRunner.query(`DROP TABLE "user_profiles"`);
-        await queryRunner.query(`DROP TABLE "user_settings"`);
-    }
-}
+  async down(queryRunner) {
+    await queryRunner.query('DROP TABLE IF EXISTS todo_tags');
+    await queryRunner.query('DROP TABLE IF EXISTS tags');
+    await queryRunner.query('DROP TABLE IF EXISTS todos');
+    await queryRunner.query('DROP TABLE IF EXISTS user_settings');
+    await queryRunner.query('DROP TABLE IF EXISTS user_profiles');
+    await queryRunner.query('DROP TABLE IF EXISTS users');
+  }
+};

@@ -4,8 +4,9 @@ module.exports = new EntitySchema({
     name: 'TodoTag',
     tableName: 'todo_tags',
     columns: {
-            todo_id: { type: 'nvarchar', primary: true },
-            tag_id: { type: 'nvarchar', primary: true }
+            todo_id: { type: 'text', primary: true },
+            tag_id: { type: 'text', primary: true },
+            created_at: { type: 'timestamptz', createDate: true, nullable: false, default: () => 'now()' },
     },
     relations: {
         todo: {

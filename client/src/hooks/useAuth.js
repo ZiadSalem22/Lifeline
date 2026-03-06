@@ -1,5 +1,5 @@
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuthAdapter } from '../providers/AuthAdapterProvider.jsx';
 
 export function useAuth() {
-  return useAuth0();
+  return useAuthAdapter();
 }

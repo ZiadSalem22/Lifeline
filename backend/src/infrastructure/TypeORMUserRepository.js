@@ -1,11 +1,6 @@
 const { AppDataSource } = require('../infra/db/data-source');
 const logger = require('../config/logger');
 
-function generateFallbackEmail(sub) {
-  // Creates unique synthetic email from Auth0 sub
-  return `${sub.replace('|', '_')}@noemail.lifeline`;
-}
-
 class TypeORMUserRepository {
   _repo() {
     try {
@@ -22,8 +17,7 @@ class TypeORMUserRepository {
       return null;
     }
 
-    // Fallback email if Auth0 returns null
-    const safeEmail = email && email.trim() !== '' ? email : generateFallbackEmail(sub);
+    const safeEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
 
     if (!AppDataSource.isInitialized) {
       logger.warn('[UserRepo] AppDataSource not initialized at upsert time');
@@ -34,7 +28,7 @@ class TypeORMUserRepository {
       const existing = await repo.findOne({ where: { id: sub } });
 
       if (existing) {
-        existing.email = safeEmail || existing.email;
+        existing.email = safeEmail;
         existing.name = name || existing.name || null;
         existing.picture = picture || existing.picture || null;
         return await repo.save(existing);
@@ -56,8 +50,7 @@ class TypeORMUserRepository {
     const { sub, email, name, picture } = claims || {};
     if (!sub) return null;
 
-    // Fallback email logic
-    const safeEmail = email && email.trim() !== '' ? email : generateFallbackEmail(sub);
+    const safeEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
 
     // Role mapping
     const roles = (claims['https://lifeline.app/roles'] || []);
@@ -74,7 +67,7 @@ class TypeORMUserRepository {
       let user = await repo.findOne({ where: { id: sub } });
 
       if (user) {
-        user.email = safeEmail || user.email;
+        user.email = safeEmail;
         user.name = name || user.name || null;
         user.picture = picture || user.picture || null;
         user.role = role;

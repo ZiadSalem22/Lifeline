@@ -1,5 +1,4 @@
 import { StrictMode } from 'react'
-import { Auth0Provider } from '@auth0/auth0-react';
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import '../styles/base.css'
@@ -13,25 +12,11 @@ import App from './App.jsx'
 import ErrorBoundary from '../components/common/ErrorBoundary.jsx'
 import { LoadingProvider } from '../context/LoadingContext';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
-
-const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
-const scope = import.meta.env.VITE_AUTH0_SCOPE || 'openid profile email offline_access';
+import { AuthAdapterProvider } from '../providers/AuthAdapterProvider.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Auth0Provider
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        audience,
-        redirect_uri: window.location.origin,
-        scope
-      }}
-      cacheLocation="localstorage"
-      useRefreshTokens={true}
-    >
+    <AuthAdapterProvider>
       <BrowserRouter
         basename="/"
         future={{
@@ -46,6 +31,6 @@ createRoot(document.getElementById('root')).render(
           </LoadingProvider>
         </ErrorBoundary>
       </BrowserRouter>
-    </Auth0Provider>
+    </AuthAdapterProvider>
   </StrictMode>,
 )

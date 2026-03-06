@@ -12,7 +12,12 @@ class TypeORMUserProfileRepository {
   async saveOrUpdate(userId, profileData) {
     let profile = await this.findByUserId(userId);
     if (!profile) {
-      profile = this.repo().create({ user_id: userId, ...profileData });
+      profile = this.repo().create({
+        user_id: userId,
+        onboarding_completed: false,
+        start_day_of_week: 'Monday',
+        ...profileData,
+      });
     } else {
       Object.assign(profile, profileData);
     }

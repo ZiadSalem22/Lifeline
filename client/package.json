@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/copy-swa-config.js",
+    "build:swa": "vite build && node scripts/copy-swa-config.js",
     "lint": "eslint .",
     "lint:css": "stylelint \"src/**/*.{css,scss}\"",
     "preview": "vite preview",

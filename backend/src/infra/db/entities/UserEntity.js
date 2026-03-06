@@ -5,56 +5,60 @@ module.exports = new EntitySchema({
   name: 'User',
   tableName: 'users',
   columns: {
-    auth0_sub: {
-      type: String,
-      length: 128,
-      nullable: false,
-      unique: true,
-    },
     id: {
-      type: String,
-      length: 64,
+      type: 'text',
       primary: true,
       nullable: false,
     },
+    auth0_sub: {
+      type: 'text',
+      nullable: false,
+    },
     email: {
-      type: String,
-      length: 255,
+      type: 'text',
       nullable: true,
     },
     name: {
-      type: String,
-      length: 255,
+      type: 'text',
       nullable: true,
     },
     picture: {
-      type: String,
-      length: 512,
+      type: 'text',
       nullable: true,
     },
     created_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       createDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     },
     updated_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       updateDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     },
     role: {
-      type: 'nvarchar',
-      length: 32,
-      nullable: true,
-      default: null,
+      type: 'text',
+      nullable: false,
+      default: 'free',
     },
     subscription_status: {
-      type: 'nvarchar',
-      length: 32,
+      type: 'text',
       nullable: false,
-      default: () => "'none'",
+      default: 'none',
+    },
+  },
+  relations: {
+    profile: {
+      type: 'one-to-one',
+      target: 'UserProfile',
+      inverseSide: 'user',
+    },
+    settings: {
+      type: 'one-to-one',
+      target: 'UserSettings',
+      inverseSide: 'user',
     },
   },
 });

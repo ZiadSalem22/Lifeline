@@ -1,7 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { getPendingNotifications } from '../utils/api';
-import { useApi } from '../hooks/useApi';
-import { useAuthContext } from './AuthProvider';
+import React from 'react';
 
 export default function NotificationPoller() {
   // Notifications temporarily disabled to stop outbound polling calls.

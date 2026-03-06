@@ -1,23 +1,11 @@
-const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
-
-if (!API_BASE_ENV) {
-    throw new Error('VITE_API_BASE_URL is not defined');
-}
-
-// Normalize base URL and ensure '/api' prefix is used for all API calls
-const NORMALIZED_BASE = API_BASE_ENV.replace(/\/$/, '');
-const API_BASE_URL = NORMALIZED_BASE.endsWith('/api') ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api`;
+import { buildApiUrl } from './apiBase';
 
 const joinUrl = (path) => {
-    const p = path.startsWith('/') ? path : `/${path}`;
-    // API_BASE_URL already includes '/api' by normalization above. Strip any leading '/api' from path to avoid duplication.
-    const cleaned = p.replace(/^\/api/, '');
-    return `${API_BASE_URL}${cleaned}`;
+    return buildApiUrl(path);
 };
 
 const TODOS_URL = joinUrl('/todos');
 const TAGS_URL = joinUrl('/tags');
-const NOTIFICATIONS_URL = joinUrl('/notifications');
 const STATS_URL = joinUrl('/stats');
 const EXPORT_URL = joinUrl('/export');
 const IMPORT_URL = joinUrl('/import');
@@ -214,46 +202,6 @@ export const importTodos = async (data, mode = 'merge', fetchWithAuth) => {
         ensureOk(response, 'Failed to import todos', 'importTodos');
         return response.json();
     }, 'Working…');
-};
-
-export const getPendingNotifications = async (fetchWithAuth) => {
-    const executeFetch = assertFetcher(fetchWithAuth, 'getPendingNotifications');
-    const response = await executeFetch(`${NOTIFICATIONS_URL}/pending`);
-    ensureOk(response, 'Failed to fetch notifications', 'getPendingNotifications');
-    return response.json();
-};
-
-export const scheduleNotification = async (todoId, minutesBefore = 0, fetchWithAuth) => {
-    const executeFetch = assertFetcher(fetchWithAuth, 'scheduleNotification');
-    return withLoading(async () => {
-        const response = await executeFetch(`${NOTIFICATIONS_URL}/schedule`, {
-            method: 'POST',
-            body: JSON.stringify({ todoId, minutesBefore }),
-        });
-        ensureOk(response, 'Failed to schedule notification', 'scheduleNotification');
-        return response.json();
-    }, 'Saving…');
-};
-
-export const markNotificationSent = async (notificationId, fetchWithAuth) => {
-    const executeFetch = assertFetcher(fetchWithAuth, 'markNotificationSent');
-    return withLoading(async () => {
-        const response = await executeFetch(`${NOTIFICATIONS_URL}/${notificationId}/sent`, {
-            method: 'PATCH',
-        });
-        ensureOk(response, 'Failed to mark notification as sent', 'markNotificationSent');
-        return response.json();
-    }, 'Saving…');
-};
-
-export const deleteNotification = async (notificationId, fetchWithAuth) => {
-    const executeFetch = assertFetcher(fetchWithAuth, 'deleteNotification');
-    return withLoading(async () => {
-        const response = await executeFetch(`${NOTIFICATIONS_URL}/${notificationId}`, {
-            method: 'DELETE',
-        });
-        ensureOk(response, 'Failed to delete notification', 'deleteNotification');
-    }, 'Saving changes…');
 };
 
 export const fetchTags = async (fetchWithAuth) => {

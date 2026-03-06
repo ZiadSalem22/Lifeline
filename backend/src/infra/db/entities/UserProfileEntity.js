@@ -4,73 +4,60 @@ module.exports = new EntitySchema({
   name: 'UserProfile',
   tableName: 'user_profiles',
   columns: {
-    id: {
-      type: 'uniqueidentifier',
-      primary: true,
-      generated: 'uuid',
-      nullable: false,
-    },
     user_id: {
-      type: 'nvarchar',
-      length: 64,
+      type: 'text',
+      primary: true,
       nullable: false,
     },
     first_name: {
-      type: 'nvarchar',
-      length: 100,
+      type: 'text',
       nullable: true,
     },
     last_name: {
-      type: 'nvarchar',
-      length: 100,
+      type: 'text',
       nullable: true,
     },
     phone: {
-      type: 'nvarchar',
-      length: 32,
+      type: 'text',
       nullable: true,
     },
     country: {
-      type: 'nvarchar',
-      length: 64,
+      type: 'text',
       nullable: true,
     },
     city: {
-      type: 'nvarchar',
-      length: 64,
+      type: 'text',
       nullable: true,
     },
     timezone: {
-      type: 'nvarchar',
-      length: 64,
+      type: 'text',
       nullable: true,
     },
     start_day_of_week: {
-      type: 'nvarchar',
-      length: 16,
-      nullable: true,
+      type: 'text',
+      nullable: false,
+      default: 'Monday',
     },
     avatar_url: {
-      type: 'nvarchar',
-      length: 255,
+      type: 'text',
       nullable: true,
     },
     onboarding_completed: {
-      type: 'bit',
+      type: 'boolean',
       nullable: false,
       default: false,
     },
     created_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       createDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     },
     updated_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       updateDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     },
   },
   relations: {
@@ -78,6 +65,7 @@ module.exports = new EntitySchema({
       type: 'one-to-one',
       target: 'User',
       joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+      inverseSide: 'profile',
       onDelete: 'CASCADE',
     },
   },

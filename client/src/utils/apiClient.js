@@ -1,17 +1,7 @@
-const API_BASE_ENV = import.meta.env.VITE_API_BASE_URL;
-
-if (!API_BASE_ENV) {
-  throw new Error('VITE_API_BASE_URL is not defined');
-}
-
-// Normalize to ensure '/api' is included
-const NORMALIZED_BASE = API_BASE_ENV.replace(/\/$/, '');
-const API_BASE_URL = NORMALIZED_BASE.endsWith('/api') ? NORMALIZED_BASE : `${NORMALIZED_BASE}/api`;
+import { buildApiUrl } from './apiBase';
 
 const joinUrl = (path) => {
-  const p = path.startsWith('/') ? path : `/${path}`;
-  const cleaned = p.replace(/^\/api/, '');
-  return `${API_BASE_URL}${cleaned}`;
+  return buildApiUrl(path);
 };
 
 export function createApiClient(fetchWithAuth) {

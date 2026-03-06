@@ -1,6 +1,6 @@
 // backend/src/middleware/attachCurrentUser.js
 
-// Middleware that upserts the user into MSSQL via TypeORM and
+// Middleware that upserts the user into PostgreSQL via TypeORM and
 // attaches the current user record to req.currentUser.
 
 const userRepo = require('../infrastructure/TypeORMUserRepository');
@@ -11,17 +11,42 @@ const logger = require('../config/logger');
 
 async function attachCurrentUser(req, res, next) {
   try {
-    // Dev bypass: when AUTH_DISABLED=1, attach a deterministic local guest user
+    // Dev bypass: when AUTH_DISABLED=1, attach a deterministic local user.
+    // If AUTH_LOCAL_USER_ID points at a real user, load that user from PostgreSQL.
     if (process.env.AUTH_DISABLED === '1') {
+      const localUserId = process.env.AUTH_LOCAL_USER_ID || 'guest-local';
+      let user = null;
+      let profile = null;
+      let settings = null;
+      try {
+        user = await userRepo.findById(localUserId);
+        if (user) {
+          profile = await userProfileRepo.findByUserId(localUserId);
+          settings = await userSettingsRepo.findByUserId(localUserId);
+        }
+      } catch (_) {}
       req.currentUser = {
-        id: 'guest-local',
-        email: null,
-        name: 'Local Guest',
-        role: 'free',
-        roles: ['free'],
-        subscription_status: null,
-        profile: { onboarding_completed: true },
-        settings: null,
+        id: user?.id || localUserId,
+        email: user?.email || null,
+        name: user?.name || 'Local Guest',
+        picture: user?.picture || null,
+        role: user?.role || 'free',
+        roles: [user?.role || 'free'],
+        subscription_status: user?.subscription_status || 'none',
+        profile: profile
+          ? {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            phone: profile.phone,
+            country: profile.country,
+            city: profile.city,
+            timezone: profile.timezone,
+            avatar_url: profile.avatar_url,
+            start_day_of_week: profile.start_day_of_week,
+            onboarding_completed: !!profile.onboarding_completed,
+          }
+          : { onboarding_completed: true, start_day_of_week: 'Monday' },
+        settings: settings || null,
       };
       return next();
     }
@@ -84,7 +109,10 @@ async function attachCurrentUser(req, res, next) {
           last_name: profile.last_name,
           phone: profile.phone,
           country: profile.country,
+          city: profile.city,
           timezone: profile.timezone,
+          avatar_url: profile.avatar_url,
+          start_day_of_week: profile.start_day_of_week,
           onboarding_completed: !!profile.onboarding_completed
         }
         : { onboarding_completed: false }

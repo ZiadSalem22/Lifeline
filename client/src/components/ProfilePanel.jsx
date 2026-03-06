@@ -17,7 +17,6 @@ export default function ProfilePanel() {
     phone: '',
     country: '',
     city: '',
-    birthday: '',
     avatar_url: ''
   });
 
@@ -39,7 +38,6 @@ export default function ProfilePanel() {
             phone: p.phone || '',
             country: p.country || '',
             city: p.city || '',
-            birthday: p.birthday || '',
             avatar_url: p.avatar_url || ''
           });
         }
@@ -75,7 +73,6 @@ export default function ProfilePanel() {
         phone: profile.phone || null,
         country: profile.country || null,
         city: profile.city || null,
-        birthday: profile.birthday || null,
         avatar_url: profile.avatar_url || null,
         timezone
       };
@@ -103,7 +100,6 @@ export default function ProfilePanel() {
           phone: p.phone || prev.phone,
           country: p.country || prev.country,
           city: p.city || prev.city,
-          birthday: p.birthday || prev.birthday,
           avatar_url: p.avatar_url || prev.avatar_url
         }));
       } catch (refreshErr) {
@@ -153,7 +149,6 @@ export default function ProfilePanel() {
               <Field label="Phone" value={profile.phone} onChange={onChange('phone')} helper="Optional" />
               <Field label="Country" value={profile.country} onChange={onChange('country')} helper="Optional" />
               <Field label="City" value={profile.city} onChange={onChange('city')} helper="Optional" />
-              <Field label="Birthday" value={profile.birthday} onChange={onChange('birthday')} placeholder="YYYY-MM-DD" helper="Optional" />
               <Field label="Avatar URL" value={profile.avatar_url} onChange={onChange('avatar_url')} helper="Direct image URL">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt="avatar preview" style={{ width:40, height:40, borderRadius:'50%', objectFit:'cover', border:'1px solid var(--color-border)' }} />
