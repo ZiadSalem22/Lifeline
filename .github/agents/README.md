@@ -22,6 +22,8 @@ These are governance agents, not execution workflows.
 
 Teams come after agents and coordinate grouped responsibilities above the agent layer.
 
+Workflows come after teams and define repeatable governance sequences above both layers.
+
 ## Existing domain agent scaffolding
 
 Other agent files in this directory remain as domain scaffolding from the earlier system setup.

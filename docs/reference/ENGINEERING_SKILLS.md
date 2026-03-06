@@ -17,5 +17,6 @@ Lifeline uses repo-native engineering skills to encode stable governance and ope
 ## Skill intent
 
 - skills capture repo-specific judgment, safeguards, routing rules, and review heuristics
-- agents will later use these skills to execute domain workflows more consistently
-- teams and workflows will later build on top of the same rules rather than inventing a separate system
+- agents use these skills to execute domain workflows more consistently
+- teams build on those agent-level responsibilities
+- workflows build on the same rules rather than inventing a separate system

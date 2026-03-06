@@ -39,6 +39,8 @@ Keep these domains separate:
 - Use `.github/skills/...` for repo-native governance and engineering skill guidance.
 - Use `.github/instructions/...` for domain-specific documentation guidance.
 - Use `.github/agents/...` for domain-specific documentation workflows.
+- Use `.github/teams/...` for grouped governance responsibilities.
+- Use `.github/workflows-governance/...` for repeatable governance workflow sequences.
 - Use `.github/prompts/...` for reusable AI documentation tasks.
 - Use `docs/templates/...` when creating or refreshing documentation.
 

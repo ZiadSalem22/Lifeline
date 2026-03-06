@@ -22,3 +22,5 @@ This directory stores repo-native teams that sit above skills and agents in the 
 - workflows will later orchestrate execution paths on top of these layers
 
 These teams are governance teams, not execution workflows.
+
+The workflows layer now exists under `.github/workflows-governance/` and sits above this team layer.

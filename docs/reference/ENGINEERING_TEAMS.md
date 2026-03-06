@@ -19,6 +19,6 @@ Lifeline's engineering teams sit above skills and agents and coordinate grouped 
 - teams coordinate responsibilities
 - agents provide role-level analysis
 - skills provide rule-level knowledge
-- workflows will later orchestrate actual execution paths using these prior layers
+- workflows now orchestrate repeatable governance paths using these prior layers
 
 These governance teams are not execution workflows.
