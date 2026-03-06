@@ -5,3 +5,5 @@ This section stores retained reference material that is still useful but does no
 Current retained files include:
 - [TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)
 - [cosmic-background.html](cosmic-background.html)
+- [DOCUMENTATION_OWNERSHIP_MATRIX.md](DOCUMENTATION_OWNERSHIP_MATRIX.md)
+- [PHASE6C_DOCUMENTATION_BACKLOG.md](PHASE6C_DOCUMENTATION_BACKLOG.md)

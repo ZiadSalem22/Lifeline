@@ -2,4 +2,9 @@
 
 Use this section for reusable templates, checklists, and document scaffolds.
 
-Phase 6A creates the directory only; template content will be added in later phases.
+Current contents include:
+- domain templates for product, frontend, backend, API, architecture, data-model, operations, and ADRs
+- `docs-update-checklist.md`
+- `change-impact-matrix.md`
+
+Use these files when creating or refreshing documentation so structure stays consistent across domains.

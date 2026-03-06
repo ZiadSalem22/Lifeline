@@ -1,0 +1,25 @@
+name: Documentation request
+description: Request a new document or structured documentation refresh.
+title: "docs-request: "
+labels:
+  - documentation
+body:
+  - type: input
+    id: target
+    attributes:
+      label: Requested document or domain
+      placeholder: docs/frontend/... or docs/api/...
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: What should this document help future contributors understand?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and exclusions
+      description: State what should and should not be covered.

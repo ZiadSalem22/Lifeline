@@ -1,0 +1,31 @@
+name: Documentation gap
+description: Report missing, stale, or inconsistent project documentation.
+title: "docs: "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: gap
+    attributes:
+      label: Documentation gap
+      description: What documentation is missing or stale?
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Affected domain
+      options:
+        - product
+        - features
+        - frontend
+        - backend
+        - api
+        - data-model
+        - architecture
+        - operations
+  - type: textarea
+    id: source
+    attributes:
+      label: Source of truth
+      description: Which code, config, or behavior should the docs reflect?
