@@ -161,7 +161,11 @@ Use `/api/public/info` to detect server availability without authentication.
 
 ## 📖 Documentation
 
-- See `README.md`, `IMPLEMENTATION_SUMMARY.md`, `INTEGRATION_COMPLETE.md`, and `TESTING_CHECKLIST.md` for full details on features, architecture, and test coverage.
+- See [docs/README.md](docs/README.md) for the current documentation entrypoint.
+- Active guides live under [docs/guides](docs/guides).
+- Reference material lives under [docs/reference](docs/reference).
+- Historical phase and cleanup artifacts live under [docs/issues](docs/issues).
+- Archived legacy integration documents live under [docs/archive](docs/archive).
 
 ---
 
@@ -229,7 +233,7 @@ cd backend
 npm test
 ```
 
-There is a unit test suite focused on domain logic and repositories; see `TESTING_CHECKLIST.md` for scenarios.
+There is a unit test suite focused on domain logic and repositories; see [docs/reference/TESTING_CHECKLIST.md](docs/reference/TESTING_CHECKLIST.md) for scenarios.
 
 ---
 
@@ -265,7 +269,7 @@ cd backend
 npm test
 ```
 
-All tests must pass with no user code logs or unhandled errors. See `TESTING_CHECKLIST.md` for detailed scenarios.
+All tests must pass with no user code logs or unhandled errors. See [docs/reference/TESTING_CHECKLIST.md](docs/reference/TESTING_CHECKLIST.md) for detailed scenarios.
 
 —
 
