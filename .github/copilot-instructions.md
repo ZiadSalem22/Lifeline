@@ -36,6 +36,7 @@ Keep these domains separate:
 ## How to use the instruction system
 
 - Use this file for stable repo-wide rules only.
+- Use `.github/skills/...` for repo-native governance and engineering skill guidance.
 - Use `.github/instructions/...` for domain-specific documentation guidance.
 - Use `.github/agents/...` for domain-specific documentation workflows.
 - Use `.github/prompts/...` for reusable AI documentation tasks.
