@@ -1,0 +1,67 @@
+services:
+  lifeline-postgres:
+    image: postgres:16-alpine
+    container_name: lifeline-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lifeline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - lifeline-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-lifeline}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  lifeline-app:
+    container_name: lifeline-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/}
+        BUILD_LOCAL_MODE: ${VITE_AUTH_DISABLED:-0}
+        BUILD_VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
+        BUILD_VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
+        BUILD_VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
+        BUILD_VITE_AUTH0_SCOPE: ${VITE_AUTH0_SCOPE:-openid profile email offline_access}
+    restart: unless-stopped
+    depends_on:
+      lifeline-postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PGHOST: lifeline-postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: ${POSTGRES_DB:-lifeline}
+      PGSSL: ${PGSSL:-0}
+      PGSSL_ALLOW_SELF_SIGNED: ${PGSSL_ALLOW_SELF_SIGNED:-1}
+      DB_WAIT_TIMEOUT_MS: ${DB_WAIT_TIMEOUT_MS:-60000}
+      DB_WAIT_INTERVAL_MS: ${DB_WAIT_INTERVAL_MS:-2000}
+      TYPEORM_LOGGING: ${TYPEORM_LOGGING:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AUTH_DISABLED: ${AUTH_DISABLED:-0}
+      AUTH_LOCAL_USER_ID: ${AUTH_LOCAL_USER_ID:-guest-local}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+      AUTH0_AUDIENCE_ALT: ${AUTH0_AUDIENCE_ALT:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://lifeline.a2z-us.com}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://lifeline.a2z-us.com}
+      APP_ORIGIN: ${APP_ORIGIN:-https://lifeline.a2z-us.com}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3020}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health/db').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  lifeline-postgres-data:
