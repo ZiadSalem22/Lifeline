@@ -2,7 +2,7 @@ const { AppDataSource } = require('../../src/infra/db/data-source');
 const TypeORMTagRepository = require('../../src/infrastructure/TypeORMTagRepository');
 const { v4: uuidv4 } = require('uuid');
 
-const RUN_DB = !!process.env.MSSQL_USER;
+const RUN_DB = !!(process.env.DATABASE_URL || process.env.PGHOST);
 
 beforeAll(async () => {
   if (!RUN_DB) return;

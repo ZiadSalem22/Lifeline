@@ -1245,7 +1245,7 @@ app.get('/api/stats', requireAuth(), async (req, res) => {
         const userId = req.currentUser && req.currentUser.id;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
         const { period, startDate, endDate } = req.query; // period OR explicit date range
-        // Use SQLite aggregation when available; fallback to in-memory grouping
+        // Prefer repository-side aggregation when available; otherwise fall back to in-memory grouping
         let stats;
         if (startDate && endDate && typeof todoRepository.getStatisticsForUserInRange === 'function') {
             stats = await todoRepository.getStatisticsForUserInRange(userId, startDate, endDate);

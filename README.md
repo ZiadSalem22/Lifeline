@@ -396,7 +396,7 @@ Tell me which of the above you want me to add next and I will implement it.
 
 - **Backend Scripts:**
   - Utility scripts for DB initialization, testing, JWT inspection, and admin promotion (see `backend/scripts/`).
-  - Example: `promote-admin.js` for RBAC admin elevation, `test-mssql-connection.js` for DB health checks.
+  - Example: `promote-admin.js` for RBAC admin elevation, `init-db.js` for local PostgreSQL bootstrap.
 
 - **Frontend Advanced Features:**
   - **Advanced Search:** Multi-criteria search, month preload on empty filters, double-click/tap to navigate to task date, and client fallbacks.

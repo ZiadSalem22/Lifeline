@@ -3,7 +3,7 @@ const TypeORMTagRepository = require('../../src/infrastructure/TypeORMTagReposit
 const { CreateTag } = require('../../src/application/TagUseCases');
 const { v4: uuidv4 } = require('uuid');
 
-const RUN_DB = !!process.env.MSSQL_USER;
+const RUN_DB = !!(process.env.DATABASE_URL || process.env.PGHOST);
 beforeAll(async () => {
   if (!RUN_DB) return;
   if (!AppDataSource.isInitialized) {
