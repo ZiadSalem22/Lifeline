@@ -84,6 +84,8 @@ const allowedOrigins = [
     `https://localhost:${PORT}`,
     `http://127.0.0.1:${PORT}`,
     `https://127.0.0.1:${PORT}`,
+    'http://localhost:3020',
+    'https://lifeline.a2z-us.com',
     'http://localhost:5173',
     'https://localhost:5173',
     'https://192.168.1.153:5173',

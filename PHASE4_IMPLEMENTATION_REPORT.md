@@ -123,13 +123,13 @@ Implemented stack behavior:
 - PostgreSQL healthcheck via `pg_isready`
 - app healthcheck via `GET /api/health/db`
 - app dependency on healthy PostgreSQL service
-- default published app port moved to `3001` to avoid common local `3000` conflicts
+- default published app port moved to `3020` to avoid common local `3000` conflicts
 
 Implemented app service behavior:
 - build from root `Dockerfile`
 - runtime env injected at container start
 - frontend env injected during image build
-- app exposed on host port `3001` by default
+- app exposed on host port `3020` by default
 
 ## 6. Migration / Init Sequencing Implemented
 
@@ -190,7 +190,7 @@ Observed result:
 ### Functional verification
 Executed successfully:
 - `npm run build` in `client/`
-- `npm run verify:compose` in `backend/` against `http://127.0.0.1:3001`
+- `npm run verify:compose` in `backend/` against `http://localhost:3020`
 
 Verified successfully through the Compose stack:
 - frontend shell from `/`

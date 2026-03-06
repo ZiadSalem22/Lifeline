@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const DEFAULT_BASE_URL = `http://127.0.0.1:${process.env.APP_PORT || 3000}`;
+const DEFAULT_BASE_URL = `http://localhost:${process.env.APP_PORT || 3020}`;
 const BASE_URL = (process.env.LIFELINE_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
 
 function assert(condition, message) {

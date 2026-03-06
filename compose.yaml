@@ -51,11 +51,11 @@ services:
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
       AUTH0_AUDIENCE_ALT: ${AUTH0_AUDIENCE_ALT:-}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${APP_PORT:-3001}}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:${APP_PORT:-3001}}
-      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:${APP_PORT:-3001}}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${APP_PORT:-3020}}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:${APP_PORT:-3020}}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:${APP_PORT:-3020}}
     ports:
-      - "${APP_PORT:-3001}:3000"
+      - "${APP_PORT:-3020}:3000"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health/db').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 10s
