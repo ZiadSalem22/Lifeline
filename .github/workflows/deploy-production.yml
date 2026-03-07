@@ -106,7 +106,8 @@ jobs:
           fi
 
           echo "Port ${port} is already in use; inspecting current listener..."
-          sudo ss -ltnp "( sport = :${port} )" || true
+          listener_report="$(sudo ss -ltnp "( sport = :${port} )" || true)"
+          printf '%s\n' "${listener_report}"
 
           blocking_container="$(docker ps --format '{{.Names}}\t{{.Ports}}' | awk -F'\t' '$2 ~ /127\.0\.0\.1:'"${port}"'->/ { print $1; exit }')"
           if [[ -n "${blocking_container}" && "${blocking_container}" != "lifeline-mcp" ]]; then
@@ -115,7 +116,7 @@ jobs:
           fi
 
           if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            blocking_pids="$(sudo lsof -tiTCP:${port} -sTCP:LISTEN || true)"
+            blocking_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
             if [[ -n "${blocking_pids}" ]]; then
               echo "Stopping stale host listener(s) on MCP port ${port}: ${blocking_pids}"
               sudo kill ${blocking_pids}
