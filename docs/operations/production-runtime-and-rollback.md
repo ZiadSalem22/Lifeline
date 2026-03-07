@@ -95,7 +95,7 @@ At a high level, production deployment does the following:
 3. extract it into a new release directory
 4. repoint `/opt/lifeline/current`
 5. clear stale listeners from the reserved MCP loopback port if the configured `MCP_PORT` listener, which now defaults to `127.0.0.1:3030`, is still occupied
-6. run `docker compose up -d --build`
+6. run `docker compose up -d --build` for PostgreSQL and the app first, then force-recreate `lifeline-mcp` after app health is restored so the MCP loopback bind is republished deterministically
 7. verify database health, internal MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
 8. sync the MCP Nginx host config, run `nginx -t`, reload Nginx, and verify the public MCP health endpoint
 

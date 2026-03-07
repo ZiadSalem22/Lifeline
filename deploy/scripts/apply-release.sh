@@ -38,13 +38,16 @@ APP_PORT="${APP_PORT:-3020}"
 APP_ORIGIN="${APP_ORIGIN:-https://lifeline.a2z-us.com}"
 MCP_PORT="${MCP_PORT:-3030}"
 MCP_PUBLIC_BASE_URL="${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}"
+COMPOSE_FILE_PATH="${release_dir}/compose.production.yaml"
 
 PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"
 PUBLIC_INFO_URL="${APP_ORIGIN%/}/api/public/info"
 INTERNAL_HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health/db"
 MCP_INTERNAL_HEALTH_URL="http://127.0.0.1:${MCP_PORT}/health"
 
-if [[ ! -f "${release_dir}/compose.production.yaml" ]]; then
+compose_cmd=(docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f "${COMPOSE_FILE_PATH}")
+
+if [[ ! -f "${COMPOSE_FILE_PATH}" ]]; then
   echo "compose.production.yaml is missing from ${release_dir}" >&2
   exit 1
 fi
@@ -122,6 +125,47 @@ wait_for_container_healthy() {
   return 1
 }
 
+capture_mcp_runtime_state() {
+  echo "--- ${MCP_CONTAINER} docker inspect ---" >&2
+  docker inspect --format '{{json .State}}' "${MCP_CONTAINER}" >&2 || true
+
+  echo "--- ${MCP_CONTAINER} port binding ---" >&2
+  docker port "${MCP_CONTAINER}" "${MCP_PORT}" >&2 || true
+
+  echo "--- host listener on ${MCP_PORT} ---" >&2
+  ss -ltnp "( sport = :${MCP_PORT} )" >&2 || true
+}
+
+wait_for_mcp_loopback() {
+  local timeout_seconds="$1"
+  local elapsed=0
+
+  while (( elapsed < timeout_seconds )); do
+    if curl --fail --silent --show-error --location "${MCP_INTERNAL_HEALTH_URL}" > /dev/null; then
+      return 0
+    fi
+
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+
+  echo "Timed out waiting for MCP loopback health URL: ${MCP_INTERNAL_HEALTH_URL}" >&2
+  capture_mcp_runtime_state
+  return 1
+}
+
+start_core_services() {
+  pushd "${release_dir}" > /dev/null
+  "${compose_cmd[@]}" up -d --build --remove-orphans "${DB_CONTAINER}" "${APP_CONTAINER}"
+  popd > /dev/null
+}
+
+recreate_mcp_service() {
+  pushd "${release_dir}" > /dev/null
+  "${compose_cmd[@]}" up -d --build --no-deps --force-recreate "${MCP_CONTAINER}"
+  popd > /dev/null
+}
+
 wait_for_mcp_backend_path() {
   local container_name="$1"
   local timeout_seconds="$2"
@@ -167,17 +211,16 @@ trap rollback ERR
 
 ln -sfn "${release_dir}" "${CURRENT_LINK}"
 
-pushd "${release_dir}" > /dev/null
-docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f compose.production.yaml up -d --build --remove-orphans
-popd > /dev/null
+start_core_services
 
 wait_for_container_healthy "${DB_CONTAINER}" 180
 wait_for_container_healthy "${APP_CONTAINER}" 240
+recreate_mcp_service
 wait_for_container_healthy "${MCP_CONTAINER}" 180
 wait_for_url "${INTERNAL_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_INFO_URL}" 120
-wait_for_url "${MCP_INTERNAL_HEALTH_URL}" 120
+wait_for_mcp_loopback 120
 wait_for_mcp_backend_path "${MCP_CONTAINER}" 120
 
 if ! docker port "${APP_CONTAINER}" 3000 | grep -qx "127.0.0.1:${APP_PORT}"; then

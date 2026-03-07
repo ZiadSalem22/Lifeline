@@ -20,6 +20,7 @@ The production deploy helper verifies:
 - Postgres container health
 - app container health
 - MCP container health
+- deterministic MCP host-loopback publication after the targeted post-app `lifeline-mcp` recreate
 - internal database health URL at `http://127.0.0.1:3020/api/health/db`
 - public database health URL at `https://lifeline.a2z-us.com/api/health/db`
 - public app info availability at `https://lifeline.a2z-us.com/api/public/info`
