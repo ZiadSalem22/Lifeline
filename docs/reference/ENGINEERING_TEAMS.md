@@ -11,8 +11,18 @@ Lifeline's engineering teams sit above skills and agents and coordinate grouped 
 
 ## Current governance teams
 
+### Foundation
 - [documentation-governance-team](../../.github/teams/documentation-governance-team.md)
 - [cicd-governance-team](../../.github/teams/cicd-governance-team.md)
+- [code-quality-governance-team](../../.github/teams/code-quality-governance-team.md)
+
+### Domain
+- [frontend-engineering-governance-team](../../.github/teams/frontend-engineering-governance-team.md)
+- [backend-engineering-governance-team](../../.github/teams/backend-engineering-governance-team.md)
+- [data-model-governance-team](../../.github/teams/data-model-governance-team.md)
+
+### Cross-cutting
+- [refactor-governance-team](../../.github/teams/refactor-governance-team.md)
 
 ## Team intent
 

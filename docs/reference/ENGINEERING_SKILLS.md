@@ -11,8 +11,18 @@ Lifeline uses repo-native engineering skills to encode stable governance and ope
 
 ## Current skills
 
+### Foundation
 - [documentation-governance](../../.github/skills/documentation-governance.md)
 - [cicd-governance](../../.github/skills/cicd-governance.md)
+- [code-quality-governance](../../.github/skills/code-quality-governance.md)
+
+### Domain
+- [frontend-engineering-governance](../../.github/skills/frontend-engineering-governance.md)
+- [backend-engineering-governance](../../.github/skills/backend-engineering-governance.md)
+- [data-model-governance](../../.github/skills/data-model-governance.md)
+
+### Cross-cutting
+- [refactor-governance](../../.github/skills/refactor-governance.md)
 
 ## Skill intent
 

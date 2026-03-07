@@ -11,8 +11,18 @@ Lifeline's governance workflows sit above skills, agents, and teams and define r
 
 ## Current governance workflows
 
+### Foundation
 - [documentation-governance-workflow](../../.github/workflows-governance/documentation-governance-workflow.md)
 - [cicd-governance-workflow](../../.github/workflows-governance/cicd-governance-workflow.md)
+- [code-quality-governance-workflow](../../.github/workflows-governance/code-quality-governance-workflow.md)
+
+### Domain
+- [frontend-engineering-governance-workflow](../../.github/workflows-governance/frontend-engineering-governance-workflow.md)
+- [backend-engineering-governance-workflow](../../.github/workflows-governance/backend-engineering-governance-workflow.md)
+- [data-model-governance-workflow](../../.github/workflows-governance/data-model-governance-workflow.md)
+
+### Cross-cutting
+- [refactor-governance-workflow](../../.github/workflows-governance/refactor-governance-workflow.md)
 
 ## Workflow intent
 

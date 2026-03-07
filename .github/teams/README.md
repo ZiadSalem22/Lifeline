@@ -11,16 +11,26 @@ This directory stores repo-native teams that sit above skills and agents in the 
 
 ## Current governance teams
 
+### Foundation
 - [documentation-governance-team.md](documentation-governance-team.md)
 - [cicd-governance-team.md](cicd-governance-team.md)
+- [code-quality-governance-team.md](code-quality-governance-team.md)
+
+### Domain
+- [frontend-engineering-governance-team.md](frontend-engineering-governance-team.md)
+- [backend-engineering-governance-team.md](backend-engineering-governance-team.md)
+- [data-model-governance-team.md](data-model-governance-team.md)
+
+### Cross-cutting
+- [refactor-governance-team.md](refactor-governance-team.md)
 
 ## Team intent
 
-- skills provide rule-level knowledge
-- agents provide role-level analysis
-- teams coordinate grouped governance responsibilities
-- workflows will later orchestrate execution paths on top of these layers
+- Skills provide rule-level knowledge.
+- Agents provide role-level analysis (builder agents guide, review agents assess).
+- Teams coordinate grouped governance responsibilities across builder and review agents.
+- Workflows define the repeatable execution path and expected outputs above teams.
 
 These teams are governance teams, not execution workflows.
 
-The workflows layer now exists under `.github/workflows-governance/` and sits above this team layer.
+The workflows layer exists under `.github/workflows-governance/` and sits above this team layer.
