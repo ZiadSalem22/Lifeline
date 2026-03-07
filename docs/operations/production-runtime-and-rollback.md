@@ -93,9 +93,10 @@ At a high level, production deployment does the following:
 3. extract it into a new release directory
 4. repoint `/opt/lifeline/current`
 5. run `docker compose up -d --build`
-6. verify database health, MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
+6. verify database health, internal MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
+7. sync the MCP Nginx host config, run `nginx -t`, reload Nginx, and verify the public MCP health endpoint
 
-If the runtime change includes `deploy/nginx/` updates, operators must also sync and reload the VPS host Nginx configuration because that host-level step is not automated by the GitHub Actions workflow.
+The deploy workflow currently supports VPS layouts that use either `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`.
 
 ## Automatic rollback behavior
 

@@ -109,6 +109,43 @@ jobs:
           "${release_dir}/deploy/scripts/apply-release.sh" "${release_dir}" "${SHARED_ENV_FILE}"
           EOF
 
+      - name: Sync MCP Nginx config on VPS
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "RELEASE_ID='${RELEASE_ID}' RELEASES_ROOT='${RELEASES_ROOT}' bash -s" <<'EOF'
+          set -euo pipefail
+
+          release_dir="${RELEASES_ROOT}/${RELEASE_ID}"
+          source_conf="${release_dir}/deploy/nginx/mcp.lifeline.a2z-us.com.conf"
+
+          if [[ ! -f "${source_conf}" ]]; then
+            echo "MCP Nginx config missing from ${source_conf}" >&2
+            exit 1
+          fi
+
+          if sudo test -d /etc/nginx/conf.d; then
+            sudo install -m 644 "${source_conf}" /etc/nginx/conf.d/mcp.lifeline.a2z-us.com.conf
+          elif sudo test -d /etc/nginx/sites-available && sudo test -d /etc/nginx/sites-enabled; then
+            sudo install -m 644 "${source_conf}" /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf
+            sudo ln -sfn /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf /etc/nginx/sites-enabled/mcp.lifeline.a2z-us.com.conf
+          else
+            echo "Could not find a supported Nginx include directory on the VPS host." >&2
+            exit 1
+          fi
+
+          sudo nginx -t
+          sudo systemctl reload nginx
+          EOF
+
+      - name: Verify public MCP health on VPS
+        run: |
+          set -euo pipefail
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl --fail --silent --show-error --location 'https://mcp.lifeline.a2z-us.com/health' > /dev/null"
+
       - name: Capture failure diagnostics
         if: failure()
         run: |

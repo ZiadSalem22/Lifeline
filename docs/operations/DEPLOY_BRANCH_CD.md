@@ -20,7 +20,8 @@ The workflow performs the following steps:
 5. Runs [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh) on the VPS.
 6. Repoints `/opt/lifeline/current` to the new release.
 7. Runs `docker compose` with [compose.production.yaml](../../compose.production.yaml) and `/opt/lifeline/shared/.env.production`.
-8. Verifies app, MCP, and Postgres container health plus public and private runtime checks, including the public app info endpoint and the MCP-to-backend internal adapter path.
+8. Verifies app, MCP, and Postgres container health plus internal and public app runtime checks, including the public app info endpoint and the MCP-to-backend internal adapter path.
+9. Syncs [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf) to the VPS host, tests Nginx, reloads it, and then verifies the public MCP health endpoint.
 
 ## Production runtime topology
 
@@ -57,11 +58,7 @@ The workflow expects these secrets in the `production` GitHub environment.
 
 ## Nginx routing note
 
-The deploy workflow still deploys release contents, Compose configuration, and scripts.
-
-It does **not** install or reload VPS-host Nginx configuration automatically.
-
-When `deploy/nginx/` changes, operators must sync the relevant config files on the VPS and reload Nginx as a separate host-level step.
+The GitHub Actions workflow now syncs the MCP host config from the release onto the VPS, runs `nginx -t`, reloads Nginx, and then verifies the public MCP health endpoint. If the VPS ever uses a different include layout than `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`, update the workflow before the next cutover.
 
 For the first MCP cutover checklist, API-key issuance flow, and first real client validation steps, use [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md).
 
@@ -69,9 +66,8 @@ For the first MCP cutover checklist, API-key issuance flow, and first real clien
 
 1. Merge or cherry-pick the desired commit(s) from `main` into `deploy`.
 2. Push `deploy`.
-3. If the release includes changes under `deploy/nginx/`, sync the updated VPS host Nginx config and reload Nginx before treating the rollout as complete.
-4. Watch the GitHub Actions run for `Deploy Lifeline Production`.
-5. If needed, rerun the workflow manually from GitHub Actions.
+3. Watch the GitHub Actions run for `Deploy Lifeline Production`.
+4. If needed, rerun the workflow manually from GitHub Actions.
 
 ## Rollback
 

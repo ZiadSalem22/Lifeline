@@ -58,18 +58,11 @@ Also confirm the existing app/runtime values remain valid:
 
 1. Confirm DNS for `mcp.lifeline.a2z-us.com` is already pointed at the production VPS.
 2. Confirm `/opt/lifeline/shared/.env.production` includes the MCP variables listed above.
-3. Sync [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf) to the same live Nginx include directory that already serves the Lifeline app host.
-   - If the VPS uses `/etc/nginx/conf.d/`, the concrete copy step is:
-     - `sudo cp /opt/lifeline/current/deploy/nginx/mcp.lifeline.a2z-us.com.conf /etc/nginx/conf.d/mcp.lifeline.a2z-us.com.conf`
-   - If the VPS uses another include directory, copy the file there instead.
-4. Test the Nginx config:
-   - `sudo nginx -t`
-5. Reload Nginx only after the config test passes:
-   - `sudo systemctl reload nginx`
-6. Merge or cherry-pick the approved MCP cutover commit(s) from `main` into `deploy`.
-7. Push `deploy` and watch the `Deploy Lifeline Production` workflow.
-8. Wait for the workflow and [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh) to complete successfully.
-9. Run the post-deploy smoke flow in the next section before declaring success.
+3. Confirm the VPS uses one of the workflow-supported Nginx layouts: `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`.
+4. Merge or cherry-pick the approved MCP cutover commit(s) from `main` into `deploy`.
+5. Push `deploy` and watch the `Deploy Lifeline Production` workflow.
+6. Wait for the workflow to finish the release helper, sync [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf), run `nginx -t`, reload Nginx, and verify the public MCP health endpoint.
+7. Run the post-deploy smoke flow in the next section before declaring success.
 
 ## Post-deploy cutover validation flow
 
