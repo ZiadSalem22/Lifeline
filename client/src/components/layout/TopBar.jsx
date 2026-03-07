@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Button from '../common/Button';
 import { useAuth } from '../../hooks/useAuth';
-import { SearchIcon, SettingsIcon, MenuIcon } from '../../icons/Icons';
+import { SearchIcon, MenuIcon } from '../../icons/Icons';
 import styles from './TopBar.module.css';
 
 const TopBar = (props) => {
@@ -90,15 +90,15 @@ const TopBar = (props) => {
                             {avatar ? (
                                 <img src={avatar} alt={name || 'User'} className={styles['chip-avatar']} />
                             ) : (
-                                <div className={`${styles['chip-avatar']} ${styles['chip-initials']}`}>{(name || 'U').substring(0,1).toUpperCase()}</div>
+                                <div className={`${styles['chip-avatar']} ${styles['chip-initials']}`}>{(name || 'U').substring(0, 1).toUpperCase()}</div>
                             )}
                             <div className={styles['chip-name']} title={name}>{name || 'User'} <span aria-hidden>▾</span></div>
                         </button>
                         {open && (
                             <div className={styles['chip-dropdown']} role="menu" onClick={(e) => e.stopPropagation()}>
-                                <button type="button" onMouseDown={() => { console.log('Profile clicked'); close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
-                                <button type="button" onMouseDown={() => { console.log('Settings clicked'); close(); onOpenSettings && onOpenSettings(); }} role="menuitem">Settings</button>
-                                <button type="button" onMouseDown={() => { console.log('Logout clicked'); dropdownLogout(); }} role="menuitem">Logout</button>
+                                <button type="button" onMouseDown={() => { close(); props.onOpenProfile && props.onOpenProfile(); }} role="menuitem">Profile</button>
+                                <button type="button" onMouseDown={() => { close(); onOpenSettings && onOpenSettings(); }} role="menuitem">Settings</button>
+                                <button type="button" onMouseDown={() => { dropdownLogout(); }} role="menuitem">Logout</button>
                             </div>
                         )}
                     </div>

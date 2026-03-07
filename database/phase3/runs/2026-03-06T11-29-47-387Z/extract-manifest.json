@@ -1,0 +1,13 @@
+{
+  "runId": "2026-03-06T11-29-47-387Z",
+  "generatedAt": "2026-03-06T11:29:48.084Z",
+  "source": "mssql",
+  "tables": {
+    "users": 7,
+    "user_profiles": 5,
+    "user_settings": 2,
+    "todos": 536,
+    "tags": 17,
+    "todo_tags": 564
+  }
+}

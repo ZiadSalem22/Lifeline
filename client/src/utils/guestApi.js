@@ -22,17 +22,27 @@ export const createTodo = async (title, dueDate, tags = [], isFlagged = false, d
 
   const addOne = (date) => {
     const now = new Date().toISOString();
+    const taskNumber = (() => {
+      try {
+        const max = todos.reduce((acc, t) => {
+          const v = Number.isFinite(Number(t.taskNumber)) ? Number(t.taskNumber) : 0;
+          return Math.max(acc, v);
+        }, 0);
+        return max + 1;
+      } catch (e) { return null; }
+    })();
+
     const todo = {
       id: uuidv4(),
       dueDate: date,
       createdAt: now,
       updatedAt: now,
       ...baseProps,
+      taskNumber,
     };
     todos.push(todo);
     return todo;
   };
-
   // Expand recurrence into multiple dates similar to backend CreateTodo
   let createdFirst = null;
   if (!recurrence) {

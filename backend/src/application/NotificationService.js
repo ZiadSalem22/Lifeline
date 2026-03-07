@@ -1,36 +1,14 @@
 /**
  * NotificationService
- * Handles scheduling and management of browser notifications
+ * Notifications are intentionally disabled in the PostgreSQL-only Phase 3 runtime.
  */
 class NotificationService {
-    constructor(db) {
-        this.db = db;
-        this.activeNotifications = new Map();
-        // When running with MSSQL/TypeORM (no SQLite db), skip
-        // creating or using the notifications table. This keeps
-        // the service non-fatal while preserving legacy behavior
-        // for SQLite-based setups.
-        if (this.db) {
-            this.initializeNotificationTable();
-        }
+    constructor() {
+        this.disabledReason = 'Notifications are not supported in the PostgreSQL-only local runtime.';
     }
 
-    initializeNotificationTable() {
-        this.db.run(`
-            CREATE TABLE IF NOT EXISTS notifications (
-                id TEXT PRIMARY KEY,
-                todo_id TEXT NOT NULL,
-                message TEXT NOT NULL,
-                scheduled_time TEXT NOT NULL,
-                sent_time TEXT,
-                is_sent INTEGER DEFAULT 0,
-                FOREIGN KEY(todo_id) REFERENCES todos(id)
-            )
-        `, (err) => {
-            if (err) {
-                console.error('Error creating notifications table:', err);
-            }
-        });
+    getDisabledResponse() {
+        return { disabled: true, reason: this.disabledReason };
     }
 
     /**
@@ -39,144 +17,49 @@ class NotificationService {
      * @param {number} minutesBefore - How many minutes before due date/time to notify
      */
     scheduleNotification(todo, minutesBefore = 0) {
-        if (!todo.dueDate) return null;
-
-        try {
-            let scheduledTime = new Date(todo.dueDate + 'T00:00:00');
-
-            // Add time if available
-            if (todo.dueTime) {
-                const [hours, minutes] = todo.dueTime.split(':').map(Number);
-                scheduledTime.setHours(hours, minutes, 0);
-            }
-
-            // Subtract minutes before
-            scheduledTime = new Date(scheduledTime.getTime() - minutesBefore * 60000);
-
-            const now = new Date();
-            if (scheduledTime <= now) {
-                // Already due or in the past
-                return null;
-            }
-
-            const delayMs = scheduledTime.getTime() - now.getTime();
-
-            return {
-                scheduledTime: scheduledTime.toISOString(),
-                delayMs
-            };
-        } catch (error) {
-            console.error('Error scheduling notification:', error);
-            return null;
-        }
+        return null;
     }
 
     /**
      * Get notification text for a todo
      */
     getNotificationMessage(todo) {
-        let message = `Task Due: ${todo.title}`;
-
-        if (todo.priority) {
-            message += ` [${todo.priority.toUpperCase()}]`;
-        }
-
-        if (todo.description) {
-            const desc = todo.description.substring(0, 50);
-            message += `\n${desc}${todo.description.length > 50 ? '...' : ''}`;
-        }
-
-        return message;
+        return null;
     }
 
     /**
      * Save notification to database
      */
     saveNotification(todoId, message, scheduledTime) {
-        if (!this.db) {
-            // Notifications are disabled when no SQLite DB is present
-            return Promise.resolve(null);
-        }
-        return new Promise((resolve, reject) => {
-            const { v4: uuidv4 } = require('uuid');
-            const notificationId = uuidv4();
-
-            const stmt = this.db.prepare(
-                'INSERT INTO notifications (id, todo_id, message, scheduled_time, is_sent) VALUES (?, ?, ?, ?, ?)'
-            );
-            stmt.run(notificationId, todoId, message, scheduledTime, 0, (err) => {
-                if (err) reject(err);
-                else resolve(notificationId);
-            });
-            stmt.finalize();
-        });
+        return Promise.resolve(null);
     }
 
     /**
      * Mark notification as sent
      */
     markNotificationSent(notificationId) {
-        if (!this.db) {
-            return Promise.resolve();
-        }
-        return new Promise((resolve, reject) => {
-            const stmt = this.db.prepare(
-                'UPDATE notifications SET is_sent = 1, sent_time = ? WHERE id = ?'
-            );
-            stmt.run(new Date().toISOString(), notificationId, (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-            stmt.finalize();
-        });
+        return Promise.resolve();
     }
 
     /**
      * Get pending notifications
      */
     getPendingNotifications() {
-        if (!this.db) {
-            return Promise.resolve([]);
-        }
-        return new Promise((resolve, reject) => {
-            this.db.all(
-                'SELECT * FROM notifications WHERE is_sent = 0 AND scheduled_time <= datetime("now") ORDER BY scheduled_time ASC',
-                (err, rows) => {
-                    if (err) reject(err);
-                    else resolve(rows || []);
-                }
-            );
-        });
+        return Promise.resolve([]);
     }
 
     /**
      * Delete notification
      */
     deleteNotification(notificationId) {
-        if (!this.db) {
-            return Promise.resolve();
-        }
-        return new Promise((resolve, reject) => {
-            this.db.run('DELETE FROM notifications WHERE id = ?', [notificationId], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
+        return Promise.resolve();
     }
 
     /**
      * Delete all notifications for a todo
      */
     deleteNotificationsForTodo(todoId) {
-        if (!this.db) {
-            return Promise.resolve();
-        }
-        return new Promise((resolve, reject) => {
-            this.db.run('DELETE FROM notifications WHERE todo_id = ?', [todoId], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
+        return Promise.resolve();
     }
 }
 

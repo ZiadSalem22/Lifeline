@@ -1,5 +1,6 @@
 const { AppDataSource } = require('../infra/db/data-source');
 const logger = require('../config/logger');
+const { getAuth0RolesFromClaims, getPrimaryRoleFromRoles } = require('../auth/auth0Claims');
 
 class TypeORMUserRepository {
   _repo() {
@@ -17,19 +18,31 @@ class TypeORMUserRepository {
       return null;
     }
 
+    const safeEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
+
     if (!AppDataSource.isInitialized) {
       logger.warn('[UserRepo] AppDataSource not initialized at upsert time');
     }
+
     return await AppDataSource.manager.transaction(async (manager) => {
       const repo = manager.getRepository('User');
       const existing = await repo.findOne({ where: { id: sub } });
+
       if (existing) {
-        existing.email = email || existing.email || null;
+        existing.email = safeEmail;
         existing.name = name || existing.name || null;
         existing.picture = picture || existing.picture || null;
         return await repo.save(existing);
       }
-      const user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, auth0_sub: sub });
+
+      const user = repo.create({
+        id: sub,
+        email: safeEmail,
+        name: name || null,
+        picture: picture || null,
+        auth0_sub: sub
+      });
+
       return await repo.save(user);
     });
   }
@@ -37,27 +50,38 @@ class TypeORMUserRepository {
   async ensureUserFromAuth0Claims(claims) {
     const { sub, email, name, picture } = claims || {};
     if (!sub) return null;
+
+    const safeEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
+
     // Role mapping
-    const roles = (claims['https://lifeline.app/roles'] || []);
-    let role = 'free';
-    if (Array.isArray(roles)) {
-      if (roles.includes('admin')) role = 'admin';
-      else if (roles.includes('paid')) role = 'paid';
-    }
-    // Always set subscription_status to 'none' for now
+    const roles = getAuth0RolesFromClaims(claims);
+    const role = getPrimaryRoleFromRoles(roles);
+
     const subscription_status = 'none';
+
     return await AppDataSource.manager.transaction(async (manager) => {
       const repo = manager.getRepository('User');
       let user = await repo.findOne({ where: { id: sub } });
+
       if (user) {
-        user.email = email || user.email || null;
+        user.email = safeEmail;
         user.name = name || user.name || null;
         user.picture = picture || user.picture || null;
         user.role = role;
         user.subscription_status = subscription_status;
         return await repo.save(user);
       }
-      user = repo.create({ id: sub, email: email || null, name: name || null, picture: picture || null, role, subscription_status, auth0_sub: sub });
+
+      user = repo.create({
+        id: sub,
+        email: safeEmail,
+        name: name || null,
+        picture: picture || null,
+        role,
+        subscription_status,
+        auth0_sub: sub
+      });
+
       return await repo.save(user);
     });
   }

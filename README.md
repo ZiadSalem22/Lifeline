@@ -157,11 +157,28 @@ Guest sessions (no `Authorization` header) do not create surrogate users and nev
 
 Use `/api/public/info` to detect server availability without authentication.
 
+### Production Deploy Branch
+
+Production deployment now uses a deploy-branch CD model.
+
+- `main` remains the normal development branch.
+- `deploy` is the production deployment branch.
+- pushes to `deploy` trigger the VPS deployment workflow in [.github/workflows/deploy-production.yml](.github/workflows/deploy-production.yml)
+- production runtime secrets remain on the VPS in `/opt/lifeline/shared/.env.production`
+
+See [docs/operations/DEPLOY_BRANCH_CD.md](docs/operations/DEPLOY_BRANCH_CD.md) for the operator flow, required deployment secrets, and rollback notes.
+
 ---
 
 ## 📖 Documentation
 
-- See `README.md`, `IMPLEMENTATION_SUMMARY.md`, `INTEGRATION_COMPLETE.md`, and `TESTING_CHECKLIST.md` for full details on features, architecture, and test coverage.
+- See [docs/README.md](docs/README.md) for the current documentation entrypoint.
+- Active operational guides live under [docs/operations](docs/operations).
+- Feature documentation lives under [docs/features](docs/features).
+- Architecture and design material lives under [docs/architecture](docs/architecture).
+- Reference material lives under [docs/reference](docs/reference).
+- Historical phase and cleanup artifacts live under [docs/issues](docs/issues).
+- Archived legacy integration documents live under [docs/archive](docs/archive).
 
 ---
 
@@ -229,7 +246,7 @@ cd backend
 npm test
 ```
 
-There is a unit test suite focused on domain logic and repositories; see `TESTING_CHECKLIST.md` for scenarios.
+There is a unit test suite focused on domain logic and repositories; see [docs/reference/TESTING_CHECKLIST.md](docs/reference/TESTING_CHECKLIST.md) for scenarios.
 
 ---
 
@@ -265,7 +282,7 @@ cd backend
 npm test
 ```
 
-All tests must pass with no user code logs or unhandled errors. See `TESTING_CHECKLIST.md` for detailed scenarios.
+All tests must pass with no user code logs or unhandled errors. See [docs/reference/TESTING_CHECKLIST.md](docs/reference/TESTING_CHECKLIST.md) for detailed scenarios.
 
 —
 
@@ -392,7 +409,7 @@ Tell me which of the above you want me to add next and I will implement it.
 
 - **Backend Scripts:**
   - Utility scripts for DB initialization, testing, JWT inspection, and admin promotion (see `backend/scripts/`).
-  - Example: `promote-admin.js` for RBAC admin elevation, `test-mssql-connection.js` for DB health checks.
+  - Example: `promote-admin.js` for RBAC admin elevation, `init-db.js` for local PostgreSQL bootstrap.
 
 - **Frontend Advanced Features:**
   - **Advanced Search:** Multi-criteria search, month preload on empty filters, double-click/tap to navigate to task date, and client fallbacks.

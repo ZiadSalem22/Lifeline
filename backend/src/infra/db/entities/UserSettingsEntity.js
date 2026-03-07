@@ -4,43 +4,46 @@ module.exports = new EntitySchema({
   name: 'UserSettings',
   tableName: 'user_settings',
   columns: {
-    id: {
-      type: 'uniqueidentifier',
-      primary: true,
-      generated: 'uuid',
-      nullable: false,
-    },
     user_id: {
-      type: 'nvarchar',
-      length: 64,
+      type: 'text',
+      primary: true,
       nullable: false,
     },
     theme: {
-      type: 'nvarchar',
-      length: 32,
-      nullable: true,
+      type: 'text',
+      nullable: false,
+      default: 'system',
     },
     locale: {
-      type: 'nvarchar',
-      length: 10,
-      nullable: true,
+      type: 'text',
+      nullable: false,
+      default: 'en',
     },
     layout: {
-      type: 'nvarchar',
-      length: 'max',
-      nullable: true,
+      type: 'jsonb',
+      nullable: false,
+      default: () => "'{}'::jsonb",
     },
     created_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       createDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     },
     updated_at: {
-      type: 'datetime',
+      type: 'timestamptz',
       updateDate: true,
       nullable: false,
-      default: () => 'GETDATE()'
+      default: () => 'now()'
     }
-  }
+  },
+  relations: {
+    user: {
+      type: 'one-to-one',
+      target: 'User',
+      joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+      inverseSide: 'settings',
+      onDelete: 'CASCADE',
+    },
+  },
 });

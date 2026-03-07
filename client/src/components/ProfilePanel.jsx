@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
+import { useLoading } from '../context/LoadingContext';
 
 export default function ProfilePanel() {
   const { isAuthenticated } = useAuth();
@@ -16,7 +17,6 @@ export default function ProfilePanel() {
     phone: '',
     country: '',
     city: '',
-    birthday: '',
     avatar_url: ''
   });
 
@@ -38,7 +38,6 @@ export default function ProfilePanel() {
             phone: p.phone || '',
             country: p.country || '',
             city: p.city || '',
-            birthday: p.birthday || '',
             avatar_url: p.avatar_url || ''
           });
         }
@@ -51,6 +50,8 @@ export default function ProfilePanel() {
     load();
     return () => { mounted = false; };
   }, [isAuthenticated, fetchWithAuth]);
+
+  const { isLoading: globalLoading } = useLoading();
 
   const onChange = (field) => (e) => setProfile(prev => ({ ...prev, [field]: e.target.value }));
 
@@ -72,7 +73,6 @@ export default function ProfilePanel() {
         phone: profile.phone || null,
         country: profile.country || null,
         city: profile.city || null,
-        birthday: profile.birthday || null,
         avatar_url: profile.avatar_url || null,
         timezone
       };
@@ -100,7 +100,6 @@ export default function ProfilePanel() {
           phone: p.phone || prev.phone,
           country: p.country || prev.country,
           city: p.city || prev.city,
-          birthday: p.birthday || prev.birthday,
           avatar_url: p.avatar_url || prev.avatar_url
         }));
       } catch (refreshErr) {
@@ -138,7 +137,9 @@ export default function ProfilePanel() {
         </div>
 
         {loading ? (
-          <div>Loading…</div>
+          (!globalLoading) ? (
+            <div>Loading…</div>
+          ) : null
         ) : (
           <form onSubmit={onSave}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -148,7 +149,6 @@ export default function ProfilePanel() {
               <Field label="Phone" value={profile.phone} onChange={onChange('phone')} helper="Optional" />
               <Field label="Country" value={profile.country} onChange={onChange('country')} helper="Optional" />
               <Field label="City" value={profile.city} onChange={onChange('city')} helper="Optional" />
-              <Field label="Birthday" value={profile.birthday} onChange={onChange('birthday')} placeholder="YYYY-MM-DD" helper="Optional" />
               <Field label="Avatar URL" value={profile.avatar_url} onChange={onChange('avatar_url')} helper="Direct image URL">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt="avatar preview" style={{ width:40, height:40, borderRadius:'50%', objectFit:'cover', border:'1px solid var(--color-border)' }} />
@@ -158,7 +158,7 @@ export default function ProfilePanel() {
             </div>
             {error && <div style={{ color:'var(--color-danger)', fontSize:'0.85rem', marginTop:10 }}>{error}</div>}
             <div style={{ marginTop:16 }}>
-              <button type="submit" disabled={saving} style={saveBtnStyle}>{saving ? 'Saving…' : 'Save Changes'}</button>
+              <button type="submit" disabled={saving || globalLoading} style={{ ...saveBtnStyle, cursor: (saving || globalLoading) ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving…' : (globalLoading ? 'Please wait…' : 'Save Changes')}</button>
             </div>
           </form>
         )}

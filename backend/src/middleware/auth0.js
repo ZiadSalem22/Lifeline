@@ -1,13 +1,30 @@
 const { auth } = require('express-oauth2-jwt-bearer');
 const logger = require('../config/logger');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Development bypass: when AUTH_DISABLED=1 the JWT check becomes a no-op.
+if (process.env.AUTH_DISABLED === '1') {
+  module.exports = { checkJwt: (req, res, next) => next() };
+  return;
+}
+
 // Required env vars
 // AUTH0_DOMAIN should be just the domain (without protocol or trailing slash)
 // AUTH0_AUDIENCE should match the access token's aud claim (API identifier or client id)
-const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN?.replace(/^https?:\/\//, '').replace(/\/$/, '') || 'dev-1b4upl01bjz8l8li.us.auth0.com';
+const configuredDomain = process.env.AUTH0_DOMAIN?.replace(/^https?:\/\//, '').replace(/\/$/, '') || '';
+const configuredAudience = process.env.AUTH0_AUDIENCE || '';
+const configuredAudienceAlt = process.env.AUTH0_AUDIENCE_ALT || '';
+
+if (isProduction && (!configuredDomain || !(configuredAudience || configuredAudienceAlt).trim())) {
+  throw new Error('AUTH0_DOMAIN and AUTH0_AUDIENCE (or AUTH0_AUDIENCE_ALT) are required when AUTH_DISABLED is not enabled in production');
+}
+
+const AUTH0_DOMAIN = configuredDomain || 'dev-1b4upl01bjz8l8li.us.auth0.com';
 // Support multiple audiences via comma-separated list or AUTH0_AUDIENCE_ALT
-const audRaw = (process.env.AUTH0_AUDIENCE || '5THMMyQGm2mIbpLnCVW1RpXGIyd1G9jr').split(',');
-const audAlt = (process.env.AUTH0_AUDIENCE_ALT || '').split(',');
+// Default to the API identifier so the backend validates API-scoped tokens by default
+const audRaw = (configuredAudience || 'https://lifeline-api').split(',');
+const audAlt = configuredAudienceAlt.split(',');
 const AUTH0_AUDIENCE = [...audRaw, ...audAlt].map(a => a.trim()).filter(Boolean);
 
 // Build issuer URL for library (must include protocol, trailing slash optional but consistent)

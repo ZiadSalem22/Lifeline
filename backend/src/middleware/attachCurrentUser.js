@@ -1,27 +1,53 @@
 // backend/src/middleware/attachCurrentUser.js
 
-// Middleware that upserts the user into MSSQL via TypeORM and
+// Middleware that upserts the user into PostgreSQL via TypeORM and
 // attaches the current user record to req.currentUser.
 
 const userRepo = require('../infrastructure/TypeORMUserRepository');
 const userProfileRepo = require('../infrastructure/TypeORMUserProfileRepository');
 const userSettingsRepo = require('../infrastructure/TypeORMUserSettingsRepository');
 const logger = require('../config/logger');
+const { getAuth0RolesFromClaims, getPrimaryRoleFromRoles } = require('../auth/auth0Claims');
 
 
 async function attachCurrentUser(req, res, next) {
   try {
-    // Dev bypass: when AUTH_DISABLED=1, attach a deterministic local guest user
+    // Dev bypass: when AUTH_DISABLED=1, attach a deterministic local user.
+    // If AUTH_LOCAL_USER_ID points at a real user, load that user from PostgreSQL.
     if (process.env.AUTH_DISABLED === '1') {
+      const localUserId = process.env.AUTH_LOCAL_USER_ID || 'guest-local';
+      let user = null;
+      let profile = null;
+      let settings = null;
+      try {
+        user = await userRepo.findById(localUserId);
+        if (user) {
+          profile = await userProfileRepo.findByUserId(localUserId);
+          settings = await userSettingsRepo.findByUserId(localUserId);
+        }
+      } catch (_) {}
       req.currentUser = {
-        id: 'guest-local',
-        email: null,
-        name: 'Local Guest',
-        role: 'free',
-        roles: ['free'],
-        subscription_status: null,
-        profile: { onboarding_completed: false },
-        settings: null,
+        id: user?.id || localUserId,
+        email: user?.email || null,
+        name: user?.name || 'Local Guest',
+        picture: user?.picture || null,
+        role: user?.role || 'free',
+        roles: [user?.role || 'free'],
+        subscription_status: user?.subscription_status || 'none',
+        profile: profile
+          ? {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            phone: profile.phone,
+            country: profile.country,
+            city: profile.city,
+            timezone: profile.timezone,
+            avatar_url: profile.avatar_url,
+            start_day_of_week: profile.start_day_of_week,
+            onboarding_completed: !!profile.onboarding_completed,
+          }
+          : { onboarding_completed: true, start_day_of_week: 'Monday' },
+        settings: settings || null,
       };
       return next();
     }
@@ -40,15 +66,8 @@ async function attachCurrentUser(req, res, next) {
       return next();
     }
     // Auth0 roles as source of truth
-    const customClaims = claims || {};
-    const roles = customClaims["https://lifeline-api/roles"] || [];
-    // First valid role or 'free'
-    let role = 'free';
-    if (Array.isArray(roles)) {
-      if (roles.includes('admin')) role = 'admin';
-      else if (roles.includes('paid')) role = 'paid';
-      else if (roles.includes('free')) role = 'free';
-    }
+    const roles = getAuth0RolesFromClaims(claims);
+    const role = getPrimaryRoleFromRoles(roles);
     let user = await userRepo.ensureUserFromAuth0Claims(claims);
     if (!user) {
       req.currentUser = { id: sub, email: email || null, roles, role };
@@ -80,13 +99,16 @@ async function attachCurrentUser(req, res, next) {
       subscription_status: user.subscription_status,
       profile: profile
         ? {
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            phone: profile.phone,
-            country: profile.country,
-            timezone: profile.timezone,
-            onboarding_completed: !!profile.onboarding_completed
-          }
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          phone: profile.phone,
+          country: profile.country,
+          city: profile.city,
+          timezone: profile.timezone,
+          avatar_url: profile.avatar_url,
+          start_day_of_week: profile.start_day_of_week,
+          onboarding_completed: !!profile.onboarding_completed
+        }
         : { onboarding_completed: false }
       ,
       settings: settings || null
@@ -94,8 +116,10 @@ async function attachCurrentUser(req, res, next) {
     return next();
   } catch (err) {
     logger.error('[attachCurrentUser] upsert or profile load failed', { error: err.message });
-    req.currentUser = { id: req.auth?.payload?.sub, email: req.auth?.payload?.email || null };
-    return next();
+    // Critical Change: Do NOT swallow DB errors. Return 500.
+    // If we swallow errors, the frontend receives a partial user object and thinks "Onboarding Incomplete".
+    // Better to show an error page than to break the user account state.
+    res.status(500).json({ error: 'Internal Server Error (Profile Load Failed)' });
   }
 }
 

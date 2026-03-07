@@ -1,8 +1,9 @@
 import React, { useState, useRef, useMemo, useCallback, memo, useEffect } from 'react';
-import { createTag } from '../utils/api';
+import { useLoading } from '../context/LoadingContext';
+import { createTag, getTodoByNumber } from '../utils/api';
 import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { format, addDays } from 'date-fns';
+import { format, addDays, isValid } from 'date-fns';
 import * as guestApi from '../utils/guestApi';
 import { useGuestStorage } from '../hooks/useGuestStorage';
 import { useApi } from '../hooks/useApi';
@@ -56,7 +57,7 @@ function AppInner() {
   } = useTodos();
 
   // Guest data reset handled inside AuthProvider now
-  
+
   // Onboarding redirect based on profile
   React.useEffect(() => {
     // Only redirect after we've resolved identity to avoid competing redirects
@@ -68,12 +69,17 @@ function AppInner() {
     }
   }, [currentUser, navigate, checkedIdentity, location]);
 
-    // Modal state for new tag creation
-    const [showNewTagModal, setShowNewTagModal] = useState(false);
-    const [newTagName, setNewTagName] = useState('');
-    const [newTagColor, setNewTagColor] = useState('#6C63FF');
+  // Modal state for new tag creation
+  const [showNewTagModal, setShowNewTagModal] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6C63FF');
   const [inputValue, setInputValue] = useState('');
   const [inputDescription, setInputDescription] = useState('');
+  const [loadTaskNumber, setLoadTaskNumber] = useState('');
+  const [loadTaskError, setLoadTaskError] = useState('');
+  const [isLoadingTask, setIsLoadingTask] = useState(false);
+  const loadTaskInputRef = useRef(null);
+  const [prefilling, setPrefilling] = useState(false);
   const fonts = [
     { name: 'Inter', value: '"Inter", sans-serif' },
     { name: 'DM Sans', value: '"DM Sans", sans-serif' },
@@ -100,8 +106,72 @@ function AppInner() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const inputRef = useRef(null);
+
+
+  const clearTemplate = useCallback(() => {
+    setLoadTaskNumber('');
+    setLoadTaskError('');
+    setInputValue('');
+    setInputDescription('');
+    setSelectedTags([]);
+    setIsFlagged(false);
+    setPriority('medium');
+    setSubtasks([]);
+    setHours(0);
+    setMinutes(0);
+    setDueTime('');
+    setScheduleDate('');
+    setCurrentRecurrence(null);
+  }, []);
+
+  const handleLoadTemplate = useCallback(async () => {
+    setLoadTaskError('');
+    if (!loadTaskNumber || isNaN(parseInt(loadTaskNumber, 10))) {
+      setLoadTaskError('Enter a valid task number');
+      return;
+    }
+    setIsLoadingTask(true);
+    try {
+      const data = await getTodoByNumber(parseInt(loadTaskNumber, 10), fetchWithAuth);
+      if (!data) {
+        setLoadTaskError('No task found with that number.');
+        setIsLoadingTask(false);
+        return;
+      }
+      if (data.error) {
+        setLoadTaskError(data.error || 'No task found with that number.');
+        setIsLoadingTask(false);
+        return;
+      }
+      const todo = data;
+      // Visual smoothing: briefly set prefilling to trigger a subtle transition
+      setPrefilling(true);
+      // Populate form fields
+      setInputValue(todo.title || '');
+      setInputDescription(todo.description || '');
+      setSelectedTags(todo.tags || []);
+      setIsFlagged(!!todo.is_flagged || !!todo.isFlagged);
+      setPriority(todo.priority || 'medium');
+      setSubtasks(todo.subtasks || []);
+      setHours(Math.floor((todo.duration || 0) / 60));
+      setMinutes((todo.duration || 0) % 60);
+      // Explicitly RESET time and recurrence as per user requirement
+      setDueTime('');
+      // Do NOT copy the original task's date — treat the template as new.
+      // Clearing scheduleDate ensures the created task will use the current/selected date.
+      setScheduleDate('');
+      setCurrentRecurrence(null);
+      // Clear loading & reset prefilling state shortly after
+      setIsLoadingTask(false);
+      setTimeout(() => setPrefilling(false), 180);
+    } catch (err) {
+      setLoadTaskError(err?.message || 'Failed to load task');
+      setIsLoadingTask(false);
+      setPrefilling(false);
+    }
+  }, [loadTaskNumber, fetchWithAuth]);
   // navigate is declared earlier to avoid temporal dead zone in effects
-  
+
   // selectedFilterTags provided by TodoProvider
   // sortOption managed by TodoProvider
   const [editingTodoId, setEditingTodoId] = useState(null);
@@ -114,6 +184,8 @@ function AppInner() {
   const [savedMessage, setSavedMessage] = useState('');
   const [draggedTodoId, setDraggedTodoId] = useState(null);
   const [expandedTodoId, setExpandedTodoId] = useState(null);
+  const [isAddCardOpen, setIsAddCardOpen] = useState(todos.length === 0);
+  const addCardRef = useRef(null);
   // Removed hasLoggedToken (token logging now unnecessary in App layer)
 
   // Toggle expanded state for a given todo card
@@ -129,6 +201,16 @@ function AppInner() {
 
   const handleThemeChange = useCallback((newTheme) => { changeTheme(newTheme); }, [changeTheme]);
   const handleFontChange = useCallback((newFont) => { /* future: font provider */ }, []);
+
+  // Autofocus the task-number input when the Create Task panel opens
+  useEffect(() => {
+    if (isAddCardOpen) {
+      // small timeout to wait for render
+      setTimeout(() => {
+        loadTaskInputRef.current?.focus();
+      }, 40);
+    }
+  }, [isAddCardOpen]);
 
 
   // Removed legacy manual data/theme/notification initialization; handled by providers (AuthProvider, TodoProvider, ThemeProvider, NotificationPoller)
@@ -148,8 +230,8 @@ function AppInner() {
       const effectiveDate = scheduleDate && scheduleDate.includes('-')
         ? scheduleDate
         : (selectedDate === 'today' ? todayStr
-         : (selectedDate === 'tomorrow' ? format(addDays(new Date(), 1), 'yyyy-MM-dd')
-          : (typeof selectedDate === 'string' && selectedDate.includes('-') ? selectedDate : '')));
+          : (selectedDate === 'tomorrow' ? format(addDays(new Date(), 1), 'yyyy-MM-dd')
+            : (typeof selectedDate === 'string' && selectedDate.includes('-') ? selectedDate : '')));
       await createTodo({
         title: inputValue.trim(),
         dueDate: effectiveDate || null,
@@ -175,11 +257,44 @@ function AppInner() {
       setCurrentRecurrence(null);
       setShowTagInput(false);
       inputRef.current?.focus();
+      // Close the add card after successful add (if tasks now exist)
+      try { setIsAddCardOpen(false); } catch (_) { }
     } catch (error) {
       setAddTodoError(error?.message || 'Failed to add todo');
       console.error('Failed to add todo', error);
     }
-  }, [inputValue, inputDescription, scheduleDate, selectedDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, currentRecurrence, createTodo]);
+  }, [inputValue, inputDescription, scheduleDate, selectedDate, selectedTags, isFlagged, hours, minutes, priority, dueTime, subtasks, currentRecurrence, createTodo, setIsAddCardOpen]);
+
+  // Auto-open/close add card based on todos count
+  useEffect(() => {
+    if (!Array.isArray(todos)) return;
+    if (todos.length === 0) {
+      setIsAddCardOpen(true);
+    } else {
+      setIsAddCardOpen(false);
+    }
+  }, [todos.length]);
+
+  // Outside click & Escape handling for add card
+  useEffect(() => {
+    if (!isAddCardOpen) return;
+    function onDown(e) {
+      if (addCardRef.current && !addCardRef.current.contains(e.target)) {
+        setIsAddCardOpen(false);
+      }
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setIsAddCardOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isAddCardOpen]);
 
   const handleUpdateTodo = useCallback(async (id, updates) => {
     try {
@@ -227,6 +342,8 @@ function AppInner() {
     setEditingTodoTitle('');
     setEditingTodoDescription('');
   }, []);
+
+  const { isLoading: globalLoading } = useLoading();
 
   const handleToggle = useCallback(async (id) => {
     try {
@@ -327,35 +444,70 @@ function AppInner() {
     // Check if selectedDate is a valid date string before creating a Date object
     if (selectedDate && typeof selectedDate === 'string' && selectedDate.includes('-')) {
       const date = new Date(selectedDate + 'T00:00:00');
-      return format(date, 'EEEE, MMMM d');
+      // Defensive check: ensure date is valid before formatting
+      if (isValid(date)) {
+        return format(date, 'EEEE, MMMM d');
+      }
     }
     // Handle case where selectedDate is a Date object
     if (selectedDate instanceof Date) {
-      return format(selectedDate, 'EEEE, MMMM d');
+      if (isValid(selectedDate)) {
+        return format(selectedDate, 'EEEE, MMMM d');
+      }
     }
     return 'All Tasks'; // Fallback title
   }, [searchQuery, selectedDate]);
   const searchActive = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
 
-  const handleGoToDay = useCallback((dateString) => {
+  const handleGoToDay = useCallback((dateString, taskId) => {
     if (!dateString) return;
+
+    // Normalize dateString to YYYY-MM-DD if it comes in as ISO
+    let cleanDate = dateString;
+    if (typeof cleanDate === 'string' && cleanDate.includes('T')) {
+      cleanDate = cleanDate.split('T')[0];
+    }
+
     const today = format(new Date(), 'yyyy-MM-dd');
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-    if (dateString === today) handleSelectDate('today');
-    else if (dateString === tomorrow) handleSelectDate('tomorrow');
-    else handleSelectDate(dateString);
-    const token = (dateString === today) ? 'today' : (dateString === tomorrow) ? 'tomorrow' : dateString;
-    navigate(`/day/${token}`);
-  }, [navigate, handleSelectDate]);
+
+    // Determine the route token (today, tomorrow, or YYYY-MM-DD)
+    const token = (cleanDate === today) ? 'today' : (cleanDate === tomorrow) ? 'tomorrow' : cleanDate;
+
+    // Construct query params if taskId exists
+    const search = taskId ? `?taskId=${taskId}` : '';
+
+    // Navigate only - let the URL listener sync the state
+    console.log('[App] Navigating to:', `/day/${token}${search}`);
+    navigate(`/day/${token}${search}`);
+  }, [navigate]);
+
+  // Deep linking: Open task if taskId is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const taskId = params.get('taskId');
+    if (taskId && todos.length > 0) {
+      const todo = todos.find(t => t.id === taskId);
+      if (todo) {
+        handleStartEdit(todo);
+        // Optional: clear param to avoid re-opening on refresh, but keeping it allows bookmarking.
+        // For now, we leave it.
+      }
+    }
+  }, [location.search, todos, handleStartEdit]);
 
   // Keep selectedDate in sync with the URL when visiting /day/:day
   React.useEffect(() => {
     const m = location.pathname.match(/^\/day\/(today|tomorrow|\d{4}-\d{2}-\d{2})$/);
     if (m) {
       const token = m[1];
+      console.log('[App] URL Sync - Found token:', token, 'Current selectedDate:', selectedDate);
       if (selectedDate !== token) {
+        console.log('[App] UPDATING selectedDate to:', token);
         handleSelectDate(token);
       }
+    } else {
+      // console.log('[App] URL Sync - No match for:', location.pathname);
     }
   }, [location.pathname, selectedDate, handleSelectDate]);
 
@@ -364,9 +516,27 @@ function AppInner() {
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
     const dateFiltered = todos.filter(todo => {
       const due = todo.dueDate;
-      if (selectedDate === 'tomorrow') return !!due && due === tomorrow;
-      if (selectedDate === 'today') return !!due && due === today;
-      if (typeof selectedDate === 'string' && selectedDate.includes('-')) return !!due && due === selectedDate;
+      // exact matches
+      if (selectedDate === 'tomorrow' && due === tomorrow) return true;
+      if (selectedDate === 'today' && due === today) return true;
+      if (typeof selectedDate === 'string' && selectedDate.includes('-') && due === selectedDate) return true;
+      // dateRange recurrence that covers the selected date
+      try {
+        if (todo.recurrence && todo.recurrence.mode === 'dateRange') {
+          const start = todo.recurrence.startDate || due;
+          const end = todo.recurrence.endDate || due;
+          if (start && end) {
+            let sel = selectedDate;
+            if (selectedDate === 'today') sel = today;
+            if (selectedDate === 'tomorrow') sel = tomorrow;
+            if (typeof sel === 'string' && sel.includes('-') && sel >= start && sel <= end) return true;
+          }
+        }
+      } catch (e) {
+        // ignore and continue
+      }
+      // otherwise exclude when date-specific view
+      if (selectedDate === 'today' || selectedDate === 'tomorrow' || (typeof selectedDate === 'string' && selectedDate.includes('-'))) return false;
       return true;
     });
     return dateFiltered.filter(t => t.isCompleted).length;
@@ -388,7 +558,7 @@ function AppInner() {
 
   const sidebarProps = {
     selectedDate,
-    onSelectDate: handleSelectDate,
+    onSelectDate: (d) => handleGoToDay(d),
     isOpen: isMobileSidebarOpen,
     onClose: () => setIsMobileSidebarOpen(false),
     searchQuery,
@@ -459,7 +629,7 @@ function AppInner() {
   );
 
   const renderHeroSection = () => (
-        <div className="fade-in-slide-down home-hero app-hero-section">
+    <div className="fade-in-slide-down home-hero app-hero-section">
       <div className="header-content">
         <h1 className="header-title">{title}</h1>
         {durationString && (
@@ -468,7 +638,7 @@ function AppInner() {
       </div>
 
       <div className="home-progress-row">
-            <p className="home-progress-text app-progress-text">
+        <p className="home-progress-text app-progress-text">
           {completedCount} of {filteredTodos.length} completed
         </p>
         {filteredTodos.length > 0 && (
@@ -535,382 +705,74 @@ function AppInner() {
     </div>
   );
 
+
+  // Clear search when navigating away from search page
+  useEffect(() => {
+    if (location.pathname !== '/search' && searchQuery.trim().length > 0) {
+      setSearchQuery('');
+    }
+  }, [location.pathname, setSearchQuery]);
+
+  // Auto-navigate to search page when typing in top bar
+  useEffect(() => {
+    if (searchQuery.trim().length > 0 && location.pathname !== '/search') {
+      navigate('/search');
+    }
+  }, [searchQuery]); // Removed location.pathname/navigate to avoid loops
+
   if (loading || !checkedIdentity) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
-        {/* <CosmicBackground /> */}
-        <div className="fade-in-scale" style={{ textAlign: 'center' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              border: '4px solid var(--color-surface)',
-              borderTopColor: 'var(--color-primary)',
-              borderRadius: '50%',
-              margin: '0 auto 16px',
-              animation: 'spin 1s linear infinite'
-            }}
-          />
-          <p style={{ color: 'var(--color-text)', fontWeight: 600 }}>Loading your tasks...</p>
+    // If global overlay is active, let it present the loading UI.
+    // Only render the local centered loader when the global overlay is NOT active.
+    if (!globalLoading) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'transparent' }}>
+          {/* <CosmicBackground /> */}
+          <div className="fade-in-scale" style={{ textAlign: 'center' }}>
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                border: '4px solid var(--color-surface)',
+                borderTopColor: 'var(--color-primary)',
+                borderRadius: '50%',
+                margin: '0 auto 16px',
+                animation: 'spin 1s linear infinite'
+              }}
+            />
+            <p style={{ color: 'var(--color-text)', fontWeight: 600 }}>Loading your tasks...</p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   }
 
-  // Use react-router routes so the URL controls the view
+
+
+
   return (
     <>
       <StatusBanner />
       <NotificationPoller onNotify={() => { /* future: show notification toast */ }} />
       <Routes>
+        <Route path="/search" element={
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              externalQuery: searchQuery,
+              fetchWithAuth,
+              guestMode,
+              guestTodos: todos,
+              guestTags: tags,
+              onOpenTodo: handleStartEdit, // Reuse main app edit handler
+              onGoToDay: handleGoToDay
+            }}
+          />
+        } />
         {/* Day-specific route mirrors the home dashboard but with URL reflecting the selected day */}
         <Route path="/day/:day" element={
-            <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
-            {guestMode && (
-              <div style={{ marginTop: '8px', marginBottom: '16px' }}>
-                <div style={{
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                  padding: '12px 16px',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Hello guest</div>
-                  <div style={{ fontSize: '0.95rem' }}>
-                    You are using Guest Mode. Your tasks and tags are stored locally on this browser. Sign in to sync across devices.
-                  </div>
-                </div>
-              </div>
-            )}
-              {/* Reuse the same dashboard content by rendering the same JSX as the home route below */}
-              {/* Saved toast */}
-            {savedMessage && (
-              <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
-                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', color: 'var(--color-text)', fontWeight: 600 }}>
-                  {savedMessage}
-                </div>
-              </div>
-                )}
-              <div
-                className="fade-in-slide-down"
-                style={{ marginBottom: '48px' }}
-              >
-              <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                <h1 className="header-title" style={{
-                  fontFamily: 'var(--font-family-heading)',
-                  fontWeight: 'bold',
-                  color: 'var(--color-text)',
-                  margin: 0
-                }}>
-                  {title}
-                </h1>
-                {durationString && (
-                  <span
-                    className="scale-in"
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: '9999px',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-primary)',
-                      border: '1px solid var(--color-border)'
-                    }}
-                  >
-                    {durationString}
-                  </span>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-base)', margin: 0 }}>
-                  {completedCount} of {filteredTodos.length} completed
-                </p>
-                {filteredTodos.length > 0 && (
-                  <div style={{ flex: 1, maxWidth: '300px' }}>
-                    <div style={{
-                      height: '6px',
-                      background: 'var(--color-surface)',
-                      borderRadius: '9999px',
-                      overflow: 'hidden'
-                    }}>
-                      <div
-                        className="progress-bar-fill"
-                        style={{
-                          height: '100%',
-                          background: 'var(--color-primary)',
-                          borderRadius: '9999px',
-                          width: `${progress}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* When searching: show results immediately below header; otherwise show filters first */}
-              {!searchActive && (
-                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                {/* Tag Filter */}
-                {tags.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
-                    {tags.map(tag => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedFilterTags(prev =>
-                            prev.includes(tag.id)
-                              ? prev.filter(id => id !== tag.id)
-                              : [...prev, tag.id]
-                          );
-                        }}
-                        style={{
-                          padding: '4px 12px',
-                          borderRadius: '8px',
-                          fontSize: '0.75rem',
-                          border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
-                          background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
-                          color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
-                    {selectedFilterTags.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFilterTags([])}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: '0.75rem',
-                          color: 'var(--color-text-muted)',
-                          background: 'transparent',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '8px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
-                
-                {/* Sort Dropdown */}
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
-                  style={{
-                    padding: '6px 12px',
-                    paddingRight: '32px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
-                  <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
-                  <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
-                  <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
-                </select>
-                
-                </div>
-              )}
-            </div>
-            {/* Task List (search results elevated if searching) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
-              {filteredTodos.length === 0 && (
-                <div
-                  className="fade-in-scale-up"
-                  style={{
-                    textAlign: 'center',
-                    padding: '80px 0'
-                  }}
-                >
-                    <div
-                      className="rotate-scale-infinite"
-                      style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
-                    >
-                      <SparklesIcon />
-                    </div>
-                    <h3 style={{
-                      fontSize: '1.25rem',
-                      fontFamily: 'var(--font-family-heading)',
-                      fontWeight: '600',
-                      color: 'var(--color-text)',
-                      marginBottom: '8px'
-                    }}>
-                      All clear!
-                    </h3>
-                    <p style={{
-                      color: 'var(--color-text-muted)',
-                      fontFamily: 'var(--font-family-base)',
-                      margin: 0
-                    }}>
-                      No tasks for {title.toLowerCase()}
-                    </p>
-                  </div>
-                )}
-
-                {orderedTodos.map((todo, index) => (
-                  <TaskCard
-                    key={todo.id}
-                    todo={todo}
-                    index={index}
-                    theme={theme}
-                    onToggle={handleToggle}
-                    onFlag={handleFlag}
-                    onDelete={handleDelete}
-                    formatDuration={formatDuration}
-                    showDate={!!searchQuery.trim()}
-                    onGoToDay={handleGoToDay}
-                    isEditing={editingTodoId === todo.id}
-                    editingTitle={editingTodoTitle}
-                    editingDescription={editingTodoDescription}
-                    editingTags={editingTodoTags}
-                    setEditingTags={setEditingTodoTags}
-                    editingSubtasks={editingTodoSubtasks}
-                    setEditingSubtasks={setEditingTodoSubtasks}
-                    editingPriority={editingTodoPriority}
-                    setEditingPriority={setEditingTodoPriority}
-                    editingDuration={editingTodoDuration}
-                    setEditingDuration={setEditingTodoDuration}
-                    allTags={tags}
-                    onStartEdit={handleStartEdit}
-                    onSaveEdit={handleSaveEdit}
-                    onCancelEdit={handleCancelEdit}
-                    setEditingTitle={setEditingTodoTitle}
-                    setEditingDescription={setEditingTodoDescription}
-                    onUpdatePriority={handleUpdatePriority}
-                    onUpdateTodo={handleUpdateTodo}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    isExpanded={expandedTodoId === todo.id}
-                    onToggleExpand={() => toggleExpand(todo.id)}
-                    setTodos={setTodos}
-                    selectedFilterTags={selectedFilterTags}
-                    setSelectedFilterTags={setSelectedFilterTags}
-                  />
-                ))}
-
-              </div>
-            {/* Add Task Form hidden when searching */}
-            {!searchActive && (
-              <form
-              className="add-task-form add-task-form-animation"
-              onSubmit={handleAdd}
-              style={{
-                marginTop: '32px',
-                marginBottom: '40px',
-                background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                borderRadius: '20px',
-                padding: '28px 28px 24px',
-                border: '1px solid var(--color-border)',
-                boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-                transition: 'box-shadow 0.3s ease',
-              }}
-            >
-              {/* Title on top, then description, then centered controls */}
-              <div style={{ marginBottom: '12px' }}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Title — What do you want to accomplish?"
-                  style={{
-                    width: '100%',
-                    background: 'var(--color-surface-light)',
-                    color: 'var(--color-text)',
-                    fontSize: '1.125rem',
-                    fontFamily: 'var(--font-family-base)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    padding: '12px 14px',
-                    outline: 'none',
-                    boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
-                    fontWeight: 600
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                />
-              </div>
-              {/* (rest of form remains unchanged; omitted for brevity) */}
-              </form>
-            )}
-            </DashboardPage>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <ProfilePage sidebarProps={sidebarProps} topBarProps={topBarProps} />
-          </ProtectedRoute>
-        } />
-                <Route path="/onboarding" element={
-                  <ProtectedRoute>
-                    <OnboardingPage
-                      user={currentUser}
-                      guestMode={guestMode}
-                      onCompleted={() => navigate('/')}
-                    />
-                  </ProtectedRoute>
-                } />
-        <Route path="/search" element={
-            <AdvancedSearchPage
-              sidebarProps={sidebarProps}
-              topBarProps={topBarProps}
-              searchProps={{
-                onBack: () => navigate('/'),
-                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
-                onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) {} ; navigate('/'); },
-                fetchWithAuth,
-                guestMode,
-                guestTodos: todos,
-                guestTags: tags,
-              }}
-            />
-        } />
-
-        <Route path="/advanced-search" element={
-            <AdvancedSearchPage
-              sidebarProps={sidebarProps}
-              topBarProps={topBarProps}
-              searchProps={{
-                onBack: () => navigate('/'),
-                onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) {} ; navigate('/'); },
-                onGoToDay: (date) => { try { handleGoToDay(date); } catch (e) {} ; navigate('/'); },
-                fetchWithAuth,
-                guestMode,
-                guestTodos: todos,
-                guestTags: tags,
-              }}
-            />
-        } />
-
-        <Route path="/statistics" element={
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
-        } />
-
-        <Route path="/stats" element={
-            <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
-        } />
-
-        <Route path="/auth" element={<AuthPage />} />
-
-
-        {/* Remove auth route; guest mode uses home */}
-
-        <Route path="/" element={
-            <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
             {guestMode && (
               <div style={{ marginTop: '8px', marginBottom: '16px' }}>
                 <div style={{
@@ -934,11 +796,11 @@ function AppInner() {
                   {savedMessage}
                 </div>
               </div>
-                )}
-              <div
-                className="fade-in-slide-down"
-                style={{ marginBottom: '48px' }}
-              >
+            )}
+            <div
+              className="fade-in-slide-down"
+              style={{ marginBottom: '48px' }}
+            >
               <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
                 <h1 className="header-title" style={{
                   fontFamily: 'var(--font-family-heading)',
@@ -991,80 +853,80 @@ function AppInner() {
                   </div>
                 )}
               </div>
-              
+
               {!searchActive && (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                {/* Tag Filter */}
-                {tags.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
-                    {tags.map(tag => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedFilterTags(prev =>
-                            prev.includes(tag.id)
-                              ? prev.filter(id => id !== tag.id)
-                              : [...prev, tag.id]
-                          );
-                        }}
-                        style={{
-                          padding: '4px 12px',
-                          borderRadius: '8px',
-                          fontSize: '0.75rem',
-                          border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
-                          background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
-                          color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
-                    {selectedFilterTags.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFilterTags([])}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: '0.75rem',
-                          color: 'var(--color-text-muted)',
-                          background: 'transparent',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '8px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
-                
-                {/* Sort Dropdown */}
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
-                  style={{
-                    padding: '6px 12px',
-                    paddingRight: '32px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
-                  <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
-                  <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
-                  <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
-                </select>
-                
+                  {/* Tag Filter */}
+                  {tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
+                      {tags.map(tag => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFilterTags(prev =>
+                              prev.includes(tag.id)
+                                ? prev.filter(id => id !== tag.id)
+                                : [...prev, tag.id]
+                            );
+                          }}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
+                            background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
+                            color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                      {selectedFilterTags.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFilterTags([])}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            color: 'var(--color-text-muted)',
+                            background: 'transparent',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sort Dropdown */}
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    style={{
+                      padding: '6px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
+                    <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
+                    <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
+                    <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
+                  </select>
+
                 </div>
               )}
             </div>        {/* Add Task Form */}
@@ -1085,439 +947,506 @@ function AppInner() {
               </div>
             )}
             {/* Hide add task form when searching */}
-            {!searchActive && (
-            <form
-              className="add-task-form add-task-form-animation"
-              onSubmit={handleAdd}
-              style={{
-                marginBottom: '40px',
-                background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                borderRadius: '20px',
-                padding: '28px 28px 24px',
-                border: '1px solid var(--color-border)',
-                boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
-                transition: 'box-shadow 0.3s ease',
-              }}
-            >
-              {/* Title on top, then description, then centered controls */}
-              <div style={{ marginBottom: '12px' }}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Title — What do you want to accomplish?"
-                  style={{
-                    width: '100%',
-                    background: 'var(--color-surface-light)',
-                    color: 'var(--color-text)',
-                    fontSize: '1.125rem',
-                    fontFamily: 'var(--font-family-base)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    padding: '12px 14px',
-                    outline: 'none',
-                    boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
-                    fontWeight: 600
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                />
-              </div>
-
+            {!searchActive && !isAddCardOpen && (
               <div style={{ marginBottom: '16px' }}>
-                <textarea
-                  value={inputDescription}
-                  onChange={e => setInputDescription(e.target.value)}
-                  placeholder="Add notes or description (optional)"
-                  style={{
-                    width: '100%',
-                    minHeight: '64px',
-                    background: 'var(--color-surface-light)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    padding: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.95rem',
-                    outline: 'none',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                <select
-                  value={hours}
-                  onChange={e => setHours(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    paddingRight: '32px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    fontFamily: 'var(--font-family-base)',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.1s ease-out'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                >
-                  {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
-                </select>
-
-                <select
-                  value={minutes}
-                  onChange={e => setMinutes(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    paddingRight: '32px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    fontFamily: 'var(--font-family-base',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.1s ease-out'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                >
-                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
-                </select>
-
                 <button
                   type="button"
-                  className="button-hover-scale"
-                  onClick={() => setIsFlagged(!isFlagged)}
+                  className="add-task-button"
+                  onClick={() => setIsAddCardOpen(true)}
+                  aria-label="Add Task"
                   style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    transition: 'all 0.1s ease-out',
-                    border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
-                    background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
-                    color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                    display: 'inline-block',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontWeight: 600,
                     cursor: 'pointer'
                   }}
                 >
-                  <FlagIcon filled={isFlagged} />
-                </button>
-
-                <button
-                  type="button"
-                  className="button-hover-scale"
-                  onClick={() => setShowTagInput(!showTagInput)}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.875rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s ease-out'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = 'var(--color-text)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = 'var(--color-text-muted)';
-                    e.currentTarget.style.borderColor = 'var(--color-border)';
-                  }}
-                >
-                  #
-                </button>
-
-                <input
-                  type="date"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.1s ease-out'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                />
-
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.1s ease-out'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                  placeholder="Time"
-                />
-
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    paddingRight: '32px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.1s ease-out'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                >
-                  <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
-                  <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
-                  <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => setShowRecurrenceSelector(true)}
-                  title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
-                  style={{
-                    padding: '8px 16px',
-                    background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
-                    border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    borderRadius: '8px',
-                    color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
-                    fontWeight: currentRecurrence ? '600' : '500',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s ease-out'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!currentRecurrence) {
-                      e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!currentRecurrence) {
-                      e.currentTarget.style.borderColor = 'var(--color-border)';
-                    }
-                  }}
-                >
-                  {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
-                </button>
-
-                <button
-                  type="submit"
-                  className="button-hover-scale-bg"
-                  style={{
-                    padding: '10px 28px',
-                    background: 'var(--color-primary)',
-                    borderRadius: '14px',
-                    color: 'var(--color-bg)',
-                    fontWeight: '600',
-                    fontSize: '0.9rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'background 0.25s ease, transform 0.2s ease',
-                    boxShadow: '0 6px 18px -6px var(--shadow-primary)',
-                    margin: '12px auto 0'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--color-primary-dark)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--color-primary)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Add Task
+                  + Add Task
                 </button>
               </div>
-
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                {/* Subtasks */}
-                <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            )}
+            {!searchActive && isAddCardOpen && (
+              <form
+                ref={addCardRef}
+                className="add-task-form add-task-form-animation"
+                onSubmit={handleAdd}
+                style={{
+                  marginBottom: '40px',
+                  background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
+                  backdropFilter: 'blur(12px) saturate(160%)',
+                  borderRadius: '20px',
+                  padding: '28px 28px 24px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
+                  transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
+                  opacity: prefilling ? 0.92 : 1,
+                }}
+              >
+                {/* Title on top, then description, then centered controls */}
+                <div style={{ marginBottom: '12px' }}>
+                  {/* Load Task UI: numeric input + Load button */}
+                  <div className="load-template-bar">
                     <input
-                      type="text"
-                      value={newSubtask}
-                      onChange={(e) => setNewSubtask(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newSubtask.trim()) {
-                          e.preventDefault();
-                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
-                          setNewSubtask('');
-                        }
-                      }}
-                      placeholder="Add subtask..."
-                      style={{
-                        flex: 1,
-                        background: 'var(--color-surface-light)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '8px',
-                        padding: '6px 12px',
-                        color: 'var(--color-text)',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="load-template-input"
+                      ref={loadTaskInputRef}
+                      type="number"
+                      min={1}
+                      value={loadTaskNumber}
+                      onChange={(e) => setLoadTaskNumber(e.target.value)}
+                      placeholder="Load task #"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newSubtask.trim()) {
-                          setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
-                          setNewSubtask('');
-                        }
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        background: 'var(--color-primary)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: 'var(--color-bg)',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Add
+                    <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                      {isLoadingTask ? 'Loading…' : 'Load'}
+                    </button>
+                    <button className="load-template-clear" type="button" onClick={clearTemplate}>
+                      Clear Template
                     </button>
                   </div>
-                  {subtasks.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {subtasks.map((subtask, idx) => (
-                        <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
-                          <input
-                            type="checkbox"
-                            checked={subtask.isCompleted}
-                            onChange={() => {
-                              const updated = [...subtasks];
-                              updated[idx].isCompleted = !updated[idx].isCompleted;
-                              setSubtasks(updated);
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
-                            {subtask.title}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
-                            style={{
-                              padding: '4px 8px',
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--color-danger)',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem'
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div style={{
+                    paddingLeft: '8px',
+                    marginTop: '5px',
+                    marginBottom: 'px',
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                    textAlign: 'left',
+                    fontStyle: 'initial',
+                    letterSpacing: '0.001em'
+                  }}>
+                    Repeating a Task? Enter its number to load a previous task instantly.
+                  </div>
+                  {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
+
+
+                  <div style={{
+                    height: '1px',
+                    backgroundColor: 'var(--color-border)',
+                    margin: '20px 0 16px'
+                  }} />
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Title — What do you want to accomplish?"
+                    style={{
+                      width: '100%',
+                      background: 'var(--color-surface-light)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.9rem',
+                      fontFamily: 'var(--font-family-base)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      outline: 'none',
+                      boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
+                      fontWeight: 300
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
                 </div>
 
-                {/* Tags */}
-                {showTagInput && (
-                  <div
-                    className="fade-in-height-auto"
+                <div style={{ marginBottom: '16px' }}>
+                  <textarea
+                    value={inputDescription}
+                    onChange={e => setInputDescription(e.target.value)}
+                    placeholder="Add notes or description (optional)"
                     style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                      alignItems: 'center'
+                      width: '100%',
+                      minHeight: '64px',
+                      background: 'var(--color-surface-light)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.83rem',
+                      fontFamily: 'var(--font-family-base)',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                  <select
+                    value={hours}
+                    onChange={e => setHours(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
+                  </select>
+
+                  <select
+                    value={minutes}
+                    onChange={e => setMinutes(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setIsFlagged(!isFlagged)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.1s ease-out',
+                      border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                      background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
+                      color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                      cursor: 'pointer'
                     }}
                   >
-                    {/* Plus icon button for new tag */}
-                    <button
-                      type="button"
-                      aria-label="Add new tag"
-                      onClick={() => setShowNewTagModal(true)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        border: '1.5px solid var(--color-border)',
-                        background: 'var(--color-surface-light)',
-                        color: 'var(--color-primary)',
-                        fontSize: 20,
-                        cursor: 'pointer',
-                        marginRight: 2,
-                        boxShadow: '0 2px 8px 0 var(--shadow-light)'
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="10" y1="4" x2="10" y2="16" />
-                        <line x1="4" y1="10" x2="16" y2="10" />
-                      </svg>
-                    </button>
-                    {/* Tag buttons */}
-                    {tags.map((tag, i) => {
-                      const active = !!selectedTags.find(t => t.id === tag.id);
-                      return (
-                        <button
-                          key={tag.id}
-                          className="tag-button-fade-in-scale"
-                          type="button"
-                          onClick={() => toggleTagSelection(tag)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '6px 12px',
-                            borderRadius: '999px',
-                            border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
-                            background: active ? `${tag.color}20` : 'transparent',
-                            color: active ? tag.color : 'var(--color-text-muted)',
-                            fontSize: '0.875rem',
-                            fontWeight: '500',
-                            transition: 'all 0.12s ease-out',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
-                          <span style={{ lineHeight: 1 }}>{tag.name}</span>
-                        </button>
-                      );
-                    })}
-                    {tags.length === 0 && (
-                      <p style={{
-                        fontSize: '0.875rem',
-                        color: 'var(--color-text-muted)',
-                        margin: 0
-                      }}>
-                        No tags yet.
-                      </p>
+                    <FlagIcon filled={isFlagged} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setShowTagInput(!showTagInput)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text)';
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text-muted)';
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }}
+                  >
+                    #
+                  </button>
+
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
+
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                    placeholder="Time"
+                  />
+
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
+                    <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
+                    <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRecurrenceSelector(true)}
+                    title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
+                      border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '8px',
+                      color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
+                      fontWeight: currentRecurrence ? '600' : '500',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                      }
+                    }}
+                  >
+                    {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="button-hover-scale-bg"
+                    disabled={globalLoading}
+                    style={{
+                      padding: '10px 28px',
+                      background: 'var(--color-primary)',
+                      borderRadius: '14px',
+                      color: 'var(--color-bg)',
+                      fontWeight: '600',
+                      fontSize: '0.9rem',
+                      border: 'none',
+                      cursor: globalLoading ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.25s ease, transform 0.2s ease',
+                      boxShadow: '0 6px 18px -6px var(--shadow-primary)',
+                      margin: '12px auto 0'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!globalLoading) {
+                        e.currentTarget.style.background = 'var(--color-primary-dark)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--color-primary)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {globalLoading ? 'Adding…' : 'Add Task'}
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                  {/* Subtasks */}
+                  <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newSubtask.trim()) {
+                            e.preventDefault();
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        placeholder="Add subtask..."
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-surface-light)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          color: 'var(--color-text)',
+                          fontSize: '0.875rem',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newSubtask.trim()) {
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'var(--color-primary)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: 'var(--color-bg)',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {subtasks.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {subtasks.map((subtask, idx) => (
+                          <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
+                            <input
+                              type="checkbox"
+                              checked={subtask.isCompleted}
+                              onChange={() => {
+                                const updated = [...subtasks];
+                                updated[idx].isCompleted = !updated[idx].isCompleted;
+                                setSubtasks(updated);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
+                              {subtask.title}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
+                              style={{
+                                padding: '4px 8px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                )}
+
+                  {/* Tags */}
+                  {showTagInput && (
+                    <div
+                      className="fade-in-height-auto"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Plus icon button for new tag */}
+                      <button
+                        type="button"
+                        aria-label="Add new tag"
+                        onClick={() => setShowNewTagModal(true)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          border: '1.5px solid var(--color-border)',
+                          background: 'var(--color-surface-light)',
+                          color: 'var(--color-primary)',
+                          fontSize: 20,
+                          cursor: 'pointer',
+                          marginRight: 2,
+                          boxShadow: '0 2px 8px 0 var(--shadow-light)'
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="10" y1="4" x2="10" y2="16" />
+                          <line x1="4" y1="10" x2="16" y2="10" />
+                        </svg>
+                      </button>
+                      {/* Tag buttons */}
+                      {tags.map((tag, i) => {
+                        const active = !!selectedTags.find(t => t.id === tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            className="tag-button-fade-in-scale"
+                            type="button"
+                            onClick={() => toggleTagSelection(tag)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '999px',
+                              border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                              background: active ? `${tag.color}20` : 'transparent',
+                              color: active ? tag.color : 'var(--color-text-muted)',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              transition: 'all 0.12s ease-out',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                            <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                          </button>
+                        );
+                      })}
+                      {tags.length === 0 && (
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: 'var(--color-text-muted)',
+                          margin: 0
+                        }}>
+                          No tags yet.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {/* Render New Tag Modal at the end of App for full overlay */}
                   {showNewTagModal && (
                     <div
@@ -1641,12 +1570,12 @@ function AppInner() {
                       </div>
                     </div>
                   )}
-              </div>
-                </form>
-              )}
+                </div>
+              </form>
+            )}
 
             {/* Task List */}
-              <div className="task-list-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
+            <div className="task-list-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
               {filteredTodos.length === 0 && (
                 <div
                   className="fade-in-scale-up empty-state"
@@ -1655,76 +1584,1018 @@ function AppInner() {
                     padding: '80px 0'
                   }}
                 >
-                    <div
-                      className="rotate-scale-infinite empty-state-icon"
-                      style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
-                    >
-                      <SparklesIcon />
+                  <div
+                    className="rotate-scale-infinite empty-state-icon"
+                    style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
+                  >
+                    <SparklesIcon />
+                  </div>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontFamily: 'var(--font-family-heading)',
+                    fontWeight: '600',
+                    color: 'var(--color-text)',
+                    marginBottom: '8px'
+                  }}>
+                    All clear!
+                  </h3>
+                  <p style={{
+                    color: 'var(--color-text-muted)',
+                    fontFamily: 'var(--font-family-base)',
+                    margin: 0
+                  }}>
+                    No tasks for {title.toLowerCase()}
+                  </p>
+                </div>
+              )}
+
+              {orderedTodos.map((todo, index) => (
+                <TaskCard
+                  key={todo.id}
+                  todo={todo}
+                  index={index}
+                  theme={theme}
+                  onToggle={handleToggle}
+                  onFlag={handleFlag}
+                  onDelete={handleDelete}
+                  formatDuration={formatDuration}
+                  showDate={!!searchQuery.trim()}
+                  onGoToDay={handleGoToDay}
+                  isEditing={editingTodoId === todo.id}
+                  editingTitle={editingTodoTitle}
+                  editingDescription={editingTodoDescription}
+                  editingTags={editingTodoTags}
+                  setEditingTags={setEditingTodoTags}
+                  editingSubtasks={editingTodoSubtasks}
+                  setEditingSubtasks={setEditingTodoSubtasks}
+                  editingPriority={editingTodoPriority}
+                  setEditingPriority={setEditingTodoPriority}
+                  editingDuration={editingTodoDuration}
+                  setEditingDuration={setEditingTodoDuration}
+                  allTags={tags}
+                  onStartEdit={handleStartEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  setEditingTitle={setEditingTodoTitle}
+                  setEditingDescription={setEditingTodoDescription}
+                  onUpdatePriority={handleUpdatePriority}
+                  onUpdateTodo={handleUpdateTodo}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  isExpanded={expandedTodoId === todo.id}
+                  onToggleExpand={() => toggleExpand(todo.id)}
+                  setTodos={setTodos}
+                  selectedFilterTags={selectedFilterTags}
+                  setSelectedFilterTags={setSelectedFilterTags}
+                />
+              ))}
+
+            </div>
+          </DashboardPage>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage sidebarProps={sidebarProps} topBarProps={topBarProps} />
+          </ProtectedRoute>
+        } />
+        <Route path="/onboarding" element={
+          <ProtectedRoute>
+            <OnboardingPage
+              user={currentUser}
+              guestMode={guestMode}
+              onCompleted={() => navigate('/')}
+            />
+          </ProtectedRoute>
+        } />
+        <Route path="/search" element={
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              onBack: () => navigate('/'),
+              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) { }; navigate('/'); },
+              onGoToDay: (date, taskId) => { try { handleGoToDay(date, taskId); } catch (e) { }; },
+              fetchWithAuth,
+              guestMode,
+              guestTodos: todos,
+              guestTags: tags,
+            }}
+          />
+        } />
+
+        <Route path="/advanced-search" element={
+          <AdvancedSearchPage
+            sidebarProps={sidebarProps}
+            topBarProps={topBarProps}
+            searchProps={{
+              onBack: () => navigate('/'),
+              onOpenTodo: (todo) => { try { handleStartEdit(todo); } catch (e) { }; navigate('/'); },
+              onGoToDay: (date, taskId) => { try { handleGoToDay(date, taskId); } catch (e) { }; },
+              fetchWithAuth,
+              guestMode,
+              guestTodos: todos,
+              guestTags: tags,
+            }}
+          />
+        } />
+
+        <Route path="/statistics" element={
+          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
+        } />
+
+        <Route path="/stats" element={
+          <StatisticsPage sidebarProps={sidebarProps} topBarProps={topBarProps} statsProps={{ onBack: () => navigate('/'), fetchWithAuth, guestMode, guestTodos: todos, guestTags: tags }} />
+        } />
+
+        <Route path="/auth" element={<AuthPage />} />
+
+
+        {/* Remove auth route; guest mode uses home */}
+
+        <Route path="/" element={
+          <DashboardPage sidebarProps={sidebarProps} topBarProps={topBarProps}>
+            {guestMode && (
+              <div style={{ marginTop: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                  padding: '12px 16px',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Hello guest</div>
+                  <div style={{ fontSize: '0.95rem' }}>
+                    You are using Guest Mode. Your tasks and tags are stored locally on this browser. Sign in to sync across devices.
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Saved toast */}
+            {savedMessage && (
+              <div style={{ position: 'fixed', right: '20px', top: '80px', zIndex: 60 }}>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', color: 'var(--color-text)', fontWeight: 600 }}>
+                  {savedMessage}
+                </div>
+              </div>
+            )}
+            <div
+              className="fade-in-slide-down"
+              style={{ marginBottom: '48px' }}
+            >
+              <div className="header-content" style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <h1 className="header-title" style={{
+                  fontFamily: 'var(--font-family-heading)',
+                  fontWeight: 'bold',
+                  color: 'var(--color-text)',
+                  margin: 0
+                }}>
+                  {title}
+                </h1>
+                {durationString && (
+                  <span
+                    className="scale-in"
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border)'
+                    }}
+                  >
+                    {durationString}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-base)', margin: 0 }}>
+                  {completedCount} of {filteredTodos.length} completed
+                </p>
+                {filteredTodos.length > 0 && (
+                  <div style={{ flex: 1, maxWidth: '300px' }}>
+                    <div style={{
+                      height: '6px',
+                      background: 'var(--color-surface)',
+                      borderRadius: '9999px',
+                      overflow: 'hidden'
+                    }}>
+                      <div
+                        className="progress-bar-fill"
+                        style={{
+                          height: '100%',
+                          background: 'var(--color-primary)',
+                          borderRadius: '9999px',
+                          width: `${progress}%`
+                        }}
+                      />
                     </div>
-                    <h3 style={{
-                      fontSize: '1.25rem',
-                      fontFamily: 'var(--font-family-heading)',
-                      fontWeight: '600',
-                      color: 'var(--color-text)',
-                      marginBottom: '8px'
-                    }}>
-                      All clear!
-                    </h3>
-                    <p style={{
-                      color: 'var(--color-text-muted)',
-                      fontFamily: 'var(--font-family-base)',
-                      margin: 0
-                    }}>
-                      No tasks for {title.toLowerCase()}
-                    </p>
                   </div>
                 )}
-
-                {orderedTodos.map((todo, index) => (
-                  <TaskCard
-                    key={todo.id}
-                    todo={todo}
-                    index={index}
-                    theme={theme}
-                    onToggle={handleToggle}
-                    onFlag={handleFlag}
-                    onDelete={handleDelete}
-                    formatDuration={formatDuration}
-                    showDate={!!searchQuery.trim()}
-                    onGoToDay={handleGoToDay}
-                    isEditing={editingTodoId === todo.id}
-                    editingTitle={editingTodoTitle}
-                    editingDescription={editingTodoDescription}
-                    editingTags={editingTodoTags}
-                    setEditingTags={setEditingTodoTags}
-                    editingSubtasks={editingTodoSubtasks}
-                    setEditingSubtasks={setEditingTodoSubtasks}
-                    editingPriority={editingTodoPriority}
-                    setEditingPriority={setEditingTodoPriority}
-                    editingDuration={editingTodoDuration}
-                    setEditingDuration={setEditingTodoDuration}
-                    allTags={tags}
-                    onStartEdit={handleStartEdit}
-                    onSaveEdit={handleSaveEdit}
-                    onCancelEdit={handleCancelEdit}
-                    setEditingTitle={setEditingTodoTitle}
-                    setEditingDescription={setEditingTodoDescription}
-                    onUpdatePriority={handleUpdatePriority}
-                    onUpdateTodo={handleUpdateTodo}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    isExpanded={expandedTodoId === todo.id}
-                    onToggleExpand={() => toggleExpand(todo.id)}
-                    setTodos={setTodos}
-                    selectedFilterTags={selectedFilterTags}
-                    setSelectedFilterTags={setSelectedFilterTags}
-                  />
-                ))}
-
               </div>
-            </DashboardPage>
-          } />
+
+              {!searchActive && (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* Tag Filter */}
+                  {tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Filter:</span>
+                      {tags.map(tag => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFilterTags(prev =>
+                              prev.includes(tag.id)
+                                ? prev.filter(id => id !== tag.id)
+                                : [...prev, tag.id]
+                            );
+                          }}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            border: `1px solid ${selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-border)'}`,
+                            background: selectedFilterTags.includes(tag.id) ? `${tag.color}20` : 'transparent',
+                            color: selectedFilterTags.includes(tag.id) ? tag.color : 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                      {selectedFilterTags.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFilterTags([])}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            color: 'var(--color-text-muted)',
+                            background: 'transparent',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sort Dropdown */}
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    style={{
+                      padding: '6px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="date" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Date</option>
+                    <option value="priority" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Priority</option>
+                    <option value="duration" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Duration</option>
+                    <option value="name" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Sort by Name</option>
+                  </select>
+
+                </div>
+              )}
+            </div>        {/* Add Task Form */}
+            {addTodoError && !searchActive && (
+              <div style={{
+                color: 'var(--color-danger)',
+                background: 'rgba(255,0,0,0.08)',
+                border: '1px solid var(--color-danger)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                marginBottom: '12px',
+                fontWeight: 500,
+                textAlign: 'center',
+                fontSize: '1rem',
+                letterSpacing: '0.01em',
+              }}>
+                {addTodoError}
+              </div>
+            )}
+            {/* Hide add task form when searching */}
+            {!searchActive && !isAddCardOpen && (
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  type="button"
+                  className="add-task-button"
+                  onClick={() => setIsAddCardOpen(true)}
+                  aria-label="Add Task"
+                  style={{
+                    display: 'inline-block',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Add Task
+                </button>
+              </div>
+            )}
+            {!searchActive && isAddCardOpen && (
+              <form
+                ref={addCardRef}
+                className="add-task-form add-task-form-animation"
+                onSubmit={handleAdd}
+                style={{
+                  marginBottom: '40px',
+                  background: 'linear-gradient(145deg, var(--color-surface) 0%, var(--color-surface-light) 100%)',
+                  backdropFilter: 'blur(12px) saturate(160%)',
+                  borderRadius: '20px',
+                  padding: '28px 28px 24px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: '0 12px 32px -10px rgba(0,0,0,0.35)',
+                  transition: 'box-shadow 0.3s ease, opacity 0.18s ease',
+                  opacity: prefilling ? 0.92 : 1,
+                }}
+              >
+                {/* Title on top, then description, then centered controls */}
+                <div style={{ marginBottom: '12px' }}>
+                  {/* Load Task UI: numeric input + Load button */}
+                  <div className="load-template-bar">
+                    <input
+                      className="load-template-input"
+                      ref={loadTaskInputRef}
+                      type="number"
+                      min={1}
+                      value={loadTaskNumber}
+                      onChange={(e) => setLoadTaskNumber(e.target.value)}
+                      placeholder="Load task #"
+                    />
+                    <button className="load-template-action" type="button" onClick={handleLoadTemplate} style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                      {isLoadingTask ? 'Loading…' : 'Load'}
+                    </button>
+                    <button className="load-template-clear" type="button" onClick={clearTemplate}>
+                      Clear Template
+                    </button>
+                  </div>
+                  <div style={{
+                    paddingLeft: '8px',
+                    marginTop: '5px',
+                    marginBottom: 'px',
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                    textAlign: 'left',
+                    fontStyle: 'initial',
+                    letterSpacing: '0.001em'
+                  }}>
+                    Repeating a Task? Enter its number to load a previous task instantly.
+                  </div>
+                  {loadTaskError && <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '8px' }}>{loadTaskError}</div>}
+
+
+                  <div style={{
+                    height: '1px',
+                    backgroundColor: 'var(--color-border)',
+                    margin: '20px 0 16px'
+                  }} />
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Title — What do you want to accomplish?"
+                    style={{
+                      width: '100%',
+                      background: 'var(--color-surface-light)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.9rem',
+                      fontFamily: 'var(--font-family-base)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      outline: 'none',
+                      boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.02)',
+                      fontWeight: 300
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <textarea
+                    value={inputDescription}
+                    onChange={e => setInputDescription(e.target.value)}
+                    placeholder="Add notes or description (optional)"
+                    style={{
+                      width: '100%',
+                      minHeight: '64px',
+                      background: 'var(--color-surface-light)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.83rem',
+                      fontFamily: 'var(--font-family-base)',
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                  <select
+                    value={hours}
+                    onChange={e => setHours(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[...Array(13).keys()].map(h => <option key={h} value={h} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{h}h</option>)}
+                  </select>
+
+                  <select
+                    value={minutes}
+                    onChange={e => setMinutes(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      fontFamily: 'var(--font-family-base',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => <option key={m} value={m} style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>{m}m</option>)}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setIsFlagged(!isFlagged)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.1s ease-out',
+                      border: isFlagged ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                      background: isFlagged ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
+                      color: isFlagged ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FlagIcon filled={isFlagged} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-hover-scale"
+                    onClick={() => setShowTagInput(!showTagInput)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text)';
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--color-text-muted)';
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }}
+                  >
+                    #
+                  </button>
+
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  />
+
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                    placeholder="Time"
+                  />
+
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      paddingRight: '32px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      color: 'var(--color-text)',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'border-color 0.1s ease-out'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    <option value="low" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Low Priority</option>
+                    <option value="medium" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>Medium Priority</option>
+                    <option value="high" style={{ background: 'var(--color-surface)', borderRadius: '8px' }}>High Priority</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRecurrenceSelector(true)}
+                    title={currentRecurrence ? `Recurring ${currentRecurrence.type}` : 'Set recurrence'}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentRecurrence ? 'var(--color-primary)' : 'var(--color-surface)',
+                      border: `1px solid ${currentRecurrence ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '8px',
+                      color: currentRecurrence ? 'var(--color-bg)' : 'var(--color-text)',
+                      fontWeight: currentRecurrence ? '600' : '500',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!currentRecurrence) {
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                      }
+                    }}
+                  >
+                    {currentRecurrence ? `${currentRecurrence.type}` : 'Recurrence'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="button-hover-scale-bg"
+                    disabled={globalLoading}
+                    style={{
+                      padding: '10px 28px',
+                      background: 'var(--color-primary)',
+                      borderRadius: '14px',
+                      color: 'var(--color-bg)',
+                      fontWeight: '600',
+                      fontSize: '0.9rem',
+                      border: 'none',
+                      cursor: globalLoading ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.25s ease, transform 0.2s ease',
+                      boxShadow: '0 6px 18px -6px var(--shadow-primary)',
+                      margin: '12px auto 0'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!globalLoading) {
+                        e.currentTarget.style.background = 'var(--color-primary-dark)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--color-primary)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {globalLoading ? 'Adding…' : 'Add Task'}
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                  {/* Subtasks */}
+                  <div style={{ marginBottom: showTagInput ? '16px' : '0' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newSubtask.trim()) {
+                            e.preventDefault();
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        placeholder="Add subtask..."
+                        style={{
+                          flex: 1,
+                          background: 'var(--color-surface-light)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          color: 'var(--color-text)',
+                          fontSize: '0.875rem',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newSubtask.trim()) {
+                            setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), isCompleted: false }]);
+                            setNewSubtask('');
+                          }
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'var(--color-primary)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: 'var(--color-bg)',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {subtasks.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {subtasks.map((subtask, idx) => (
+                          <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: 'var(--color-surface-light)', borderRadius: '6px' }}>
+                            <input
+                              type="checkbox"
+                              checked={subtask.isCompleted}
+                              onChange={() => {
+                                const updated = [...subtasks];
+                                updated[idx].isCompleted = !updated[idx].isCompleted;
+                                setSubtasks(updated);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--color-text)', textDecoration: subtask.isCompleted ? 'line-through' : 'none' }}>
+                              {subtask.title}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
+                              style={{
+                                padding: '4px 8px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  {showTagInput && (
+                    <div
+                      className="fade-in-height-auto"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Plus icon button for new tag */}
+                      <button
+                        type="button"
+                        aria-label="Add new tag"
+                        onClick={() => setShowNewTagModal(true)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          border: '1.5px solid var(--color-border)',
+                          background: 'var(--color-surface-light)',
+                          color: 'var(--color-primary)',
+                          fontSize: 20,
+                          cursor: 'pointer',
+                          marginRight: 2,
+                          boxShadow: '0 2px 8px 0 var(--shadow-light)'
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="10" y1="4" x2="10" y2="16" />
+                          <line x1="4" y1="10" x2="16" y2="10" />
+                        </svg>
+                      </button>
+                      {/* Tag buttons */}
+                      {tags.map((tag, i) => {
+                        const active = !!selectedTags.find(t => t.id === tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            className="tag-button-fade-in-scale"
+                            type="button"
+                            onClick={() => toggleTagSelection(tag)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '999px',
+                              border: active ? `1px solid ${tag.color}` : '1px solid var(--color-border)',
+                              background: active ? `${tag.color}20` : 'transparent',
+                              color: active ? tag.color : 'var(--color-text-muted)',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              transition: 'all 0.12s ease-out',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <span style={{ width: 10, height: 10, borderRadius: 8, background: tag.color, display: 'inline-block', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)' }} />
+                            <span style={{ lineHeight: 1 }}>{tag.name}</span>
+                          </button>
+                        );
+                      })}
+                      {tags.length === 0 && (
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: 'var(--color-text-muted)',
+                          margin: 0
+                        }}>
+                          No tags yet.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* Render New Tag Modal at the end of App for full overlay */}
+                  {showNewTagModal && (
+                    <div
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 1200,
+                        background: 'rgba(0,0,0,0.32)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background 0.2s',
+                      }}
+                      onClick={() => setShowNewTagModal(false)}
+                    >
+                      <div
+                        style={{
+                          background: 'var(--color-surface)',
+                          borderRadius: 18,
+                          boxShadow: '0 8px 32px 0 var(--shadow-dark)',
+                          padding: '32px 28px 24px 28px',
+                          minWidth: 340,
+                          maxWidth: 400,
+                          width: '90vw',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 18,
+                          position: 'relative',
+                          animation: 'fadeInScale 0.18s cubic-bezier(.4,1.3,.6,1)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          aria-label="Close"
+                          onClick={() => setShowNewTagModal(false)}
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            fontSize: 22,
+                            cursor: 'pointer',
+                            zIndex: 2
+                          }}
+                        >
+                          ×
+                        </button>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)' }}>Create New Tag</h3>
+                        <input
+                          type="text"
+                          placeholder="Tag name"
+                          value={newTagName}
+                          onChange={e => setNewTagName(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: '1px solid var(--color-border)',
+                            fontSize: '1rem',
+                            marginBottom: 8,
+                          }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <label style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>Color:</label>
+                          <input
+                            type="color"
+                            value={newTagColor}
+                            onChange={e => setNewTagColor(e.target.value)}
+                            style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.95rem', color: newTagColor }}>{newTagColor}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowNewTagModal(false)}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-surface-light)',
+                              color: 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!newTagName.trim()) return;
+                              try {
+                                const newTag = guestMode
+                                  ? await guestApi.createTag(newTagName.trim(), newTagColor)
+                                  : await createTag(newTagName.trim(), newTagColor, fetchWithAuth);
+                                setTags(prev => [...prev, newTag]);
+                                setShowNewTagModal(false);
+                                setNewTagName('');
+                                setNewTagColor('#6C63FF');
+                              } catch (err) {
+                                alert('Failed to create tag.');
+                              }
+                            }}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: 'var(--color-primary)',
+                              color: 'var(--color-bg)',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                            disabled={!newTagName.trim()}
+                          >
+                            Create
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+            )}
+
+            {/* Task List */}
+            <div className="task-list-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: searchActive ? '8px' : '0' }}>
+              {filteredTodos.length === 0 && (
+                <div
+                  className="fade-in-scale-up empty-state"
+                  style={{
+                    textAlign: 'center',
+                    padding: '80px 0'
+                  }}
+                >
+                  <div
+                    className="rotate-scale-infinite empty-state-icon"
+                    style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-primary)' }}
+                  >
+                    <SparklesIcon />
+                  </div>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontFamily: 'var(--font-family-heading)',
+                    fontWeight: '600',
+                    color: 'var(--color-text)',
+                    marginBottom: '8px'
+                  }}>
+                    All clear!
+                  </h3>
+                  <p style={{
+                    color: 'var(--color-text-muted)',
+                    fontFamily: 'var(--font-family-base)',
+                    margin: 0
+                  }}>
+                    No tasks for {title.toLowerCase()}
+                  </p>
+                </div>
+              )}
+
+              {orderedTodos.map((todo, index) => (
+                <TaskCard
+                  key={todo.id}
+                  todo={todo}
+                  index={index}
+                  theme={theme}
+                  onToggle={handleToggle}
+                  onFlag={handleFlag}
+                  onDelete={handleDelete}
+                  formatDuration={formatDuration}
+                  showDate={!!searchQuery.trim()}
+                  onGoToDay={handleGoToDay}
+                  isEditing={editingTodoId === todo.id}
+                  editingTitle={editingTodoTitle}
+                  editingDescription={editingTodoDescription}
+                  editingTags={editingTodoTags}
+                  setEditingTags={setEditingTodoTags}
+                  editingSubtasks={editingTodoSubtasks}
+                  setEditingSubtasks={setEditingTodoSubtasks}
+                  editingPriority={editingTodoPriority}
+                  setEditingPriority={setEditingTodoPriority}
+                  editingDuration={editingTodoDuration}
+                  setEditingDuration={setEditingTodoDuration}
+                  allTags={tags}
+                  onStartEdit={handleStartEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  setEditingTitle={setEditingTodoTitle}
+                  setEditingDescription={setEditingTodoDescription}
+                  onUpdatePriority={handleUpdatePriority}
+                  onUpdateTodo={handleUpdateTodo}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  isExpanded={expandedTodoId === todo.id}
+                  onToggleExpand={() => toggleExpand(todo.id)}
+                  setTodos={setTodos}
+                  selectedFilterTags={selectedFilterTags}
+                  setSelectedFilterTags={setSelectedFilterTags}
+                />
+              ))}
+
+            </div>
+          </DashboardPage>
+        } />
 
         {/* Catch-all: redirect any unknown path to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -1762,14 +2633,14 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
   const [subtaskEditingText, setSubtaskEditingText] = useState('');
   const [hoveredSubtaskId, setHoveredSubtaskId] = useState(null);
   const [showNotePreview, setShowNotePreview] = useState(false);
-  
+
   const priorityColors = {
     high: '#ef4444',
     // Softer tones for better UX
     medium: '#FDBA74', // light orange (softer)
     low: '#6EE7B7' // light green (mint/emerald)
   };
-  
+
   const priorityLabels = {
     high: 'High',
     medium: 'Medium',
@@ -1812,7 +2683,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
       onDragOver={(e) => onDragOver && onDragOver(e)}
       onDrop={(e) => onDrop && onDrop(e, todo.id)}
     >
-        <div
+      <div
         className="task-card-wrapper task-card-flex"
         style={{
           display: 'flex',
@@ -1848,9 +2719,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
             <div
               className="check-icon-enter-exit check-icon-entered"
             >
-                <CheckIcon />
-              </div>
-            )}
+              <CheckIcon />
+            </div>
+          )}
         </button>
 
         <div className="task-card-content" style={{ flex: 1, minWidth: 0 }}>
@@ -1921,7 +2792,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditingTags && setEditingTags(selected ? editingTags.filter(id => id !== tag.id) : [...(editingTags||[]), tag.id]);
+                            setEditingTags && setEditingTags(selected ? editingTags.filter(id => id !== tag.id) : [...(editingTags || []), tag.id]);
                           }}
                           style={{
                             display: 'inline-flex',
@@ -1960,9 +2831,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   <div className="task-card-edit-duration" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--color-text)' }}>Duration</label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <input type="number" min={0} value={Math.floor((editingDuration||0)/60)} onChange={e => setEditingDuration && setEditingDuration(parseInt(e.target.value||0)*60 + (editingDuration||0)%60)} style={{ width: '64px', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
+                      <input type="number" min={0} value={Math.floor((editingDuration || 0) / 60)} onChange={e => setEditingDuration && setEditingDuration(parseInt(e.target.value || 0) * 60 + (editingDuration || 0) % 60)} style={{ width: '64px', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
                       <span style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>h</span>
-                      <input type="number" min={0} max={59} value={(editingDuration||0)%60} onChange={e => setEditingDuration && setEditingDuration(Math.floor((editingDuration||0)/60)*60 + parseInt(e.target.value||0))} style={{ width: '56px', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
+                      <input type="number" min={0} max={59} value={(editingDuration || 0) % 60} onChange={e => setEditingDuration && setEditingDuration(Math.floor((editingDuration || 0) / 60) * 60 + parseInt(e.target.value || 0))} style={{ width: '56px', padding: '6px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
                       <span style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>m</span>
                     </div>
                   </div>
@@ -1970,7 +2841,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
 
                 <div className="task-card-edit-subtasks" style={{ marginTop: '10px', width: '100%' }} onClick={e => e.stopPropagation()}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Subtasks</label>
-                    <div className="task-card-edit-subtasks-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', width: '100%' }}>
+                  <div className="task-card-edit-subtasks-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', width: '100%' }}>
                     {(editingSubtasks || []).map((st, sidx) => (
                       <div key={st.id || sidx} className="task-card-edit-subtask-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
                         <input type="checkbox" checked={!!st.isCompleted} onChange={(e) => setEditingSubtasks && setEditingSubtasks((prev) => prev.map(x => x.id === st.id ? { ...x, isCompleted: e.target.checked } : x))} style={{ flexShrink: 0 }} />
@@ -2000,7 +2871,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                         const val = el.value.trim();
                         if (!val) return;
                         const newSt = { id: Date.now().toString(), title: val, isCompleted: false };
-                        setEditingSubtasks && setEditingSubtasks((prev) => [...(prev||[]), newSt]);
+                        setEditingSubtasks && setEditingSubtasks((prev) => [...(prev || []), newSt]);
                         el.value = '';
                         el.focus();
                       }} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg)' }}>Add</button>
@@ -2010,7 +2881,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
               </>
             ) : (
               <>
-                <span 
+                <span
                   style={{
                     fontFamily: 'var(--font-family-base)',
                     color: todo.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)',
@@ -2021,6 +2892,9 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   onClick={() => !todo.isCompleted && onStartEdit(todo)}
                   title="Click to edit"
                 >
+                  {todo.taskNumber ? (
+                    <span style={{ display: 'inline-block', marginRight: 8, padding: '2px 8px', borderRadius: 999, background: 'var(--color-surface-light)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }} title={`Task #${todo.taskNumber}`}>#{todo.taskNumber}</span>
+                  ) : null}
                   {todo.title}
                 </span>
                 {todo.priority && (
@@ -2064,20 +2938,20 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 )}
               </>
             )}
-          {/* Description display (when not editing) */}
-          {!isEditing && todo.description && (
-            <div className="task-card-description" style={{
-              marginTop: '6px',
-              fontSize: '0.85rem',
-              color: 'var(--color-text-muted)',
-              lineHeight: '1.3',
-              maxHeight: '3.6em',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {todo.description}
-            </div>
-          )}
+            {/* Description display (when not editing) */}
+            {!isEditing && todo.description && (
+              <div className="task-card-description" style={{
+                marginTop: '6px',
+                fontSize: '0.85rem',
+                color: 'var(--color-text-muted)',
+                lineHeight: '1.3',
+                maxHeight: '3.6em',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {todo.description}
+              </div>
+            )}
           </div>
           {!isEditing && todo.tags && todo.tags.length > 0 && (
             <div className="task-card-tags-row" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -2129,10 +3003,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   {todo.recurrence?.mode === 'daily'
                     ? 'Daily'
                     : todo.recurrence?.mode === 'dateRange'
-                    ? 'Range'
-                    : todo.recurrence?.mode === 'specificDays'
-                    ? 'Weekdays'
-                    : (todo.recurrence?.type || 'Recurring')}
+                      ? 'Range'
+                      : todo.recurrence?.mode === 'specificDays'
+                        ? 'Weekdays'
+                        : (todo.recurrence?.type || 'Recurring')}
                 </span>
               )}
             </div>
@@ -2156,10 +3030,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 {todo.recurrence?.mode === 'daily'
                   ? 'Daily'
                   : todo.recurrence?.mode === 'dateRange'
-                  ? 'Range'
-                  : todo.recurrence?.mode === 'specificDays'
-                  ? 'Weekdays'
-                  : (todo.recurrence?.type || 'Recurring')}
+                    ? 'Range'
+                    : todo.recurrence?.mode === 'specificDays'
+                      ? 'Weekdays'
+                      : (todo.recurrence?.type || 'Recurring')}
               </span>
             </div>
           )}
@@ -2196,16 +3070,16 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
               🕐 {todo.dueTime}
             </div>
           )}
-          
+
           {/* Subtasks */}
           {!isEditing && todo.subtasks && todo.subtasks.length > 0 && (
             <div className="task-card-subtasks" style={{ marginTop: '8px', width: '100%' }}>
-              <div 
+              <div
                 className="task-card-subtasks-header-row"
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                   marginBottom: isExpanded ? '8px' : '6px',
                   cursor: hasSubtasks ? 'pointer' : 'default',
                   padding: '2px 0',
@@ -2219,20 +3093,20 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                 }}
               >
                 <div className="task-card-subtasks-progress-bar" style={{ flex: 1, height: '6px', background: 'var(--color-surface-light)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
-                  <div 
+                  <div
                     className="task-card-subtasks-progress-fill"
-                    style={{ 
-                      height: '100%', 
+                    style={{
+                      height: '100%',
                       background: `linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)`,
-                      width: `${(todo.subtasks.filter(st => st.isCompleted).length / todo.subtasks.length) * 100}%`, 
+                      width: `${(todo.subtasks.filter(st => st.isCompleted).length / todo.subtasks.length) * 100}%`,
                       transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       borderRadius: '4px',
                       boxShadow: '0 0 8px rgba(var(--color-primary-rgb, 16, 185, 129), 0.3)'
-                    }} 
+                    }}
                   />
                 </div>
-                <span className="task-card-subtasks-progress-label" style={{ 
-                  fontSize: '0.75rem', 
+                <span className="task-card-subtasks-progress-label" style={{
+                  fontSize: '0.75rem',
                   color: 'var(--color-text-muted)',
                   fontWeight: '500',
                   minWidth: '40px',
@@ -2245,7 +3119,7 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                     className="task-card-subtasks-chevron"
                     animate={{ rotate: isExpanded ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
-                    style={{ 
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2272,10 +3146,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '8px', 
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
                     marginTop: '4px',
                     padding: '12px',
                     background: 'var(--color-surface-light)',
@@ -2291,10 +3165,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '4px', 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
                         fontSize: '0.75rem',
                         padding: '4px 6px',
                         borderRadius: '6px',
@@ -2406,8 +3280,8 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                           }}
                         />
                       ) : (
-                        <span style={{ 
-                          color: subtask.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)', 
+                        <span style={{
+                          color: subtask.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)',
                           textDecoration: subtask.isCompleted ? 'line-through' : 'none',
                           flex: 1,
                           transition: 'all 0.2s ease',
@@ -2480,10 +3354,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: idx * 0.05 }}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '4px', 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
                         fontSize: '0.72rem',
                         padding: '2px 4px',
                         borderRadius: '6px',
@@ -2588,8 +3462,8 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                           }}
                         />
                       ) : (
-                        <span style={{ 
-                          color: subtask.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)', 
+                        <span style={{
+                          color: subtask.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)',
                           textDecoration: subtask.isCompleted ? 'line-through' : 'none',
                           transition: 'all 0.2s ease',
                           flex: 1
@@ -2655,10 +3529,10 @@ const TaskCard = memo(({ todo, index, onToggle, onFlag, onDelete, formatDuration
                       className="task-card-subtasks-collapsed-more"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      style={{ 
-                        fontSize: '0.75rem', 
-                        color: 'var(--color-text-muted)', 
-                        fontStyle: 'italic', 
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)',
+                        fontStyle: 'italic',
                         paddingLeft: '28px',
                         paddingTop: '4px',
                         cursor: 'pointer',

@@ -20,28 +20,10 @@ async function main() {
 
     // Run deletes in a transaction in FK-safe order
     await AppDataSource.manager.transaction(async (manager) => {
-      console.log('[soft-reset-db] Deleting todo_tags...');
-      await manager.query('DELETE FROM todo_tags');
-
-      console.log('[soft-reset-db] Deleting todos...');
-      await manager.query('DELETE FROM todos');
-
-      console.log('[soft-reset-db] Deleting non-default tags...');
-      // Keep default tags (is_default=1). Delete user-created tags.
-      // Some older rows might use is_default as 0/1 or NULL; handle NULL as non-default.
-      await manager.query("DELETE FROM tags WHERE is_default IS NULL OR is_default = 0");
-
-      console.log('[soft-reset-db] Deleting user profiles...');
-      await manager.query('DELETE FROM user_profiles');
-
-      console.log('[soft-reset-db] Deleting user settings...');
-      await manager.query('DELETE FROM user_settings');
-
-      console.log('[soft-reset-db] Deleting users...');
-      await manager.query('DELETE FROM users');
-
-      console.log('[soft-reset-db] Final cleanup of todo_tags (in case of orphaned references)...');
-      await manager.query('DELETE FROM todo_tags');
+      console.log('[soft-reset-db] Truncating app tables...');
+      await manager.query('TRUNCATE TABLE todo_tags, todos, user_profiles, user_settings, users RESTART IDENTITY CASCADE');
+      console.log('[soft-reset-db] Removing custom tags while preserving seeded defaults...');
+      await manager.query('DELETE FROM tags WHERE is_default = false');
     });
 
     console.log('[soft-reset-db] Soft wipe complete. Application data removed.');

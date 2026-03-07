@@ -1,5 +1,4 @@
 import { StrictMode } from 'react'
-import { Auth0Provider } from '@auth0/auth0-react';
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import '../styles/base.css'
@@ -11,23 +10,13 @@ import '../styles/design/breakpoints.css'
 import '../styles/utils.css'
 import App from './App.jsx'
 import ErrorBoundary from '../components/common/ErrorBoundary.jsx'
-
-const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+import { LoadingProvider } from '../context/LoadingContext';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
+import { AuthAdapterProvider } from '../providers/AuthAdapterProvider.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Auth0Provider
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        audience,
-        redirect_uri: window.location.origin
-      }}
-      cacheLocation="localstorage"
-      useRefreshTokens={true}
-    >
+    <AuthAdapterProvider>
       <BrowserRouter
         basename="/"
         future={{
@@ -36,9 +25,12 @@ createRoot(document.getElementById('root')).render(
         }}
       >
         <ErrorBoundary>
-          <App />
+          <LoadingProvider>
+            <App />
+            <LoadingOverlay />
+          </LoadingProvider>
         </ErrorBoundary>
       </BrowserRouter>
-    </Auth0Provider>
+    </AuthAdapterProvider>
   </StrictMode>,
 )

@@ -22,7 +22,7 @@ export default function ExportDataModal({ isOpen, onClose }) {
           const gt = await guestApi.fetchTodos();
           const tg = await guestApi.fetchTags();
           const settings = {
-            theme: localStorage.getItem('theme') || 'dark',
+            theme: localStorage.getItem('theme') || 'white',
             layout: {
               showSidebar: localStorage.getItem('showSidebar') === 'true'
             },

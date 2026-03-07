@@ -9,15 +9,10 @@ class TypeORMUserSettingsRepository {
       const repo = AppDataSource.getRepository('UserSettings');
       const row = await repo.findOne({ where: { user_id: userId } });
       if (!row) return null;
-      // Return a plain object with settings fields (assumes columns stored as JSON columns or individual columns)
-      let layout = row.layout || null;
-      if (layout && typeof layout === 'string') {
-        try { layout = JSON.parse(layout); } catch (_) {}
-      }
       return {
-        theme: row.theme || null,
-        locale: row.locale || null,
-        layout
+        theme: row.theme || 'system',
+        locale: row.locale || 'en',
+        layout: row.layout || {}
       };
     } catch (e) {
       return null;
@@ -28,28 +23,22 @@ class TypeORMUserSettingsRepository {
     try {
       if (!AppDataSource || typeof AppDataSource.getRepository !== 'function') return null;
       const repo = AppDataSource.getRepository('UserSettings');
-      const theme = typeof settings.theme === 'string' ? settings.theme : (settings.theme ?? null);
-      const locale = typeof settings.locale === 'string' ? settings.locale : (settings.locale ?? null);
-      let layout = settings.layout;
-      if (layout && typeof layout !== 'string') {
-        try { layout = JSON.stringify(layout); } catch (_) { layout = null; }
-      }
+      const theme = typeof settings.theme === 'string' && settings.theme.trim() ? settings.theme.trim() : 'system';
+      const locale = typeof settings.locale === 'string' && settings.locale.trim() ? settings.locale.trim() : 'en';
+      const layout = settings.layout && typeof settings.layout === 'object' && !Array.isArray(settings.layout)
+        ? settings.layout
+        : {};
       let row = await repo.findOne({ where: { user_id: userId } });
       if (!row) {
-        const uuid = require('uuid').v4();
-        const toSave = repo.create({ id: uuid, user_id: userId, theme: theme || null, locale: locale || null, layout: layout || null });
+        const toSave = repo.create({ user_id: userId, theme, locale, layout });
         row = await repo.save(toSave);
       } else {
-        row.theme = typeof theme !== 'undefined' ? theme : row.theme;
-        row.locale = typeof locale !== 'undefined' ? locale : row.locale;
-        row.layout = typeof layout !== 'undefined' ? layout : row.layout;
+        row.theme = theme;
+        row.locale = locale;
+        row.layout = layout;
         row = await repo.save(row);
       }
-      let outLayout = row.layout || null;
-      if (outLayout && typeof outLayout === 'string') {
-        try { outLayout = JSON.parse(outLayout); } catch (_) {}
-      }
-      return { theme: row.theme || null, locale: row.locale || null, layout: outLayout };
+      return { theme: row.theme || 'system', locale: row.locale || 'en', layout: row.layout || {} };
     } catch (e) {
       return null;
     }

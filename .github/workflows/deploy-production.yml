@@ -1,0 +1,127 @@
+name: Deploy Lifeline Production
+
+on:
+  push:
+    branches:
+      - deploy
+  workflow_dispatch:
+
+concurrency:
+  group: lifeline-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-to-vps:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEPLOY_HOST: ${{ secrets.VPS_SSH_HOST }}
+      DEPLOY_PORT: ${{ secrets.VPS_SSH_PORT }}
+      DEPLOY_USER: ${{ secrets.VPS_SSH_USER }}
+      KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+      PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      RELEASES_ROOT: /opt/lifeline/releases
+      SHARED_ENV_FILE: /opt/lifeline/shared/.env.production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate deployment secrets
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER KNOWN_HOSTS PRIVATE_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required deployment secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ -z "${DEPLOY_PORT:-}" ]]; then
+            echo "DEPLOY_PORT=22" >> "$GITHUB_ENV"
+          fi
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Derive release metadata
+        id: release
+        run: |
+          set -euo pipefail
+          timestamp="$(date -u +'%Y%m%d%H%M%S')"
+          short_sha="${GITHUB_SHA::7}"
+          release_id="lifeline-${timestamp}-${short_sha}"
+          archive_name="${release_id}.tar.gz"
+
+          echo "release_id=${release_id}" >> "$GITHUB_OUTPUT"
+          echo "archive_name=${archive_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Build deploy artifact
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --output "$RUNNER_TEMP/${{ steps.release.outputs.archive_name }}" HEAD
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload release artifact
+        run: |
+          set -euo pipefail
+          scp -P "${DEPLOY_PORT:-22}" "$RUNNER_TEMP/${{ steps.release.outputs.archive_name }}" "${DEPLOY_USER}@${DEPLOY_HOST}:${RELEASES_ROOT}/${{ steps.release.outputs.archive_name }}"
+
+      - name: Apply release on VPS
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+          ARCHIVE_NAME: ${{ steps.release.outputs.archive_name }}
+        run: |
+          set -euo pipefail
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "RELEASE_ID='${RELEASE_ID}' RELEASES_ROOT='${RELEASES_ROOT}' ARCHIVE_NAME='${ARCHIVE_NAME}' SHARED_ENV_FILE='${SHARED_ENV_FILE}' bash -s" <<'EOF'
+          set -euo pipefail
+
+          release_dir="${RELEASES_ROOT}/${RELEASE_ID}"
+          archive_path="${RELEASES_ROOT}/${ARCHIVE_NAME}"
+
+          mkdir -p "${release_dir}"
+          tar -xzf "${archive_path}" -C "${release_dir}"
+          rm -f "${archive_path}"
+
+          chmod +x "${release_dir}/deploy/scripts/apply-release.sh"
+          "${release_dir}/deploy/scripts/apply-release.sh" "${release_dir}" "${SHARED_ENV_FILE}"
+          EOF
+
+      - name: Capture failure diagnostics
+        if: failure()
+        run: |
+          set +e
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            echo "--- current symlink ---"
+            readlink -f /opt/lifeline/current || true
+            echo "--- docker ps ---"
+            docker ps -a || true
+            echo "--- lifeline-app logs ---"
+            docker logs --tail 200 lifeline-app || true
+            echo "--- lifeline-postgres logs ---"
+            docker logs --tail 200 lifeline-postgres || true
+            echo "--- lifeline-mcp logs ---"
+            docker logs --tail 200 lifeline-mcp || true
+          '

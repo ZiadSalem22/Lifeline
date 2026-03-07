@@ -1,0 +1,593 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
+import express from 'express';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createApp } from '../src/app.js';
+
+const require = createRequire(import.meta.url);
+const { createInternalMcpRouter } = require('../../../backend/src/internal/mcp/router');
+const { errorHandler } = require('../../../backend/src/middleware/errorHandler');
+const { ResolveMcpApiKeyPrincipal } = require('../../../backend/src/application/ResolveMcpApiKeyPrincipal');
+const { hashMcpApiKeySecret } = require('../../../backend/src/utils/mcpApiKeys');
+
+const INIT_REQUEST = {
+  jsonrpc: '2.0',
+  id: 'init-1',
+  method: 'initialize',
+  params: {
+    protocolVersion: '2025-11-25',
+    capabilities: {},
+    clientInfo: {
+      name: 'lifeline-mcp-test-client',
+      version: '1.0.0',
+    },
+  },
+};
+
+function createTask(overrides = {}) {
+  return {
+    id: 'task-1',
+    taskNumber: 1,
+    title: 'Milk run',
+    description: '',
+    dueDate: '2026-03-07',
+    dueTime: null,
+    isCompleted: false,
+    isFlagged: false,
+    duration: 0,
+    priority: 'medium',
+    tags: [],
+    subtasks: [],
+    order: 0,
+    recurrence: null,
+    nextRecurrenceDue: null,
+    originalId: null,
+    archived: false,
+    userId: 'user-1',
+    ...overrides,
+  };
+}
+
+function cloneTask(task) {
+  return JSON.parse(JSON.stringify(task));
+}
+
+function createInMemoryTaskStore() {
+  const tasksByUser = new Map([
+    ['user-1', [createTask({ id: 'task-u1-1', taskNumber: 1, title: 'User one task' })]],
+    ['user-2', [createTask({ id: 'task-u2-1', taskNumber: 1, title: 'User two task', userId: 'user-2' })]],
+  ]);
+
+  function getUserTasks(userId) {
+    if (!tasksByUser.has(userId)) {
+      tasksByUser.set(userId, []);
+    }
+    return tasksByUser.get(userId);
+  }
+
+  function findTaskById(userId, id) {
+    return getUserTasks(userId).find((task) => task.id === id) || null;
+  }
+
+  function findTaskByNumber(userId, taskNumber) {
+    return getUserTasks(userId).find((task) => task.taskNumber === taskNumber && !task.archived) || null;
+  }
+
+  return {
+    todoRepository: {
+      async findByTaskNumber(userId, taskNumber) {
+        const task = findTaskByNumber(userId, taskNumber);
+        return task ? cloneTask(task) : null;
+      },
+      async findById(id, userId) {
+        const task = findTaskById(userId, id);
+        return task && !task.archived ? cloneTask(task) : null;
+      },
+      async countByUser(userId) {
+        return getUserTasks(userId).filter((task) => !task.archived).length;
+      },
+      async save(task) {
+        const userTasks = getUserTasks(task.userId);
+        const index = userTasks.findIndex((candidate) => candidate.id === task.id);
+        if (index >= 0) {
+          userTasks[index] = cloneTask(task);
+        } else {
+          userTasks.push(cloneTask(task));
+        }
+        return cloneTask(task);
+      },
+      async delete(id, userId) {
+        const userTasks = getUserTasks(userId);
+        const index = userTasks.findIndex((task) => task.id === id);
+        if (index >= 0) {
+          userTasks.splice(index, 1);
+        }
+      },
+    },
+    searchTodos: {
+      async execute(userId, filters = {}) {
+        let tasks = getUserTasks(userId).filter((task) => !task.archived);
+        const query = String(filters.q || '').trim().toLowerCase();
+        if (query) {
+          tasks = tasks.filter((task) => task.title.toLowerCase().includes(query));
+        }
+        if (filters.taskNumber) {
+          tasks = tasks.filter((task) => task.taskNumber === filters.taskNumber);
+        }
+        return {
+          todos: tasks.map(cloneTask),
+          total: tasks.length,
+        };
+      },
+    },
+    listTodos: {
+      async execute(userId) {
+        return getUserTasks(userId).filter((task) => !task.archived).map(cloneTask);
+      },
+    },
+    createTodoForInternalMcp: {
+      async execute(userId, payload) {
+        const userTasks = getUserTasks(userId);
+        const nextTaskNumber = userTasks.reduce((max, task) => Math.max(max, task.taskNumber || 0), 0) + 1;
+        const newTask = createTask({
+          ...payload,
+          id: `task-${userId}-${nextTaskNumber}`,
+          taskNumber: nextTaskNumber,
+          userId,
+          title: payload.title,
+          description: payload.description || '',
+          dueDate: payload.dueDate || null,
+          dueTime: payload.dueTime || null,
+          isFlagged: Boolean(payload.isFlagged),
+          duration: Number(payload.duration || 0),
+          priority: payload.priority || 'medium',
+          tags: Array.isArray(payload.tags) ? payload.tags : [],
+          subtasks: Array.isArray(payload.subtasks) ? payload.subtasks : [],
+          recurrence: payload.recurrence || null,
+        });
+        userTasks.push(cloneTask(newTask));
+        return cloneTask(newTask);
+      },
+    },
+    updateTodo: {
+      async execute(userId, id, updates) {
+        const task = findTaskById(userId, id);
+        Object.assign(task, updates);
+        return cloneTask(task);
+      },
+    },
+    deleteTodo: {
+      async execute(userId, id) {
+        const task = findTaskById(userId, id);
+        if (task) {
+          task.archived = true;
+        }
+      },
+    },
+    setTodoCompletion: {
+      async execute(userId, id, isCompleted) {
+        const task = findTaskById(userId, id);
+        task.isCompleted = isCompleted;
+        return cloneTask(task);
+      },
+    },
+    snapshot(userId) {
+      return getUserTasks(userId).map(cloneTask);
+    },
+  };
+}
+
+async function listenOnRandomPort(app) {
+  const server = createServer(app);
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  return {
+    server,
+    baseUrl: `http://127.0.0.1:${address.port}`,
+  };
+}
+
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+async function createClient(baseUrl, apiKey) {
+  const client = new Client({ name: 'lifeline-mcp-test-client', version: '1.0.0' }, { capabilities: {} });
+  const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
+    requestInit: {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    },
+  });
+
+  await client.connect(transport);
+  return {
+    client,
+    transport,
+  };
+}
+
+test('lifeline-mcp service health endpoint initializes successfully', async () => {
+  const app = createApp({
+    config: {
+      serviceName: 'lifeline-mcp',
+      serviceVersion: '0.1.0',
+      host: '127.0.0.1',
+      port: 0,
+      allowedHosts: [],
+      backendBaseUrl: 'http://127.0.0.1:3000',
+      internalSharedSecret: 'shared-secret',
+      requestTimeoutMs: 5000,
+      logLevel: 'info',
+    },
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+  try {
+    const response = await fetch(`${baseUrl}/health`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.status, 'ok');
+    assert.equal(payload.transport, 'streamable-http');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('lifeline-mcp rejects missing API keys clearly', async () => {
+  const app = createApp({
+    config: {
+      serviceName: 'lifeline-mcp',
+      serviceVersion: '0.1.0',
+      host: '127.0.0.1',
+      port: 0,
+      allowedHosts: [],
+      backendBaseUrl: 'http://127.0.0.1:3000',
+      internalSharedSecret: 'shared-secret',
+      requestTimeoutMs: 5000,
+      logLevel: 'info',
+    },
+    backendClient: {
+      async resolveApiKey() {
+        throw new Error('should not be called');
+      },
+    },
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+  try {
+    const response = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(INIT_REQUEST),
+    });
+
+    assert.equal(response.status, 401);
+    const payload = await response.json();
+    assert.equal(payload.error.data.code, 'missing_api_key');
+    assert.match(payload.error.message, /Missing API key/i);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('lifeline-mcp runs representative read and write tools end-to-end through the internal backend adapter', async () => {
+  process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+  process.env.MCP_API_KEY_PEPPER = 'pepper';
+
+  const taskStore = createInMemoryTaskStore();
+  const mcpApiKeyRepository = {
+    async findByKeyPrefix(keyPrefix) {
+      const records = {
+        lk_rw: {
+          id: 'key-rw',
+          userId: 'user-1',
+          name: 'RW key',
+          keyPrefix: 'lk_rw',
+          keyHash: hashMcpApiKeySecret('secret-rw', 'pepper'),
+          scopes: ['tasks:read', 'tasks:write'],
+          status: 'active',
+          expiresAt: null,
+          revokedAt: null,
+        },
+      };
+      return records[keyPrefix] || null;
+    },
+    async recordUsage() {
+      return undefined;
+    },
+  };
+  const userRepository = {
+    async findById(id) {
+      const users = {
+        'user-1': { id: 'user-1', name: 'User One', role: 'paid' },
+        'user-2': { id: 'user-2', name: 'User Two', role: 'paid' },
+      };
+      return users[id] || null;
+    },
+  };
+  const resolveMcpApiKeyPrincipal = new ResolveMcpApiKeyPrincipal({
+    mcpApiKeyRepository,
+    userRepository,
+    now: () => new Date('2026-03-07T12:00:00.000Z'),
+  });
+
+  const backendApp = express();
+  backendApp.use(express.json());
+  backendApp.use('/internal/mcp', createInternalMcpRouter({
+    mcpApiKeyRepository,
+    userRepository,
+    resolveMcpApiKeyPrincipal,
+    todoRepository: taskStore.todoRepository,
+    searchTodos: taskStore.searchTodos,
+    listTodos: taskStore.listTodos,
+    createTodoForInternalMcp: taskStore.createTodoForInternalMcp,
+    updateTodo: taskStore.updateTodo,
+    deleteTodo: taskStore.deleteTodo,
+    setTodoCompletion: taskStore.setTodoCompletion,
+  }));
+  backendApp.use(errorHandler);
+
+  const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
+
+  const mcpApp = createApp({
+    config: {
+      serviceName: 'lifeline-mcp',
+      serviceVersion: '0.1.0',
+      host: '127.0.0.1',
+      port: 0,
+      allowedHosts: [],
+      backendBaseUrl,
+      internalSharedSecret: 'shared-secret',
+      requestTimeoutMs: 5000,
+      logLevel: 'info',
+    },
+  });
+  const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
+
+  let clientTransport = null;
+  try {
+    const { client, transport } = await createClient(mcpBaseUrl, 'lk_rw.secret-rw');
+    clientTransport = transport;
+
+    const tools = await client.listTools();
+    assert.ok(tools.tools.some((tool) => tool.name === 'search_tasks'));
+    assert.ok(tools.tools.some((tool) => tool.name === 'create_task'));
+
+    const getTaskResult = await client.callTool({
+      name: 'get_task',
+      arguments: { taskNumber: 1 },
+    });
+    assert.equal(getTaskResult.structuredContent.task.id, 'task-u1-1');
+    assert.equal(getTaskResult.structuredContent.task.title, 'User one task');
+
+    const createResult = await client.callTool({
+      name: 'create_task',
+      arguments: {
+        title: 'Created through MCP',
+        dueDate: '2026-03-07',
+        priority: 'high',
+      },
+    });
+    assert.equal(createResult.structuredContent.task.taskNumber, 2);
+
+    const completeResult = await client.callTool({
+      name: 'complete_task',
+      arguments: { taskNumber: 2 },
+    });
+    assert.equal(completeResult.structuredContent.completed, true);
+    assert.equal(completeResult.structuredContent.task.isCompleted, true);
+
+    const searchResult = await client.callTool({
+      name: 'search_tasks',
+      arguments: { query: 'Created through MCP' },
+    });
+    assert.equal(searchResult.structuredContent.total, 1);
+    assert.equal(searchResult.structuredContent.tasks[0].taskNumber, 2);
+
+    const userOneTasks = taskStore.snapshot('user-1');
+    const userTwoTasks = taskStore.snapshot('user-2');
+    assert.equal(userOneTasks.length, 2);
+    assert.equal(userTwoTasks.length, 1);
+    assert.equal(userTwoTasks[0].title, 'User two task');
+  } finally {
+    if (clientTransport) {
+      await clientTransport.close();
+    }
+    await closeServer(mcpServer);
+    await closeServer(backendServer);
+  }
+});
+
+test('lifeline-mcp reports scope failures clearly for write tools', async () => {
+  process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+  process.env.MCP_API_KEY_PEPPER = 'pepper';
+
+  const taskStore = createInMemoryTaskStore();
+  const mcpApiKeyRepository = {
+    async findByKeyPrefix(keyPrefix) {
+      const records = {
+        lk_ro: {
+          id: 'key-ro',
+          userId: 'user-1',
+          name: 'RO key',
+          keyPrefix: 'lk_ro',
+          keyHash: hashMcpApiKeySecret('secret-ro', 'pepper'),
+          scopes: ['tasks:read'],
+          status: 'active',
+          expiresAt: null,
+          revokedAt: null,
+        },
+      };
+      return records[keyPrefix] || null;
+    },
+    async recordUsage() {
+      return undefined;
+    },
+  };
+  const userRepository = {
+    async findById(id) {
+      return { id, name: 'User One', role: 'paid' };
+    },
+  };
+  const resolveMcpApiKeyPrincipal = new ResolveMcpApiKeyPrincipal({
+    mcpApiKeyRepository,
+    userRepository,
+    now: () => new Date('2026-03-07T12:00:00.000Z'),
+  });
+
+  const backendApp = express();
+  backendApp.use(express.json());
+  backendApp.use('/internal/mcp', createInternalMcpRouter({
+    mcpApiKeyRepository,
+    userRepository,
+    resolveMcpApiKeyPrincipal,
+    todoRepository: taskStore.todoRepository,
+    searchTodos: taskStore.searchTodos,
+    listTodos: taskStore.listTodos,
+    createTodoForInternalMcp: taskStore.createTodoForInternalMcp,
+    updateTodo: taskStore.updateTodo,
+    deleteTodo: taskStore.deleteTodo,
+    setTodoCompletion: taskStore.setTodoCompletion,
+  }));
+  backendApp.use(errorHandler);
+
+  const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
+  const mcpApp = createApp({
+    config: {
+      serviceName: 'lifeline-mcp',
+      serviceVersion: '0.1.0',
+      host: '127.0.0.1',
+      port: 0,
+      allowedHosts: [],
+      backendBaseUrl,
+      internalSharedSecret: 'shared-secret',
+      requestTimeoutMs: 5000,
+      logLevel: 'info',
+    },
+  });
+  const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
+
+  let clientTransport = null;
+  try {
+    const { client, transport } = await createClient(mcpBaseUrl, 'lk_ro.secret-ro');
+    clientTransport = transport;
+
+    const result = await client.callTool({
+      name: 'create_task',
+      arguments: { title: 'Should fail' },
+    });
+
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent.error.code, 'scope_denied');
+    assert.match(result.structuredContent.error.message, /missing required scope/i);
+  } finally {
+    if (clientTransport) {
+      await clientTransport.close();
+    }
+    await closeServer(mcpServer);
+    await closeServer(backendServer);
+  }
+});
+
+test('lifeline-mcp rejects conflicting id and taskNumber selectors for mutations', async () => {
+  process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+  process.env.MCP_API_KEY_PEPPER = 'pepper';
+
+  const taskStore = createInMemoryTaskStore();
+  const mcpApiKeyRepository = {
+    async findByKeyPrefix(keyPrefix) {
+      if (keyPrefix !== 'lk_rw_conflict') return null;
+      return {
+        id: 'key-rw-conflict',
+        userId: 'user-1',
+        name: 'RW key',
+        keyPrefix: 'lk_rw_conflict',
+        keyHash: hashMcpApiKeySecret('secret-rw', 'pepper'),
+        scopes: ['tasks:read', 'tasks:write'],
+        status: 'active',
+        expiresAt: null,
+        revokedAt: null,
+      };
+    },
+    async recordUsage() {
+      return undefined;
+    },
+  };
+  const userRepository = {
+    async findById(id) {
+      return { id, name: 'User One', role: 'paid' };
+    },
+  };
+  const resolveMcpApiKeyPrincipal = new ResolveMcpApiKeyPrincipal({
+    mcpApiKeyRepository,
+    userRepository,
+    now: () => new Date('2026-03-07T12:00:00.000Z'),
+  });
+
+  const backendApp = express();
+  backendApp.use(express.json());
+  backendApp.use('/internal/mcp', createInternalMcpRouter({
+    mcpApiKeyRepository,
+    userRepository,
+    resolveMcpApiKeyPrincipal,
+    todoRepository: taskStore.todoRepository,
+    searchTodos: taskStore.searchTodos,
+    listTodos: taskStore.listTodos,
+    createTodoForInternalMcp: taskStore.createTodoForInternalMcp,
+    updateTodo: taskStore.updateTodo,
+    deleteTodo: taskStore.deleteTodo,
+    setTodoCompletion: taskStore.setTodoCompletion,
+  }));
+  backendApp.use(errorHandler);
+
+  const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
+  const mcpApp = createApp({
+    config: {
+      serviceName: 'lifeline-mcp',
+      serviceVersion: '0.1.0',
+      host: '127.0.0.1',
+      port: 0,
+      allowedHosts: [],
+      backendBaseUrl,
+      internalSharedSecret: 'shared-secret',
+      requestTimeoutMs: 5000,
+      logLevel: 'info',
+    },
+  });
+  const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
+
+  let clientTransport = null;
+  try {
+    const { client, transport } = await createClient(mcpBaseUrl, 'lk_rw_conflict.secret-rw');
+    clientTransport = transport;
+
+    const result = await client.callTool({
+      name: 'complete_task',
+      arguments: {
+        taskNumber: 1,
+        id: 'task-does-not-match',
+      },
+    });
+
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent.error.code, 'invalid_input');
+    assert.match(result.structuredContent.error.message, /do not resolve to the same task/i);
+  } finally {
+    if (clientTransport) {
+      await clientTransport.close();
+    }
+    await closeServer(mcpServer);
+    await closeServer(backendServer);
+  }
+});

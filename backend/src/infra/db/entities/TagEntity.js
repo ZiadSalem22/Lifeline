@@ -4,11 +4,13 @@ module.exports = new EntitySchema({
     name: 'Tag',
     tableName: 'tags',
     columns: {
-        id: { type: 'varchar', primary: true },
-        name: { type: 'nvarchar', nullable: false },
-        color: { type: 'nvarchar', nullable: false },
-        user_id: { type: 'nvarchar', length: 128, nullable: true },
-        is_default: { type: 'int', default: 0 },
+        id: { type: 'text', primary: true },
+        name: { type: 'text', nullable: false },
+        color: { type: 'text', nullable: false },
+        user_id: { type: 'text', nullable: true },
+        is_default: { type: 'boolean', default: false },
+        created_at: { type: 'timestamptz', createDate: true, nullable: false, default: () => 'now()' },
+        updated_at: { type: 'timestamptz', updateDate: true, nullable: false, default: () => 'now()' },
     },
     relations: {
         todos: {
@@ -19,6 +21,6 @@ module.exports = new EntitySchema({
                 joinColumn: { name: 'tag_id', referencedColumnName: 'id' },
                 inverseJoinColumn: { name: 'todo_id', referencedColumnName: 'id' }
             }
-        }
+        },
     }
 });

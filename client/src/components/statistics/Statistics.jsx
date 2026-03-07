@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { fetchStats, fetchStatsRange, saveSettings, ME_URL } from '../../utils/api';
+import { useLoading } from '../../context/LoadingContext';
 import { CloseIcon, StatsIcon } from '../../icons/Icons';
 import styles from './Statistics.module.css';
 
@@ -277,6 +278,8 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
   const maxPerDay = useMemo(() => groups.reduce((m, d) => Math.max(m, d.count), 0) || 1, [groups]);
   const perDayPoints = useMemo(() => groups.map((d) => ({ x: d.period || d.date, y: d.count })), [groups]);
 
+  const { isLoading: globalLoading } = useLoading();
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -349,7 +352,7 @@ const Statistics = ({ onBack, fetchWithAuth, guestMode, guestTodos = [], guestTa
       </div>
       
 
-      {loading && <div className={styles.loading}>Loading statistics...</div>}
+      {loading && !globalLoading && <div className={styles.loading}>Loading statistics...</div>}
       {error && <div className={styles.error}>{error}</div>}
 
       {!loading && !error && stats && (

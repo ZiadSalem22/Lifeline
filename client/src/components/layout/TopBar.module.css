@@ -23,10 +23,14 @@
   border-radius: 10px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  z-index: 100; /* Adjusted for dropdown interactivity */
-  pointer-events: auto; /* Ensured pointer events are enabled */
+  z-index: 100;
+  /* Adjusted for dropdown interactivity */
+  pointer-events: auto;
+  /* Ensured pointer events are enabled */
 }
-[data-theme='white'] .sidebar-search-mobile {
+
+[data-theme='white'] .sidebar-search-mobile,
+[data-theme='clean-beige'] .sidebar-search-mobile {
   background: rgb(0 0 0 / 2%);
   /* Removed stray closing brace to fix CSS error */
 }
@@ -59,7 +63,9 @@
   font-weight: 600;
 }
 
-.sidebar-login-mobile:hover { filter: brightness(1.03); }
+.sidebar-login-mobile:hover {
+  filter: brightness(1.03);
+}
 
 /* Footer-centered login used on mobile sidebar */
 .sidebar-footer-login {
@@ -76,7 +82,9 @@
   box-shadow: 0 8px 20px rgba(0 0 0 / 18%);
 }
 
-.sidebar-footer-login:active { transform: translateY(1px); }
+.sidebar-footer-login:active {
+  transform: translateY(1px);
+}
 
 .top-bar {
   position: fixed;
@@ -137,10 +145,12 @@
   border-radius: 999px;
   padding: 8px 14px;
   box-shadow: 0 12px 32px rgba(0 0 0 / 14%);
-  flex: 1 1 480px; /* preferred width */
+  flex: 1 1 480px;
+  /* preferred width */
   min-width: 240px;
   max-width: 600px;
-  margin: 0 12px; /* keep spacing from title/identity */
+  margin: 0 12px;
+  /* keep spacing from title/identity */
 }
 
 .top-bar-search .search-icon {
@@ -348,13 +358,14 @@
 
 /* Hover styles removed since button is hidden */
 
-@media (width <= 900px) {
+@media (width <=900px) {
   .guest-pill {
     font-size: 0.92rem;
     padding: 7px 12px;
     gap: 8px;
     box-shadow: 0 4px 16px rgba(0 0 0 / 8%);
   }
+
   .guest-pill .guest-login {
     font-size: 0.92rem;
     padding: 7px 16px;
@@ -388,7 +399,8 @@
 }
 
 .top-bar-button:hover {
-  z-index: 2; /* keep above background but below modal dropdowns */
+  z-index: 2;
+  /* keep above background but below modal dropdowns */
   transform: translateY(-1px);
 }
 
@@ -444,6 +456,7 @@
   object-fit: cover;
   border: 1px solid var(--color-border);
 }
+
 .chip-initials {
   display: flex;
   align-items: center;
@@ -461,6 +474,7 @@
   font-weight: 600;
   color: inherit;
 }
+
 .chip-chevron {
   background: transparent;
   border: none;
@@ -487,9 +501,11 @@
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-.search-input:focus { outline: none; }
+.search-input:focus {
+  outline: none;
+}
 
-@media (width <= 900px) {
+@media (width <=900px) {
   .identity-chip {
     max-width: 90vw;
     min-width: 0;
@@ -509,11 +525,14 @@
     transform: translateY(-50%);
     z-index: 10;
   }
+
   /* Ensure menu button appears when sidebar is hidden (< 900px) */
   .top-bar-menu-button {
     display: inline-flex;
   }
-  .chip-avatar, .chip-initials {
+
+  .chip-avatar,
+  .chip-initials {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -524,6 +543,7 @@
     justify-content: center;
     font-size: 1rem;
   }
+
   .chip-name {
     max-width: 80px;
     overflow: hidden;
@@ -535,9 +555,10 @@
     text-align: left;
   }
 }
+
 /* Removed duplicate/stray rules and closing brace to fix CSS error */
 
-@media (width <= 720px) {
+@media (width <=720px) {
   .top-bar-controls {
     flex-direction: row;
     align-items: stretch;
@@ -603,7 +624,7 @@
   }
 }
 
-@media (width <= 520px) {
+@media (width <=520px) {
   .top-bar {
     padding: 8px 12px 10px;
     padding-top: calc(8px + env(safe-area-inset-top));
@@ -616,7 +637,8 @@
     flex-direction: row;
     align-items: center;
     gap: 8px;
-    justify-content: space-between; /* enforce two-side layout */
+    justify-content: space-between;
+    /* enforce two-side layout */
   }
 
   /* Keep actions on the right and prevent full-width from pushing the login left */
@@ -648,7 +670,7 @@
 }
 
 /* Extra small screens (iPhone SE and similar) */
-@media (width <= 420px) {
+@media (width <=420px) {
   .top-bar {
     padding: 6px 12px 8px;
     padding-top: calc(6px + env(safe-area-inset-top));
@@ -657,7 +679,8 @@
 
   .top-bar-main {
     align-items: center;
-    justify-content: space-between; /* keep login on right */
+    justify-content: space-between;
+    /* keep login on right */
     gap: 10px;
   }
 
@@ -669,7 +692,7 @@
     border-radius: 10px !important;
     font-size: 0.9rem !important;
   }
-  
+
   /* Ensure actions (login) stay on the right */
   .top-bar-actions {
     margin-left: auto;
@@ -688,6 +711,7 @@
   .top-bar-title {
     font-size: 1.05rem;
   }
+
   .identity-chip {
     min-height: 44px;
     padding: 8px 12px;
@@ -696,13 +720,15 @@
 
 /* Light theme adjustments for pill contrast */
 
-[data-theme='white'] .top-bar-search {
+[data-theme='white'] .top-bar-search,
+[data-theme='clean-beige'] .top-bar-search {
   background: rgba(255 255 255 / 92%);
   border: 1px solid rgba(0 0 0 / 6%);
   box-shadow: 0 8px 24px rgba(0 0 0 / 6%);
 }
 
-[data-theme='white'] .top-bar-search::before {
+[data-theme='white'] .top-bar-search::before,
+[data-theme='clean-beige'] .top-bar-search::before {
   background: linear-gradient(180deg, rgba(255 255 255 / 90%), rgba(255 255 255 / 70%));
   opacity: 0.6;
 }

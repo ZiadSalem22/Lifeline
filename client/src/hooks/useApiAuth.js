@@ -1,6 +1,6 @@
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from './useAuth';
 
 export function useApiAuth() {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated } = useAuth();
   return { getAccessTokenSilently, isAuthenticated };
 }
