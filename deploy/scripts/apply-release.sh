@@ -128,7 +128,7 @@ wait_for_mcp_backend_path() {
   local elapsed=0
 
   while (( elapsed < timeout_seconds )); do
-    if docker exec "${container_name}" node -e "fetch(\`${process.env.LIFELINE_BACKEND_BASE_URL}/internal/mcp/health\`, { headers: { 'x-lifeline-internal-service-secret': process.env.MCP_INTERNAL_SHARED_SECRET } }).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
+    if docker exec "${container_name}" node -e 'fetch(process.env.LIFELINE_BACKEND_BASE_URL + "/internal/mcp/health", { headers: { "x-lifeline-internal-service-secret": process.env.MCP_INTERNAL_SHARED_SECRET } }).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))'; then
       return 0
     fi
 
