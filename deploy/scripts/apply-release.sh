@@ -40,7 +40,7 @@ MCP_PORT="${MCP_PORT:-3010}"
 MCP_PUBLIC_BASE_URL="${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}"
 
 PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"
-PUBLIC_HOME_URL="${APP_ORIGIN%/}/"
+PUBLIC_INFO_URL="${APP_ORIGIN%/}/api/public/info"
 INTERNAL_HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health/db"
 MCP_PUBLIC_HEALTH_URL="${MCP_PUBLIC_BASE_URL%/}/health"
 MCP_INTERNAL_HEALTH_URL="http://127.0.0.1:${MCP_PORT}/health"
@@ -177,7 +177,7 @@ wait_for_container_healthy "${APP_CONTAINER}" 240
 wait_for_container_healthy "${MCP_CONTAINER}" 180
 wait_for_url "${INTERNAL_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_HEALTH_URL}" 120
-wait_for_url "${PUBLIC_HOME_URL}" 120
+wait_for_url "${PUBLIC_INFO_URL}" 120
 wait_for_url "${MCP_INTERNAL_HEALTH_URL}" 120
 wait_for_url "${MCP_PUBLIC_HEALTH_URL}" 120
 wait_for_mcp_backend_path "${MCP_CONTAINER}" 120

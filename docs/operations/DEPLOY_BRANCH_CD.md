@@ -20,7 +20,7 @@ The workflow performs the following steps:
 5. Runs [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh) on the VPS.
 6. Repoints `/opt/lifeline/current` to the new release.
 7. Runs `docker compose` with [compose.production.yaml](../../compose.production.yaml) and `/opt/lifeline/shared/.env.production`.
-8. Verifies app, MCP, and Postgres container health plus public and private runtime checks, including the MCP-to-backend internal adapter path.
+8. Verifies app, MCP, and Postgres container health plus public and private runtime checks, including the public app info endpoint and the MCP-to-backend internal adapter path.
 
 ## Production runtime topology
 

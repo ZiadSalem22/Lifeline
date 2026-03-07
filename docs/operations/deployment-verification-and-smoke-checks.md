@@ -22,7 +22,7 @@ The production deploy helper verifies:
 - MCP container health
 - internal database health URL at `http://127.0.0.1:3020/api/health/db`
 - public database health URL at `https://lifeline.a2z-us.com/api/health/db`
-- public homepage availability at `https://lifeline.a2z-us.com/`
+- public app info availability at `https://lifeline.a2z-us.com/api/public/info`
 - internal MCP health URL at `http://127.0.0.1:3010/health`
 - public MCP health URL at `https://mcp.lifeline.a2z-us.com/health`
 - MCP-to-backend internal adapter reachability from inside the `lifeline-mcp` container
@@ -104,7 +104,7 @@ After a production deployment, the minimum useful checks are:
 
 1. confirm the GitHub Actions deploy run finished successfully
 2. confirm `/api/health/db` is healthy publicly
-3. confirm `/` loads successfully
+3. confirm `/api/public/info` responds successfully publicly
 4. confirm `https://mcp.lifeline.a2z-us.com/health` is healthy publicly
 5. confirm the loopback-only bindings are still enforced for both app and MCP services
 6. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
