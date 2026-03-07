@@ -32,7 +32,7 @@ Lifeline deploys MCP as a separate `lifeline-mcp` container and public hostname.
 The accepted production/runtime boundary is:
 
 - public app traffic: `lifeline.a2z-us.com` → Nginx → `127.0.0.1:3020` → `lifeline-app`
-- public MCP traffic: `mcp.lifeline.a2z-us.com` → Nginx → `127.0.0.1:3010` → `lifeline-mcp`
+- public MCP traffic: `mcp.lifeline.a2z-us.com` → Nginx → `127.0.0.1:3030` → `lifeline-mcp`
 - internal MCP task behavior: `lifeline-mcp` → `http://lifeline-app:3000/internal/mcp/*`
 
 The backend internal shared secret remains host-side and env-driven.

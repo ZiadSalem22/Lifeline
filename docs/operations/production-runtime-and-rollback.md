@@ -18,6 +18,8 @@ This document describes the current production runtime shape, deployment environ
 
 ## Current production model
 
+Current host access uses the reachable `root` account on the VPS. Do not assume a `ziyad` Linux user exists. If a dedicated deploy user is introduced later, it must be created, granted the required Docker/Nginx/release permissions, and then reflected in the deployment secret configuration before cutover work switches away from `root`.
+
 Lifeline uses the `deploy-branch production model`.
 
 The current production target is a VPS that hosts:
@@ -63,7 +65,7 @@ The MCP container:
 Nginx proxies:
 
 - `lifeline.a2z-us.com` to `http://127.0.0.1:3020`
-- `mcp.lifeline.a2z-us.com` to `http://127.0.0.1:3010`
+- `mcp.lifeline.a2z-us.com` to `http://127.0.0.1:3030`
 
 That keeps both Node services off the public network interface and makes Nginx the public edge.
 
@@ -92,7 +94,7 @@ At a high level, production deployment does the following:
 2. upload the release archive to the VPS
 3. extract it into a new release directory
 4. repoint `/opt/lifeline/current`
-5. clear stale listeners from the reserved MCP loopback port if `127.0.0.1:3010` is still occupied
+5. clear stale listeners from the reserved MCP loopback port if the configured `MCP_PORT` listener, which now defaults to `127.0.0.1:3030`, is still occupied
 6. run `docker compose up -d --build`
 7. verify database health, internal MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
 8. sync the MCP Nginx host config, run `nginx -t`, reload Nginx, and verify the public MCP health endpoint
@@ -125,7 +127,7 @@ A manual rollback can be performed by:
 Important operational assumptions include:
 
 - the app container must stay bound to `127.0.0.1:3020` in production
-- the MCP container must stay bound to `127.0.0.1:${MCP_PORT:-3010}` in production
+- the MCP container must stay bound to `127.0.0.1:${MCP_PORT:-3030}` in production
 - the shared env file must exist and be valid
 - migrations must succeed before the app can start normally
 - the public domains and Nginx proxy targets must remain aligned with the compose port mappings

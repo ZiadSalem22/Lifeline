@@ -23,11 +23,11 @@ The production deploy helper verifies:
 - internal database health URL at `http://127.0.0.1:3020/api/health/db`
 - public database health URL at `https://lifeline.a2z-us.com/api/health/db`
 - public app info availability at `https://lifeline.a2z-us.com/api/public/info`
-- internal MCP health URL at `http://127.0.0.1:3010/health`
+- internal MCP health URL at `http://127.0.0.1:3030/health`
 - public MCP health URL at `https://mcp.lifeline.a2z-us.com/health`
 - MCP-to-backend internal adapter reachability from inside the `lifeline-mcp` container
 - loopback-only publication of container port `3000` as `127.0.0.1:3020`
-- loopback-only publication of the MCP port as `127.0.0.1:3010`
+- loopback-only publication of the MCP port as `127.0.0.1:3030`
 
 If any of those checks fail, the deployment is treated as failed.
 

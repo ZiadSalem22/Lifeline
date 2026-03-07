@@ -36,7 +36,7 @@ set +a
 
 APP_PORT="${APP_PORT:-3020}"
 APP_ORIGIN="${APP_ORIGIN:-https://lifeline.a2z-us.com}"
-MCP_PORT="${MCP_PORT:-3010}"
+MCP_PORT="${MCP_PORT:-3030}"
 MCP_PUBLIC_BASE_URL="${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}"
 
 PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"

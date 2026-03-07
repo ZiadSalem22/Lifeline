@@ -10,7 +10,7 @@ FROM node:20-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production \
-    MCP_PORT=3010 \
+    MCP_PORT=3030 \
     MCP_BIND_HOST=0.0.0.0
 
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
@@ -20,6 +20,6 @@ COPY --chown=node:node src ./src
 
 USER node
 
-EXPOSE 3010
+EXPOSE 3030
 
 CMD ["node", "src/index.js"]

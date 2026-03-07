@@ -25,7 +25,7 @@ jobs:
     env:
       DEPLOY_HOST: ${{ secrets.VPS_SSH_HOST }}
       DEPLOY_PORT: ${{ secrets.VPS_SSH_PORT }}
-      DEPLOY_USER: ${{ secrets.VPS_SSH_USER }}
+      DEPLOY_USER: ${{ secrets.VPS_SSH_USER != '' && secrets.VPS_SSH_USER || 'root' }}
       KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
       PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
       RELEASES_ROOT: /opt/lifeline/releases
@@ -41,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for name in DEPLOY_HOST DEPLOY_USER KNOWN_HOSTS PRIVATE_KEY; do
+          for name in DEPLOY_HOST KNOWN_HOSTS PRIVATE_KEY; do
             if [[ -z "${!name:-}" ]]; then
               echo "::error::Missing required deployment secret: ${name}"
               missing=1
@@ -51,6 +51,12 @@ jobs:
           if [[ -z "${DEPLOY_PORT:-}" ]]; then
             echo "DEPLOY_PORT=22" >> "$GITHUB_ENV"
           fi
+
+          if [[ -z "${DEPLOY_USER:-}" ]]; then
+            echo "DEPLOY_USER=root" >> "$GITHUB_ENV"
+          fi
+
+          echo "Using VPS SSH account: ${DEPLOY_USER:-root}"
 
           if [[ "$missing" -ne 0 ]]; then
             exit 1
@@ -91,22 +97,37 @@ jobs:
       - name: Reserve MCP loopback port on VPS
         run: |
           set -euo pipefail
-          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'EOF'
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "SHARED_ENV_FILE='${SHARED_ENV_FILE}' bash -s" <<'EOF'
           set -euo pipefail
 
-          port="3010"
+          run_root() {
+            if command -v sudo >/dev/null 2>&1; then
+              sudo "$@"
+            elif [[ "$(id -u)" -eq 0 ]]; then
+              "$@"
+            else
+              echo "This deployment step needs root privileges for: $*" >&2
+              exit 1
+            fi
+          }
 
-          if ! command -v sudo >/dev/null 2>&1; then
-            echo "sudo is required to inspect and reserve port ${port} on the VPS host." >&2
-            exit 1
+          port="3030"
+
+          if [[ -f "${SHARED_ENV_FILE}" ]]; then
+            # shellcheck disable=SC1090
+            set -a
+            source "${SHARED_ENV_FILE}"
+            set +a
+            port="${MCP_PORT:-3030}"
           fi
 
-          if ! sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+          if ! run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
             exit 0
           fi
 
           echo "Port ${port} is already in use; inspecting current listener..."
-          listener_report="$(sudo ss -ltnp "( sport = :${port} )" || true)"
+          listener_report="$(run_root ss -ltnp "( sport = :${port} )" || true)"
           printf '%s\n' "${listener_report}"
 
           blocking_container="$(docker ps --format '{{.Names}}\t{{.Ports}}' | awk -F'\t' '$2 ~ /127\.0\.0\.1:'"${port}"'->/ { print $1; exit }')"
@@ -115,39 +136,31 @@ jobs:
             docker rm -f "${blocking_container}"
           fi
 
-          if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
             blocking_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
             if [[ -n "${blocking_pids}" ]]; then
               echo "Stopping stale host listener(s) on MCP port ${port}: ${blocking_pids}"
-              for pid in ${blocking_pids}; do
-                pgid="$(sudo ps -o pgid= -p "${pid}" 2>/dev/null | tr -d ' ')"
-                if [[ -n "${pgid}" ]]; then
-                  echo "Stopping process group ${pgid} for stale MCP port listener ${pid}"
-                  sudo kill -- -"${pgid}" 2>/dev/null || true
-                fi
-              done
-              sudo kill ${blocking_pids}
-              sudo pkill -f 'next-server' 2>/dev/null || true
+              run_root kill ${blocking_pids}
               sleep 2
             fi
           fi
 
-          if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            listener_report="$(sudo ss -ltnp "( sport = :${port} )" || true)"
+          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+            listener_report="$(run_root ss -ltnp "( sport = :${port} )" || true)"
             respawned_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
             for pid in ${respawned_pids}; do
-              unit_name="$(sudo cat "/proc/${pid}/cgroup" 2>/dev/null | sed -n 's#^.*/\([^/]*\.service\)$#\1#p' | head -n 1)"
+              unit_name="$(run_root cat "/proc/${pid}/cgroup" 2>/dev/null | sed -n 's#^.*/\([^/]*\.service\)$#\1#p' | head -n 1)"
               if [[ -n "${unit_name}" ]]; then
                 echo "Stopping supervising systemd unit for MCP port ${port}: ${unit_name}"
-                sudo systemctl stop "${unit_name}"
+                run_root systemctl stop "${unit_name}"
               fi
             done
             sleep 2
           fi
 
-          if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
             echo "Port ${port} is still occupied after cleanup; refusing to continue." >&2
-            sudo ss -ltnp "( sport = :${port} )" || true
+            run_root ss -ltnp "( sport = :${port} )" || true
             exit 1
           fi
           EOF
@@ -182,6 +195,17 @@ jobs:
             "RELEASE_ID='${RELEASE_ID}' RELEASES_ROOT='${RELEASES_ROOT}' bash -s" <<'EOF'
           set -euo pipefail
 
+          run_root() {
+            if command -v sudo >/dev/null 2>&1; then
+              sudo "$@"
+            elif [[ "$(id -u)" -eq 0 ]]; then
+              "$@"
+            else
+              echo "This deployment step needs root privileges for: $*" >&2
+              exit 1
+            fi
+          }
+
           release_dir="${RELEASES_ROOT}/${RELEASE_ID}"
           source_conf="${release_dir}/deploy/nginx/mcp.lifeline.a2z-us.com.conf"
 
@@ -190,18 +214,18 @@ jobs:
             exit 1
           fi
 
-          if sudo test -d /etc/nginx/conf.d; then
-            sudo install -m 644 "${source_conf}" /etc/nginx/conf.d/mcp.lifeline.a2z-us.com.conf
-          elif sudo test -d /etc/nginx/sites-available && sudo test -d /etc/nginx/sites-enabled; then
-            sudo install -m 644 "${source_conf}" /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf
-            sudo ln -sfn /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf /etc/nginx/sites-enabled/mcp.lifeline.a2z-us.com.conf
+          if run_root test -d /etc/nginx/conf.d; then
+            run_root install -m 644 "${source_conf}" /etc/nginx/conf.d/mcp.lifeline.a2z-us.com.conf
+          elif run_root test -d /etc/nginx/sites-available && run_root test -d /etc/nginx/sites-enabled; then
+            run_root install -m 644 "${source_conf}" /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf
+            run_root ln -sfn /etc/nginx/sites-available/mcp.lifeline.a2z-us.com.conf /etc/nginx/sites-enabled/mcp.lifeline.a2z-us.com.conf
           else
             echo "Could not find a supported Nginx include directory on the VPS host." >&2
             exit 1
           fi
 
-          sudo nginx -t
-          sudo systemctl reload nginx
+          run_root nginx -t
+          run_root systemctl reload nginx
           EOF
 
       - name: Verify public MCP health on VPS

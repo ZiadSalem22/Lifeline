@@ -165,6 +165,7 @@ Production deployment now uses a deploy-branch CD model.
 - `deploy` is the production deployment branch.
 - pushes to `deploy` trigger the VPS deployment workflow in [.github/workflows/deploy-production.yml](.github/workflows/deploy-production.yml)
 - production runtime secrets remain on the VPS in `/opt/lifeline/shared/.env.production`
+- production host access currently uses `root`; do not assume a `ziyad` VPS account exists unless a separate deploy user is intentionally created later
 
 See [docs/operations/DEPLOY_BRANCH_CD.md](docs/operations/DEPLOY_BRANCH_CD.md) for the operator flow, required deployment secrets, and rollback notes.
 

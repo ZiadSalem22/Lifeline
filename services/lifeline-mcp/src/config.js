@@ -29,7 +29,7 @@ export function loadConfig(env = process.env) {
     serviceName: 'lifeline-mcp',
     serviceVersion: '0.1.0',
     host,
-    port: parsePort(env.MCP_PORT || env.PORT, 3010),
+    port: parsePort(env.MCP_PORT || env.PORT, 3030),
     publicBaseUrl: publicBaseUrl || null,
     allowedHosts: splitCsv(env.MCP_ALLOWED_HOSTS),
     backendBaseUrl: String(env.LIFELINE_BACKEND_BASE_URL || 'http://127.0.0.1:3000'),

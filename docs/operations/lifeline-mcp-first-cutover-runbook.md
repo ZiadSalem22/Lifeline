@@ -27,6 +27,7 @@ Before treating the first MCP cutover as ready, confirm all of the following:
 - The shared production env file contains the MCP runtime settings and secrets expected by [compose.production.yaml](../../compose.production.yaml).
 - The host Nginx install is configured to load the Lifeline virtual-host files from its active include directory.
 - Operators can run Docker, `curl`, and Nginx admin commands on the VPS.
+- Operators can reach the VPS as `root`, or through an intentionally created deploy user with equivalent permissions. Do not assume a `ziyad` host account exists.
 - A dedicated Lifeline smoke user already exists for MCP validation so cutover checks do not mutate a normal user's working task set.
 
 ## Required host-side env and secrets
@@ -58,11 +59,12 @@ Also confirm the existing app/runtime values remain valid:
 
 1. Confirm DNS for `mcp.lifeline.a2z-us.com` is already pointed at the production VPS.
 2. Confirm `/opt/lifeline/shared/.env.production` includes the MCP variables listed above.
-3. Confirm the VPS uses one of the workflow-supported Nginx layouts: `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`.
-4. Merge or cherry-pick the approved MCP cutover commit(s) from `main` into `deploy`.
-5. Push `deploy` and watch the `Deploy Lifeline Production` workflow.
-6. Wait for the workflow to finish the release helper, sync [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf), run `nginx -t`, reload Nginx, and verify the public MCP health endpoint.
-7. Run the post-deploy smoke flow in the next section before declaring success.
+3. Confirm the GitHub production secret `VPS_SSH_USER` is either unset so the workflow falls back to `root`, or explicitly set to `root` until a dedicated deploy user is created.
+4. Confirm the VPS uses one of the workflow-supported Nginx layouts: `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`.
+5. Merge or cherry-pick the approved MCP cutover commit(s) from `main` into `deploy`.
+6. Push `deploy` and watch the `Deploy Lifeline Production` workflow.
+7. Wait for the workflow to finish the release helper, sync [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf), run `nginx -t`, reload Nginx, and verify the public MCP health endpoint.
+8. Run the post-deploy smoke flow in the next section before declaring success.
 
 ## Post-deploy cutover validation flow
 
@@ -73,14 +75,14 @@ The deploy helper already checks these automatically, but operators should spot-
 - App health: `curl -fsS https://lifeline.a2z-us.com/api/health/db`
 - MCP health: `curl -fsS https://mcp.lifeline.a2z-us.com/health`
 - App loopback bind: `docker port lifeline-app 3000`
-- MCP loopback bind: `docker port lifeline-mcp ${MCP_PORT:-3010}`
+- MCP loopback bind: `docker port lifeline-mcp ${MCP_PORT:-3030}`
 - Container status: `docker ps --filter "name=lifeline-"`
 
 Expected result:
 
 - both health endpoints return `200`
 - app bind remains `127.0.0.1:3020`
-- MCP bind remains `127.0.0.1:${MCP_PORT:-3010}`
+- MCP bind remains `127.0.0.1:${MCP_PORT:-3030}`
 - `lifeline-app`, `lifeline-mcp`, and `lifeline-postgres` are healthy
 
 ### 2. MCP-to-backend adapter verification
@@ -230,7 +232,7 @@ Treat the first MCP cutover as successful only when all of the following are tru
 Symptoms:
 
 - `docker ps` shows `lifeline-mcp` as `unhealthy` or restarting
-- `/health` fails on `127.0.0.1:${MCP_PORT:-3010}`
+- `/health` fails on `127.0.0.1:${MCP_PORT:-3030}`
 
 Checks:
 
@@ -338,13 +340,13 @@ Likely causes:
 
 Symptoms:
 
-- `curl https://mcp.lifeline.a2z-us.com/health` fails but `curl http://127.0.0.1:${MCP_PORT:-3010}/health` works
+- `curl https://mcp.lifeline.a2z-us.com/health` fails but `curl http://127.0.0.1:${MCP_PORT:-3030}/health` works
 - TLS certificate warnings or host mismatch errors
 
 Checks:
 
 - verify the live Nginx config contains `server_name mcp.lifeline.a2z-us.com`
-- verify the proxy target is `http://127.0.0.1:3010`
+- verify the proxy target is `http://127.0.0.1:3030`
 - run `sudo nginx -t`
 - confirm DNS still points at the correct VPS
 

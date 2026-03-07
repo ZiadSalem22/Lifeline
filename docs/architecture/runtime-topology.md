@@ -27,7 +27,7 @@ The current production runtime is:
 
 and, for MCP traffic:
 
-`Internet -> Nginx on VPS -> lifeline-mcp on 127.0.0.1:3010 -> internal HTTP -> lifeline-app on Docker network -> lifeline-postgres on 5432`
+`Internet -> Nginx on VPS -> lifeline-mcp on 127.0.0.1:3030 -> internal HTTP -> lifeline-app on Docker network -> lifeline-postgres on 5432`
 
 ## Production node roles
 
@@ -36,7 +36,7 @@ and, for MCP traffic:
 Nginx terminates the public HTTP(S) entrypoints for:
 
 - `lifeline.a2z-us.com` → `http://127.0.0.1:3020`
-- `mcp.lifeline.a2z-us.com` → `http://127.0.0.1:3010`
+- `mcp.lifeline.a2z-us.com` → `http://127.0.0.1:3030`
 
 That keeps both application containers off the public interface and preserves Nginx as the only public edge.
 
@@ -81,9 +81,9 @@ This layout supports rollback by restoring the `current` symlink to the previous
 ### On the VPS host
 
 - the app container is published as `127.0.0.1:${APP_PORT:-3020}:3000` in production
-- the MCP container is published as `127.0.0.1:${MCP_PORT:-3010}:${MCP_PORT:-3010}` in production
+- the MCP container is published as `127.0.0.1:${MCP_PORT:-3030}:${MCP_PORT:-3030}` in production
 - the production deployment script verifies that the binding remains limited to `127.0.0.1:3020`
-- the same deploy helper verifies that the MCP bind remains limited to `127.0.0.1:${MCP_PORT:-3010}`
+- the same deploy helper verifies that the MCP bind remains limited to `127.0.0.1:${MCP_PORT:-3030}`
 
 ### Database network path
 
