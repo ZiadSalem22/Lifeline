@@ -50,6 +50,12 @@ It should also consult:
 - Use-cases: business logic — one clear operation per use-case
 - Domain: domain entities, domain validation, domain rules
 - Repositories: all data access — named for domain operations
+- Dependencies must flow inward: routes → controllers → application → domain ← infrastructure. Never allow inner layers to import outer.
+
+### Conformance check (before implementation)
+- Study 2–3 existing files in the same layer to learn the established pattern
+- Follow the existing pattern unless the change is explicitly improving it
+- Do not introduce a new pattern without explaining why it is better
 
 ### Validation strategy
 - Request shape validation: middleware layer (`validators/`, `middleware/validate*`)
@@ -66,6 +72,24 @@ It should also consult:
 - Use the current user from middleware (`req.user`) — do not re-derive
 - Pass user ID as parameter to use-cases
 - Ensure all user-scoped queries filter by user ID
+
+### Security awareness
+- No hardcoded secrets or API keys in source — use environment variables
+- No internal error details in API responses — use structured error messages
+- Sanitize and validate all user input before queries or HTML
+- Check that new endpoints have appropriate auth middleware
+
+### Performance awareness
+- Avoid N+1 queries — recommend JOINs, IN clauses, or batch loading
+- Recommend pagination for list endpoints
+- Recommend indexes for columns used in WHERE/JOIN/ORDER BY
+- Avoid blocking the event loop — use async patterns for heavy computation
+- Set timeouts on external API calls
+
+### Reliability awareness
+- Handle I/O errors explicitly in all database and HTTP calls
+- Set timeouts on external calls
+- Close resources (connections, streams) in finally blocks
 
 ### Contract safety
 - Identify whether the change affects request/response shapes

@@ -37,11 +37,15 @@ It should also consult domain-specific skills when the refactor targets a specif
 
 - recommended decomposition strategy (which concerns to separate, in what order)
 - recommended extraction approach (what to extract, where to place it)
-- whether to consolidate duplication or tolerate it
+- whether to consolidate duplication or tolerate it (Rule of Three)
 - recommended change sequencing (which steps first, independent vs dependent steps)
 - recommended scope boundaries for the refactor
 - whether regression tests are needed before the refactor
 - preserved-behavior statement drafting guidance
+- identification of code smell family triggering the refactor
+- classification of refactoring type (preparatory / comprehension / litter-pickup)
+- whether dead code cleanup should be included
+- whether Branch by Abstraction is needed for large-scale work
 
 ## Guidance this agent provides
 
@@ -71,6 +75,36 @@ It should also consult domain-specific skills when the refactor targets a specif
 - Help draft preserved-behavior statements
 - Identify behaviors that must be verified after refactoring
 - Recommend regression test targets
+
+### Conformance check
+Before recommending a refactoring approach:
+- Read sibling files in the target directory to understand existing patterns
+- Ensure the recommended approach is consistent with how similar refactors have been done in this codebase
+- Match naming conventions, directory placement, and file structure
+
+### Smell-to-refactoring guidance
+- Identify which smell family (Bloaters, Change Preventers, Dispensables, Couplers) is triggering the refactor
+- Map the identified smell to the appropriate named refactoring from the catalog
+- Recommend the specific transformation (Extract Function, Extract Component, Move Function, etc.)
+
+### Refactoring type recommendation
+- Classify the refactoring as preparatory, comprehension, or litter-pickup
+- Include the type in the preserved-behavior statement
+
+### Rule of Three guidance
+- For the first and second occurrence of duplication, recommend tolerance
+- For the third occurrence, recommend extraction
+- Exception: large duplication (10+ lines, identical intent) may be extracted earlier
+
+### Dead code awareness
+- Flag dead code (unreachable, unused exports, commented-out code) when encountered
+- Recommend dedicated dead code cleanup commits
+- Search all references before recommending removal
+
+### Large-scale strategy
+- For multi-module refactors, recommend Branch by Abstraction: introduce abstraction → migrate consumers → remove old
+- Ensure each migration step is independently deployable
+- Track as multi-step issue, not single commit
 
 ## Expected outputs
 

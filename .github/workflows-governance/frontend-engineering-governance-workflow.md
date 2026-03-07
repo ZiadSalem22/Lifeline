@@ -25,12 +25,20 @@ This workflow sits above the frontend-engineering-governance skill, agents, and 
 
 ### Pre-implementation (builder guidance)
 1. Inspect the proposed frontend work scope.
-2. Recommend component structure and placement directory.
-3. Recommend state ownership approach.
-4. Identify loading/empty/error state requirements.
-5. Identify accessibility requirements for the specific UI.
-6. Recommend responsive strategy.
-7. Emit frontend implementation guidance.
+2. **Conformance check**: read 2–3 sibling components to learn the established pattern.
+3. Recommend component structure and placement directory.
+4. Recommend state ownership approach.
+5. **Select UI pattern**: modal vs side panel vs full page vs inline (use decision guidance).
+6. Identify loading/empty/error state requirements.
+7. Identify accessibility requirements (target Grade B / WCAG AA).
+8. Recommend responsive strategy.
+9. **Performance check**: flag potential waterfalls, barrel imports, or code-splitting needs.
+10. **UX quality pillar check**: verify the approach meets frictionless, craft, and trustworthy pillars.
+11. Emit frontend implementation guidance.
+
+### Post-implementation (lint gate)
+1. Run `npm run lint` from `client/`.
+2. Fix any new lint warnings or errors before review.
 
 ### Post-implementation (review)
 1. Inspect the changed frontend files.
@@ -39,13 +47,17 @@ This workflow sits above the frontend-engineering-governance skill, agents, and 
 4. Assess provider/context discipline: appropriate scope, correct directory, one concern per provider.
 5. Assess hook quality: meaningful abstraction, proper naming, correct placement.
 6. Verify UI state completeness: loading, empty, and error states for data-dependent views.
-7. Verify accessibility: keyboard access, labels, alt text, color independence, focus management.
+7. Verify accessibility: keyboard access, labels, alt text, contrast (4.5:1), focus management, touch targets (44×44 px).
 8. Verify responsive behavior: CSS Modules, media queries, graceful degradation.
 9. Assess UI/UX coherence: consistency with existing app, navigation predictability, form behavior.
-10. Apply code quality governance rules for general readability, naming, and complexity.
-11. Determine whether the change genuinely improved the frontend.
-12. Emit frontend review findings with severity levels.
-13. Determine cross-family triggers:
+10. **UX quality pillar assessment**: frictionless (≤3 interactions), craft (consistent patterns), trustworthy (honest feedback).
+11. **Performance review**: waterfalls, barrel imports, unnecessary memoization, re-render patterns, data fetching placement.
+12. **UX anti-pattern check**: toast for errors, modals for multi-step, small touch targets, missing feedback.
+13. Apply code quality governance rules for general readability, naming, and complexity.
+14. Determine whether the change genuinely improved the frontend.
+15. Classify findings with severity: CRITICAL / HIGH / MEDIUM / LOW.
+16. Produce verdict: Approve / Request changes / Needs discussion.
+17. Determine cross-family triggers:
     - Documentation governance: if page structure, navigation, or UX flow changed
     - Backend governance: if the change implies API contract needs
     - Refactor governance: if deeper frontend restructuring is needed

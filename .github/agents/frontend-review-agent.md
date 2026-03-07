@@ -78,15 +78,52 @@ It should also consult:
 - Is the change visually consistent with the rest of the app?
 - Does navigation remain predictable?
 - Are form interactions (validation, submission, reset) well-behaved?
+
+### Conformance check
+- Does the component follow patterns established by sibling components in the same directory?
+- Are naming conventions, file structure, state patterns, and styling approach consistent?
+- Does the change introduce a competing pattern?
 - Does the change genuinely improve UX, or just look different?
+
+### UX quality pillar assessment
+Evaluate the change against all three pillars:
+1. **Frictionless task completion** — Can the user reach their goal in ≤3 interactions? Is the primary action clear?
+2. **Quality craft** — Does the change follow CSS Module patterns? Is visual hierarchy, spacing, and alignment consistent?
+3. **Trustworthy feedback** — Are loading/error/empty states honest and actionable? Are irreversible actions confirmed?
+
+### Performance review
+- Are there sequential awaits for independent requests? (CRITICAL — use `Promise.all`)
+- Are there barrel imports pulling in entire directories? (CRITICAL — use direct imports)
+- Is `React.memo` used without profiling evidence? (MEDIUM — remove unless justified)
+- Are there new object/array/function allocations in render that could cause unnecessary re-renders?
+- Is data fetching placed at the right level (not in frequently-rendering components)?
+
+### UX anti-pattern check
+Flag these UX anti-patterns when found:
+- Toast notifications for errors that require user action
+- Modals with multi-step workflows (use full page instead)
+- Touch targets smaller than 44×44 CSS px
+- Body text below 16px
+- Missing feedback for user actions (>100ms response time)
+- Hidden navigation or non-discoverable actions
+- Placeholder text used as the only label for inputs
+- Error messages that don't explain how to fix the problem
 
 ## Findings format
 
-Each finding should include:
-- **Severity**: blocker | warning | note
-- **Location**: file and component
-- **Finding**: specific description of the issue
+Each finding must include:
+- **Severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **Category**: Component Boundaries | State Ownership | UI States | Accessibility | Responsive | Performance | UX Coherence
+- **Location**: file path and component name
+- **Finding**: specific description — always explain **why** it is a problem
 - **Recommendation**: actionable suggestion
+
+## Review verdict
+
+Conclude every review with a verdict:
+- **Approve** — no CRITICAL or HIGH findings; change genuinely improves the frontend
+- **Request changes** — CRITICAL or HIGH findings must be addressed
+- **Needs discussion** — trade-offs need team-level input
 
 ## Expected outputs
 

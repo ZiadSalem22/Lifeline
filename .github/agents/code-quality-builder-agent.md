@@ -44,11 +44,19 @@ It should also consult:
 
 ## Guidance this agent provides
 
+### Conformance check (before implementation)
+- Study 2–3 existing files that do similar work to learn the established pattern
+- Follow the existing pattern unless the change is explicitly improving it
+- Identify the naming convention, file layout, and decomposition style already in use
+- Do not introduce a new pattern without explaining why the new one is better
+
 ### Implementation approach
 - Recommend the simplest structure that satisfies the requirement
 - Prefer small, focused files over large multi-purpose files
 - Prefer explicit data flow over implicit side effects
 - Recommend early-return patterns over deep nesting
+- Consider security basics: no hardcoded secrets, no exposed internal error details, sanitize inputs
+- Consider performance basics: avoid N+1 patterns, avoid unbounded allocations
 
 ### Decomposition
 - Break work into files by responsibility boundary
@@ -70,6 +78,17 @@ It should also consult:
 - Frontend: components in `components/<domain>/`, pages in `pages/`, hooks in `hooks/`, context/providers in `providers/`
 - Backend: routes in `routes/`, controllers in `controllers/`, use-cases in `application/`, domain in `domain/`, repositories in `infrastructure/`
 - Shared utilities in the appropriate `utils/` directory
+
+### Lint and format gate
+- Remind that every code change must pass the project lint commands before being declared complete
+- Backend: `npm run lint` from `backend/`
+- Frontend: `npm run lint` from `client/`
+- New lint warnings must be fixed, not ignored
+
+### Dead code awareness
+- Remove unused imports, variables, and functions as part of every change
+- Do not leave commented-out code blocks — version control preserves history
+- Search for remaining references before deleting exports
 
 ## Expected outputs
 

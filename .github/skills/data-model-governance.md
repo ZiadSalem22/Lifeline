@@ -16,6 +16,10 @@ Use this skill to assess and guide:
 - index and query awareness
 - historical vs current schema clarity
 - safe schema evolution practices
+- zero-downtime migration patterns
+- rollback strategy planning
+- column operation safety
+- migration pitfall detection
 
 ## When to use it
 
@@ -83,6 +87,46 @@ User
 - Domain layer is thin — some entities lack explicit domain objects
 - Default tags loaded via `infra/db/defaultTags.js`, not via migration
 
+### Zero-downtime migration pattern (blue-green 5-phase)
+For destructive schema changes on production data:
+1. **Add** — add new column/table alongside old.
+2. **Dual-write** — deploy code writing to both old and new.
+3. **Backfill** — migrate existing data from old to new.
+4. **Read-from-new** — deploy code reading from new; old is vestigial.
+5. **Remove** — drop old column/table in follow-up migration.
+
+Non-destructive changes (nullable column, new index) skip the full pattern.
+
+### Rollback strategies
+- **Transaction-based**: wrap migration in transaction; failure auto-rolls back.
+- **Checkpoint-based**: create backup table/snapshot before migration.
+- If rollback is impossible (data-lossy), document explicitly and require approval.
+
+### Column operation safety rules
+| Operation | Safe approach |
+|-----------|---------------|
+| Add column | Add nullable or with DEFAULT; never NOT NULL without default on existing table |
+| Rename column | 3-step: add new → copy data → drop old (separate migrations) |
+| Remove column | Remove app reads first → drop column in follow-up |
+| Change type | Add new column → copy/cast → rename → drop old |
+| Add NOT NULL | Add nullable → backfill → add constraint in follow-up |
+
+### Common migration pitfalls
+1. Not testing rollback (`down()` method).
+2. Destructive changes without zero-downtime strategy.
+3. NULL handling failures during backfill.
+4. Creating indexes on large tables without `CONCURRENTLY`.
+5. FK constraints on tables with orphan data.
+6. Large backfills without batching.
+
+### Severity taxonomy
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Data loss, broken referential integrity, or production outage risk |
+| HIGH | Migration safety gap, missing rollback, or ownership chain violation |
+| MEDIUM | Missing JSONB docs, speculative index, or convention drift |
+| LOW | Style, naming, or minor documentation gap |
+
 ## Practical checklist
 
 When reviewing schema/data-model changes:
@@ -96,6 +140,11 @@ When reviewing schema/data-model changes:
 8. Are indexes justified by actual query patterns?
 9. Is the change consistent with the ownership chain?
 10. Is the migration idempotent or transaction-wrapped?
+11. Does the migration have a viable rollback path (`down()` or documented strategy)?
+12. Do destructive changes follow the zero-downtime 5-phase pattern?
+13. Do column operations follow the safety rules (no bare NOT NULL on existing tables)?
+14. Are large backfills batched and indexes created with CONCURRENTLY?
+15. Is the severity of each finding classified as CRITICAL / HIGH / MEDIUM / LOW?
 
 ## Cross-family integration
 

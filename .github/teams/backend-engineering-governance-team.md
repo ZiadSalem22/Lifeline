@@ -30,10 +30,15 @@ Use this team when:
 - enforcing route/controller thinness across the backend
 - enforcing use-case boundary clarity
 - enforcing repository encapsulation
+- enforcing dependency direction rules (inner layers never import outer)
 - verifying validation placement (middleware, use-case, domain)
 - verifying error handling discipline
 - verifying auth and user-scoping safety
 - verifying API contract preservation
+- verifying security discipline (no hardcoded secrets, sanitized input, auth coverage)
+- verifying performance discipline (no N+1, pagination, indexes, timeouts)
+- verifying reliability discipline (error handling on I/O, timeouts, resource cleanup)
+- ensuring severity levels (CRITICAL/HIGH/MEDIUM/LOW) are applied consistently across findings
 - consolidating backend review findings with code quality findings
 - determining when backend changes also require:
   - documentation updates (`docs/api/`, `docs/backend/`)

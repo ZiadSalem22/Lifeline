@@ -43,6 +43,9 @@ It should also consult:
 - whether indexes are needed for the change
 - whether the change fits the existing ownership chain
 - whether existing data needs transformation in the migration
+- whether the change requires a zero-downtime migration (5-phase pattern)
+- recommended rollback strategy for the migration
+- safe column operation approach (add/rename/remove/type-change)
 
 ## Guidance this agent provides
 
@@ -60,6 +63,30 @@ It should also consult:
 - Handle both fresh database and existing database scenarios
 - Never modify already-applied migrations
 - Include data transformation when schema changes affect existing data
+
+### Conformance check
+Before designing a new entity or migration:
+- Read sibling entity files in `backend/src/infra/db/entities/` to match existing patterns
+- Check existing migration files for naming and structure conventions
+- Align with the established EntitySchema pattern, column type choices, and relation style
+
+### Zero-downtime migration guidance
+- Assess whether the change is destructive (column removal, type change, rename) or non-destructive (add nullable column, add index)
+- For destructive changes, recommend the blue-green 5-phase pattern: add → dual-write → backfill → read-from-new → remove
+- For non-destructive changes, a single migration is sufficient
+
+### Rollback planning
+- Every migration must have a rollback path
+- Recommend transaction-based rollback for atomic changes
+- Recommend checkpoint-based rollback (backup table) for data-transforming migrations
+- If rollback is impossible (data-lossy), document explicitly
+
+### Column operation safety
+- Adding columns: nullable or with DEFAULT; never NOT NULL without default on existing table
+- Renaming columns: 3-step zero-downtime pattern across separate migrations
+- Removing columns: remove application reads first, then drop in follow-up
+- Changing types: add new → copy/cast → rename → drop old
+- Adding NOT NULL constraint: add nullable → backfill → add constraint in follow-up
 
 ### Relation design
 - Use explicit join entities for many-to-many (like TodoTag)

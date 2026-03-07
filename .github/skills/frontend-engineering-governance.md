@@ -87,6 +87,51 @@ Every data-dependent view must handle:
 - `label` or `aria-label` on form inputs
 - Color is not sole information channel
 - Focus management after route transitions and modals
+- Contrast: 4.5:1 normal text, 3:1 large text
+- Touch targets: minimum 44×44 CSS px
+
+### Accessibility grading
+| Grade | Standard | Expectation |
+|-------|----------|-------------|
+| **C** (minimum) | WCAG 2.1 Level A | Keyboard, alt, labels, no color-only |
+| **B** (target) | WCAG 2.1 Level AA | Contrast, focus indicators, error ID, resize |
+
+### UX quality pillars
+Evaluate every frontend change against:
+1. **Frictionless task completion** — goal achievable in ≤3 interactions, singular primary action, no unnecessary steps
+2. **Quality craft** — CSS Module patterns followed, spacing/alignment/hierarchy consistent
+3. **Trustworthy feedback** — loading/error/empty states honest, irreversible actions confirmed, UI never appears broken
+
+### UX key metrics
+- Touch targets: min 44×44 CSS px
+- Body text: min 16px
+- Line height: 1.4–1.6
+- Line length: 50–75 characters
+- Transitions: 200–400ms
+- Feedback latency: <100ms
+- Contrast: 4.5:1 normal text
+
+### Performance priority rules
+- **CRITICAL**: Eliminate waterfalls — `Promise.all` for independent requests, defer data fetching to consumers
+- **CRITICAL**: Control bundle size — no barrel imports, `React.lazy` + `Suspense` for route splitting
+- **HIGH**: Deduplicate identical requests, passive event listeners
+- **MEDIUM**: Functional state updates (`setState(prev => ...)`), `useRef` for transient values, lazy state init
+
+### UI pattern selection
+- **Modal**: confirmations, small single-step forms, blocking decisions
+- **Side panel**: detail views, secondary editing, contextual actions
+- **Full page/route**: primary workflows, multi-step forms
+- **Inline expansion**: progressive disclosure in lists/cards
+- **Toast**: transient success/info only — never for errors requiring action
+- **Inline error**: validation errors near the relevant field
+
+### Severity taxonomy
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Broken user workflow, accessibility barrier (Grade C violation), or data loss |
+| HIGH | Missing error handling, performance waterfall, or UX anti-pattern with user impact |
+| MEDIUM | Responsive gap, missing loading state, or component structure issue |
+| LOW | Style preference, naming, or minor documentation gap |
 
 ## Practical checklist
 
@@ -95,12 +140,17 @@ When reviewing frontend code:
 2. Is state owned at the right level?
 3. Are providers/context used appropriately (app-wide only)?
 4. Does the component handle loading, empty, and error states?
-5. Are interactive elements keyboard-accessible?
+5. Are interactive elements keyboard-accessible with proper contrast?
 6. Is the component organized in the right directory?
 7. Does the page delegate to feature components instead of containing everything inline?
 8. Are styles scoped via CSS Modules?
 9. Is responsive behavior appropriate?
 10. Does the change improve or maintain UI consistency?
+11. Does the change meet the three UX quality pillars (frictionless, craft, trustworthy)?
+12. Are there performance problems (waterfalls, barrel imports, unneeded re-renders)?
+13. Is the right UI pattern used (modal vs panel vs page vs inline)?
+14. Are touch targets ≥44×44 px and body text ≥16px?
+15. Does the change target accessibility Grade B (WCAG AA)?
 
 ## Cross-family integration
 

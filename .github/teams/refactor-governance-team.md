@@ -39,6 +39,11 @@ Use this team when:
 - verifying decomposition and extraction quality
 - verifying preserved-behavior statements
 - verifying regression test coverage or expectations
+- enforcing smell-to-refactoring mapping accuracy
+- enforcing refactoring type classification (preparatory / comprehension / litter-pickup)
+- enforcing dead code cleanup discipline
+- enforcing safe refactoring loop (test → refactor → test → commit)
+- ensuring severity consistency (CRITICAL / HIGH / MEDIUM / LOW) across all findings
 - consolidating refactor findings with domain-specific governance findings
 - determining when refactors also require:
   - documentation updates (module boundaries, APIs, architecture)

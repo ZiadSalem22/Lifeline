@@ -63,6 +63,40 @@ This instruction set builds on top of `.github/instructions/code-quality-governa
 - Review query plans when adding indexes for complex queries.
 - User-scoped queries should use the `userId` index.
 
+### Zero-downtime migration discipline
+When a schema change is destructive or touches production data, follow the blue-green 5-phase pattern:
+1. **Add** — add the new column/table alongside the old one.
+2. **Dual-write** — deploy code that writes to both old and new.
+3. **Backfill** — migrate existing data from old to new.
+4. **Read-from-new** — deploy code that reads from new; old is now vestigial.
+5. **Remove** — drop the old column/table in a follow-up migration.
+
+Non-destructive changes (adding a nullable column, adding an index) do not require the full 5-phase pattern.
+
+### Rollback strategies
+Every migration must have a viable rollback path documented in comments or in the migration's `down()` method:
+- **Transaction-based**: wrap in a transaction so a failure automatically rolls back.
+- **Checkpoint-based**: create a backup table or snapshot before the migration so data can be restored.
+- If a migration cannot be safely rolled back (e.g., data-lossy), document this explicitly and require approval before applying.
+
+### Column operation safety rules
+| Operation | Safe approach |
+|-----------|---------------|
+| Add column | Add with DEFAULT or as nullable; never add NOT NULL without a default on an existing table |
+| Rename column | 3-step zero-downtime: add new → copy data → drop old (separate migrations) |
+| Remove column | Remove application reads first, then drop in a follow-up migration |
+| Change type | Add new column → copy/cast data → rename → drop old |
+| Add NOT NULL constraint | Add as nullable → backfill → add constraint in follow-up migration |
+
+### Common migration pitfalls
+Flag these during any migration review:
+1. **Not testing rollback** — every migration must be tested with its `down()` method.
+2. **Breaking changes without downtime strategy** — destructive changes without blue-green phases.
+3. **NULL handling** — failing to set defaults or handle NULLs during backfill.
+4. **Index performance** — creating indexes on large tables without `CONCURRENTLY`.
+5. **Foreign key constraints** — adding FK constraints to tables with orphan data.
+6. **Migrating too much data at once** — large backfills should be batched.
+
 ### Historical vs current schema clarity
 - Current schema = entity definitions in `backend/src/infra/db/entities/`.
 - Historical schema evolution = migration files (both TypeORM and SQL).
@@ -86,6 +120,15 @@ This instruction set builds on top of `.github/instructions/code-quality-governa
 - `UserProfile` has a `startDay` column added via SQL migration `005` — verify entity definition matches
 - No TypeORM-based seed migration — default tags are loaded via `infra/db/defaultTags.js`
 
+## Severity taxonomy
+
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Data loss, broken referential integrity, or production outage risk |
+| HIGH | Migration safety gap, missing rollback, or ownership chain violation |
+| MEDIUM | Missing JSONB documentation, speculative index, or convention drift |
+| LOW | Style, naming, or minor documentation gap |
+
 ## Anti-patterns to flag
 
 - Entity changes without corresponding migrations
@@ -98,6 +141,12 @@ This instruction set builds on top of `.github/instructions/code-quality-governa
 - Using historical migration files as current schema reference
 - Creating entities outside `infra/db/entities/`
 - Direct SQL in application code outside repositories
+- Destructive schema changes without zero-downtime migration plan
+- Migrations without rollback strategy or `down()` method
+- Adding NOT NULL column to existing table without default value
+- Large data backfills without batching
+- Creating indexes on large tables without CONCURRENTLY
+- Foreign key constraints added to tables with potential orphan data
 
 ## Documentation impact
 

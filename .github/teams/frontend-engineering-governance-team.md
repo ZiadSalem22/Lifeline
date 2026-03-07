@@ -31,9 +31,12 @@ Use this team when:
 - enforcing state ownership rules
 - enforcing provider/context usage patterns
 - verifying UI state completeness (loading, empty, error)
-- verifying accessibility compliance
+- verifying accessibility compliance (targeting Grade B / WCAG AA)
 - verifying responsive behavior
 - detecting shell/navigation coherence issues
+- ensuring UX quality pillar compliance (frictionless, craft, trustworthy)
+- enforcing performance discipline (no waterfalls, no barrel imports, appropriate memoization)
+- ensuring severity levels (CRITICAL/HIGH/MEDIUM/LOW) are applied consistently across findings
 - consolidating frontend review findings with code quality findings
 - determining when frontend changes also require:
   - documentation updates (`docs/frontend/`, `docs/product/`, `docs/features/`)

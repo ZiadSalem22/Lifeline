@@ -24,24 +24,50 @@ This workflow sits above the code-quality-governance skill, agents, and team and
 
 ### Pre-implementation (builder guidance)
 1. Inspect the proposed work scope.
-2. Recommend file and function decomposition.
-3. Recommend naming conventions for new code.
-4. Check for existing utilities before new creation.
-5. Identify behavior preservation requirements for changes to existing code.
-6. Emit structure and approach guidance.
+2. **Conformance check**: study 2–3 existing files that do similar work to learn the established pattern.
+3. Recommend file and function decomposition following the established pattern.
+4. Recommend naming conventions for new code.
+5. Check for existing utilities before new creation.
+6. Identify behavior preservation requirements for changes to existing code.
+7. Consider security basics (no hardcoded secrets, sanitize inputs) and performance basics (no N+1, no unbounded allocations).
+8. Emit structure and approach guidance.
+
+### Post-implementation (lint gate)
+1. Run the project lint commands:
+   - Backend: `npm run lint` from `backend/`
+   - Frontend: `npm run lint` from `client/`
+2. Fix any new lint warnings or errors before proceeding to review.
+3. Remove any dead code, unused imports, or commented-out blocks.
 
 ### Post-implementation (review)
 1. Inspect the changed files.
-2. Assess readability: naming, nesting, function size, file focus.
-3. Assess duplication: copy-paste blocks, missed reuse opportunities, extraction quality.
-4. Assess complexity: file size, function size, nesting depth, parameter count.
-5. Assess cohesion: single responsibility, explicit dependencies, clean exports.
-6. Assess naming consistency within and across changed files.
-7. Check for dead code, commented-out code, magic values, silent error suppression.
-8. Verify behavior preservation for structural changes.
-9. Determine whether the change genuinely improved quality.
-10. Emit quality findings with severity levels.
-11. Determine cross-family triggers:
+2. **Correctness**: logic errors, null handling, edge cases, race conditions.
+3. **Security**: hardcoded secrets, exposed error details, unsanitized input, missing auth checks.
+4. **Performance**: N+1 queries, unbounded allocations, blocking operations, missing pagination.
+5. **Reliability**: missing error handling, missing timeouts, resource leaks, silent suppression.
+6. **Readability**: naming, nesting, function size, file focus.
+7. **Testing**: new behavior has tests, tests assert meaningful outcomes, edge/error paths covered.
+8. Assess duplication: copy-paste blocks, missed reuse opportunities, extraction quality.
+9. Assess complexity: file size, function size, nesting depth, parameter count.
+10. Assess naming consistency within and across changed files.
+11. Check for dead code, commented-out code, magic values, silent error suppression.
+12. Verify behavior preservation for structural changes.
+13. Determine whether the change genuinely improved quality.
+14. **Conformance check**: does the change follow established patterns or introduce competing ones?
+
+### Cross-cutting analysis (for multi-file changes)
+For changes touching more than 5 files or exceeding ~500 changed lines:
+1. Check internal consistency across all changed files.
+2. Check for new dependencies — do they follow dependency direction rules?
+3. Verify shared abstractions are used consistently in all call sites.
+4. Look for missing changes — files that should have been updated but were not.
+
+### Emit findings
+1. Classify each finding with severity: CRITICAL / HIGH / MEDIUM / LOW.
+2. Classify each finding with category: Correctness / Security / Performance / Reliability / Readability / Testing / Duplication / Naming.
+3. For each finding, explain **why** it is a problem — not just what.
+4. Produce a verdict: Approve / Request changes / Needs discussion.
+5. Determine cross-family triggers:
     - Documentation governance: if module boundaries or public APIs changed
     - Refactor governance: if systemic quality issues need deeper restructuring
     - Frontend/backend governance: if domain-specific issues are found

@@ -27,31 +27,46 @@ This workflow sits above the refactor-governance skill, agents, and team and tur
 
 ### Pre-refactor (builder guidance)
 1. Inspect the proposed refactor scope.
-2. Verify the justification is specific and valid.
-3. Recommend decomposition strategy (which concerns to separate, in what order).
-4. Recommend extraction approach (what to extract, where to place it).
-5. Identify behaviors that must be preserved.
-6. Draft preserved-behavior statement.
-7. Identify regression test requirements.
-8. Recommend change sequencing (incremental steps).
-9. Define scope boundaries.
-10. Identify applicable domain governance constraints.
-11. Emit refactor plan with safety guidance.
+2. **Conformance check**: read sibling files to understand existing patterns and conventions.
+3. **Smell identification**: identify which smell family is triggering the refactor.
+4. **Refactoring type**: classify as preparatory / comprehension / litter-pickup.
+5. Verify the justification is specific and valid.
+6. Apply **Rule of Three**: is extraction warranted or premature?
+7. Recommend decomposition strategy (which concerns to separate, in what order).
+8. Map identified smell to named refactoring transformation from the catalog.
+9. Recommend extraction approach (what to extract, where to place it).
+10. Identify behaviors that must be preserved.
+11. Draft preserved-behavior statement.
+12. Identify regression test requirements.
+13. Recommend change sequencing (incremental steps following safe refactoring loop: test → refactor → test → commit).
+14. For large-scale refactors, recommend **Branch by Abstraction** strategy.
+15. Identify dead code cleanup opportunities.
+16. Define scope boundaries.
+17. Identify applicable domain governance constraints.
+18. Emit refactor plan with safety guidance.
 
 ### Post-refactor (review)
 1. Inspect the changed files.
-2. Verify preserved-behavior statement exists and is accurate.
-3. Assess behavior preservation: are stated behaviors actually preserved?
-4. Assess decomposition quality: clear names, focused files, simpler originals.
-5. Assess extraction quality: clean abstraction, multiple consumers, correct scope.
-6. Assess scope discipline: stayed within stated scope, no creep.
-7. Assess incremental discipline: independently reviewable steps.
-8. Apply domain-specific governance rules (frontend, backend, data-model) as applicable.
-9. Apply code quality governance for general readability, naming, and complexity.
-10. Determine whether the refactor genuinely improved the codebase.
-11. Emit refactor review findings with severity levels.
-12. Log newly discovered issues as separate refactor candidates.
-13. Determine cross-family triggers:
+2. **Conformance check**: verify refactored code matches sibling file patterns.
+3. Verify preserved-behavior statement exists and is accurate.
+4. Assess behavior preservation: are stated behaviors actually preserved?
+5. **Smell assessment**: did the refactor resolve the identified smell or just move it?
+6. **Refactoring type verification**: is the type classified and accurate?
+7. Assess decomposition quality: clear names, focused files, simpler originals.
+8. Assess extraction quality: clean abstraction, multiple consumers, correct scope.
+9. Assess scope discipline: stayed within stated scope, no creep.
+10. Assess incremental discipline: independently reviewable steps.
+11. **Safe refactoring loop**: was test → refactor → test → commit followed?
+12. **Dead code review**: was dead code removed or flagged?
+13. Apply domain-specific governance rules (frontend, backend, data-model) as applicable.
+14. Apply code quality governance for general readability, naming, and complexity.
+15. Determine whether the refactor genuinely improved the codebase.
+16. **Cross-cutting analysis** (multi-file refactors): verify consistency across all affected files and consumers.
+17. Classify each finding with severity: CRITICAL / HIGH / MEDIUM / LOW.
+18. Emit refactor review findings in structured format (File / Severity / Category / Why / Recommendation).
+19. Emit review verdict: Approve / Request changes / Needs discussion.
+20. Log newly discovered issues as separate refactor candidates.
+21. Determine cross-family triggers:
     - Documentation governance: if module boundaries or APIs changed
     - Domain-specific governance: if domain rules were affected
     - ADR: if the structural change is durable and significant
@@ -102,3 +117,9 @@ Emit warnings when:
 - behavior changes hidden in structural changes
 - refactoring and feature work mixed in one PR
 - ignoring regression risk
+- premature extraction before Rule of Three
+- leaving dead code behind after restructuring
+- half-migrated Branch by Abstraction without cleanup
+- combining multiple refactoring operations without intermediate testing
+- missing refactoring type classification
+- ignoring code smells that triggered the refactor need

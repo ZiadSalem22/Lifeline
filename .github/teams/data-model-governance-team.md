@@ -35,6 +35,10 @@ Use this team when:
 - verifying index justification
 - maintaining clarity between current schema (entities) and historical schema (migrations)
 - consolidating data-model findings with backend and code quality findings
+- enforcing zero-downtime migration discipline for destructive changes
+- verifying rollback strategy exists for every migration
+- enforcing column operation safety rules
+- ensuring severity consistency (CRITICAL / HIGH / MEDIUM / LOW) across all findings
 - determining when data-model changes also require:
   - documentation updates (`docs/data-model/`, `docs/api/`)
   - backend governance involvement (repository/domain changes)

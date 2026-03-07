@@ -17,6 +17,11 @@ Use this skill to assess and guide:
 - refactor justification and scope control
 - regression requirements
 - preserved-behavior statement quality
+- smell family detection and smell-to-refactoring mapping
+- named refactoring transformation selection
+- refactoring type classification (preparatory / comprehension / litter-pickup)
+- dead code cleanup
+- large-scale refactoring strategies (Branch by Abstraction)
 
 ## When to use it
 
@@ -88,6 +93,61 @@ Invalid:
 - Reorganization for its own sake
 - "Best practice" without repo-specific applicability
 
+### Refactoring types
+Classify each refactoring by trigger:
+- **Preparatory** — restructure code to make an upcoming feature easier.
+- **Comprehension** — restructure code to improve understanding.
+- **Litter-pickup** — fix small structural problems found while working on something else.
+
+### Rule of Three
+1st occurrence: inline. 2nd: note duplication but tolerate. 3rd: extract shared abstraction.
+Do not extract prematurely unless duplication is large (10+ lines) and identical in intent.
+
+### Named refactoring catalog (scoped to Lifeline JS/React)
+| Refactoring | When to use |
+|-------------|-------------|
+| Extract Function | Function does more than one thing |
+| Extract Component | JSX block has independent concern |
+| Extract Hook | Stateful logic reused across components |
+| Move Function | Function lives in wrong module |
+| Inline Function | Indirection adds no value |
+| Rename | Name no longer describes purpose |
+| Replace Conditional with Guard Clause | Deeply nested if/else |
+| Decompose Conditional | Complex boolean expression |
+
+### Smell families and smell-to-fix mapping
+| Smell family | Examples | Typical fix |
+|--------------|----------|-------------|
+| **Bloaters** | Long function, large file, long parameter list | Extract Function, Extract Component, Introduce Parameter Object |
+| **Change Preventers** | Divergent change, shotgun surgery | Extract Module, Move Function |
+| **Dispensables** | Dead code, speculative generality, duplication | Delete, Inline, Extract shared |
+| **Couplers** | Feature envy, inappropriate intimacy | Move Function, Extract Component |
+
+### Dead code cleanup
+- Dead code is a first-class refactoring target.
+- Remove unreachable code, unused exports, commented-out code, unused variables.
+- Search all references before removing suspected dead code.
+- Prefer a dedicated commit for dead code removal.
+
+### Large-scale refactoring strategies
+- **Branch by Abstraction**: introduce abstraction → migrate consumers → remove old implementation.
+- Never leave half-migrated state. Each step must be independently deployable.
+
+### React-specific refactoring guidance
+- Extract Hook when stateful logic is shared across 2+ components.
+- Extract Component when JSX block has its own state or its own concern.
+- Prefer moving business logic out of components into hooks or utility functions.
+- When refactoring context providers, ensure consumer components still receive the same shape.
+- When extracting from a page component, ensure route behavior is preserved.
+
+### Severity taxonomy
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Behavior change without acknowledgment, data loss risk, or broken functionality |
+| HIGH | Missing preserved-behavior statement, scope creep, or bad abstraction |
+| MEDIUM | Incomplete justification, missing regression test, or naming quality gap |
+| LOW | Style preference, minor documentation gap, or cosmetic structure choice |
+
 ## Practical checklist
 
 When reviewing a refactor:
@@ -101,6 +161,11 @@ When reviewing a refactor:
 8. Did domain-specific governance rules remain satisfied?
 9. Is there scope creep (fixing more than stated)?
 10. Is the code genuinely better, not just different?
+11. Is the refactoring type classified (preparatory / comprehension / litter-pickup)?
+12. Was the safe refactoring loop followed (test → refactor → test → commit)?
+13. Was dead code removed or flagged for removal?
+14. For large-scale refactors, is Branch by Abstraction used correctly?
+15. Is each finding classified with severity (CRITICAL / HIGH / MEDIUM / LOW)?
 
 ## Cross-family integration
 

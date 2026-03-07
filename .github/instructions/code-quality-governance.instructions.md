@@ -57,6 +57,25 @@ Enforce consistent code quality, readability, maintainability, and structural di
 - Avoid magic numbers and magic strings — use named constants.
 - Avoid catch-all error suppression (`catch (e) {}` with no handling).
 
+### Lint and format gate
+- Every code change must pass the project lint/check commands before being declared complete.
+- Backend: `npm run lint` (ESLint) from `backend/`.
+- Frontend: `npm run lint` (ESLint) from `client/`.
+- Do not commit code that introduces new lint warnings. Fix them or justify them explicitly.
+- If a lint rule is wrong for a specific line, use an inline disable comment with an explanation — never disable a rule globally to silence one violation.
+
+### Dead code discipline
+- Remove unused functions, variables, imports, and files as part of every change.
+- Do not leave commented-out code blocks. If the code is not needed now, delete it — version control preserves history.
+- When removing a function or export, search the codebase for remaining references before deleting.
+- Treat dead code accumulation as a quality regression, not a neutral event.
+
+### Conformance and consistency
+- Before writing new code, study 2–3 existing files that do similar work to learn the established pattern.
+- Follow the pattern already in use unless the existing pattern is explicitly being improved.
+- When a change introduces a new pattern, explain why the new pattern is better than the existing one.
+- Do not introduce competing patterns — converge on one approach per concern.
+
 ## Anti-patterns to flag
 
 - God files (>500 lines mixing concerns)
@@ -69,6 +88,20 @@ Enforce consistent code quality, readability, maintainability, and structural di
 - Implicit dependencies (relying on module side effects)
 - Circular dependencies
 - Catch-all error suppression without logging
+- Barrel re-exports that re-export everything from a directory
+- Functions whose behavior changes based on a boolean flag parameter
+- Utility files that grow into unrelated grab-bags
+
+## Severity taxonomy
+
+When reporting quality findings, classify each finding:
+
+| Severity | Meaning | Action |
+|----------|---------|--------|
+| **CRITICAL** | Correctness risk, data loss potential, or security exposure | Must fix before the change is accepted |
+| **HIGH** | Significant maintainability or reliability regression | Should fix in the same change; justify if deferred |
+| **MEDIUM** | Quality regression that increases future maintenance cost | Fix if practical; acceptable to defer with explanation |
+| **LOW** | Style, naming, or minor readability improvement | Informational; fix opportunistically |
 
 ## What this instruction set does not cover
 

@@ -46,6 +46,11 @@ It should also consult:
 
 ## Guidance this agent provides
 
+### Conformance check (before implementation)
+- Read 2–3 sibling components in the same directory to learn the established pattern.
+- Match naming conventions, file structure, state patterns, and styling approach.
+- If the proposed component introduces a competing pattern, flag it for discussion.
+
 ### Component design
 - Recommend single-responsibility component boundaries
 - Suggest container + presentation splits when a component both fetches and renders
@@ -64,6 +69,30 @@ It should also consult:
 - Recommend user-friendly error states
 - Recommend inline validation for forms
 - Recommend loading indicators on async submit buttons
+
+### UI pattern selection guidance
+Recommend the right UI presentation pattern:
+- **Modal/dialog** — for confirmations, small single-step forms, blocking decisions
+- **Side panel** — for detail views, editing secondary information, contextual actions
+- **Full page/route** — for primary workflows, multi-step forms, full-viewport content
+- **Inline expansion** — for progressive disclosure in lists or cards
+- **Toast** — for transient success/info messages only; never for errors requiring action
+- **Inline error** — for validation errors near the relevant field
+
+### Performance guidance
+- Avoid sequential awaits for independent requests — recommend `Promise.all`
+- Avoid barrel imports (e.g., `import { x } from '../components'`) — recommend direct file imports
+- Recommend `React.lazy` + `Suspense` for route-level code splitting
+- Advise against `React.memo` unless profiling shows measurable benefit
+- Recommend `useRef` for values that change frequently but don't affect render
+- Recommend lazy state initialization (`useState(() => compute())`) for expensive initial values
+- Recommend deduplication of identical data requests
+
+### UX quality check
+Ensure the implementation meets the three UX quality pillars:
+1. **Frictionless** — user achieves goal in ≤3 interactions, clear primary action
+2. **Quality craft** — consistent with existing CSS Module patterns, visual hierarchy intact
+3. **Trustworthy** — honest loading/error/empty states, irreversible actions confirmed
 
 ### Responsive implementation
 - Recommend CSS Module approach for responsive styles

@@ -18,6 +18,10 @@ Use this skill to assess and guide:
 - contract-aware implementation (API contracts)
 - search/stats/export/import behavior consistency
 - backend modularity and layer discipline
+- dependency direction compliance (inner layers never import outer)
+- security surface (secrets, input sanitization, error exposure, auth coverage)
+- performance surface (N+1, pagination, indexes, event loop blocking)
+- reliability surface (timeouts, retries, resource cleanup, error handling)
 
 ## When to use it
 
@@ -78,6 +82,47 @@ Then consult the implementation:
 - Use-cases: ≤100 lines; extract sub-operations if larger
 - Repositories: any size but with clean interfaces
 
+### Dependency direction rules
+Dependencies must flow inward:
+```
+routes → controllers → application → domain ← infrastructure
+```
+- Inner layers must never import outer layers
+- A use-case must never import a route or controller
+- A domain entity must never import a repository
+- Infrastructure (repositories) depends on domain interfaces, not application or controllers
+- Violations are architectural regressions — treat as HIGH severity
+
+### Security checklist
+- No hardcoded secrets, API keys, or tokens in source files
+- No internal error details (stack traces, SQL errors) in API responses
+- All user input sanitized and validated before use
+- All user-scoped queries filtered by authenticated user ID
+- Sensitive endpoints rate-limited (auth, password reset, export)
+- Security events logged without sensitive data
+
+### Performance checklist
+- No N+1 query patterns (database calls inside loops)
+- Indexes exist for columns used in WHERE, JOIN, ORDER BY on large tables
+- All list endpoints paginated — no unbounded result sets
+- No event-loop-blocking synchronous computation
+- Timeouts set on external HTTP calls and database queries
+
+### Reliability checklist
+- All I/O errors handled explicitly
+- Timeouts on external calls to prevent hanging
+- Retry logic for transient failures where appropriate
+- Resources closed in finally blocks or teardown
+- Critical endpoint response times monitored
+
+### Severity taxonomy
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Security vulnerability, data loss, or production outage risk |
+| HIGH | Dependency direction violation, missing error handling, or N+1 query |
+| MEDIUM | Missing validation, weak logging, or layer boundary blur |
+| LOW | Style preference, naming, or minor documentation gap |
+
 ## Practical checklist
 
 When reviewing backend code:
@@ -91,6 +136,11 @@ When reviewing backend code:
 8. Are API contract changes explicit and documented?
 9. Is the change maintaining consistent search/stats/export behavior?
 10. Does the code follow the existing layer pattern?
+11. Are dependency direction rules respected (inner layers never import outer)?
+12. Are there security concerns (hardcoded secrets, exposed errors, unsanitized input, auth gaps)?
+13. Are there performance concerns (N+1 queries, unbounded lists, missing pagination, blocking ops)?
+14. Are there reliability concerns (missing timeouts, missing error handling, resource leaks)?
+15. For multi-file changes: are all changed layers internally consistent?
 
 ## Cross-family integration
 

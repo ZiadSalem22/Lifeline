@@ -79,13 +79,68 @@ It should also consult domain-specific skills:
 - Does it reference concrete improvements (reduced duplication, clearer boundaries, simpler structure)?
 - Is it more than "feels cleaner" or "modern style"?
 
+### Smell identification
+- Does the refactoring address a recognized smell family (Bloaters, Change Preventers, Dispensables, Couplers)?
+- Is the chosen refactoring transformation appropriate for the identified smell?
+- Did the refactor resolve the smell or just move it?
+
+### Refactoring type classification
+- Is the refactoring type stated (preparatory / comprehension / litter-pickup)?
+- Does the type match the actual work done?
+
+### Dead code discipline
+- Was dead code identified and removed during refactoring?
+- Was unreachable code, unused exports, or commented-out code left behind?
+- Were all references checked before removal?
+
+### Safe refactoring loop
+- Was the test → refactor → test → commit cycle followed?
+- Are there signs of multiple refactoring operations combined without intermediate testing?
+
+### Conformance check
+- Does the refactored code match patterns used in sibling files?
+- Are naming conventions, directory placement, and file structure consistent with the codebase?
+
+### Cross-cutting analysis (multi-file or multi-module refactors)
+- Are changes consistent across all affected files?
+- Were all consumers of moved/extracted code updated?
+- For Branch by Abstraction, is the migration complete or properly intermediate-deployable?
+
+## Severity taxonomy
+
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Behavior change without acknowledgment, data loss risk, or broken functionality |
+| HIGH | Missing preserved-behavior statement, scope creep, or bad abstraction |
+| MEDIUM | Incomplete justification, missing regression test, or naming quality gap |
+| LOW | Style preference, minor documentation gap, or cosmetic structure choice |
+
 ## Findings format
 
-Each finding should include:
-- **Severity**: blocker | warning | note
-- **Location**: file and specific area
-- **Finding**: specific description of the issue
-- **Recommendation**: actionable suggestion
+Each finding must include:
+- **File**: path to the affected file
+- **Severity**: CRITICAL / HIGH / MEDIUM / LOW
+- **Category**: Behavior Preservation / Decomposition / Extraction / Scope / Incremental / Improvement / Justification / Smell / Dead Code / Conformance
+- **Why**: specific description of the issue
+- **Recommendation**: actionable fix
+
+Example:
+```markdown
+### Finding 1
+- **File**: `client/src/components/TodoList.jsx`
+- **Severity**: HIGH
+- **Category**: Scope
+- **Why**: Refactor commit includes unrelated formatting changes to 5 files outside the stated scope.
+- **Recommendation**: Revert formatting changes and submit as a separate litter-pickup commit.
+```
+
+## Review verdict
+
+| Verdict | When to use |
+|---------|-------------|
+| **Approve** | No CRITICAL or HIGH findings; MEDIUM/LOW findings are advisory |
+| **Request changes** | Any CRITICAL or HIGH finding that must be resolved before merge |
+| **Needs discussion** | Architecture-level question or trade-off that requires team input |
 
 ## Expected outputs
 

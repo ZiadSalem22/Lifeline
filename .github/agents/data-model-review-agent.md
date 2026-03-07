@@ -49,6 +49,24 @@ It should also consult:
 - Does the migration include data transformation when needed?
 - Is the migration approach appropriate (TypeORM JS vs raw SQL)?
 
+### Zero-downtime compliance
+- Are destructive changes (column removal, type change, rename) following the blue-green 5-phase pattern?
+- Are non-destructive changes (add nullable column, add index) handled with simple single migrations?
+- Is there a clear phase plan documented for multi-step schema evolution?
+
+### Rollback safety
+- Does the migration have a viable `down()` method or documented rollback strategy?
+- For transaction-based rollback: is the migration wrapped in a transaction?
+- For checkpoint-based rollback: is a backup table or snapshot created before transformation?
+- If rollback is impossible, is this documented and approved?
+
+### Column operation safety
+- Are new columns added as nullable or with DEFAULT (never bare NOT NULL on existing table)?
+- Are column renames using the 3-step zero-downtime pattern?
+- Are column removals preceded by application read removal?
+- Are type changes using the add-copy-rename-drop pattern?
+- Are NOT NULL constraints added via nullable → backfill → constraint sequence?
+
 ### Relation integrity
 - Are all foreign keys backed by TypeORM relation declarations?
 - Is cascade behavior explicitly set?
@@ -78,13 +96,51 @@ It should also consult:
 - Are migration files treated as history, not current state?
 - Are historical/archived artifacts distinguished from current truth?
 
+### Conformance check
+- Does the entity follow patterns established by sibling entities in `infra/db/entities/`?
+- Does the migration follow conventions (naming, structure) used by existing migrations?
+- Are column types, relation styles, and cascade patterns consistent with the codebase?
+
+### Cross-cutting analysis (multi-entity or multi-layer changes)
+- Are entity changes consistent across related entities (e.g., both sides of a relation)?
+- Do repository changes align with entity changes?
+- Are domain object changes consistent with entity definition changes?
+
+## Severity taxonomy
+
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Data loss, broken referential integrity, or production outage risk |
+| HIGH | Migration safety gap, missing rollback, or ownership chain violation |
+| MEDIUM | Missing JSONB docs, speculative index, or convention drift |
+| LOW | Style, naming, or minor documentation gap |
+
 ## Findings format
 
-Each finding should include:
-- **Severity**: blocker | warning | note
-- **Location**: file and specific area
-- **Finding**: specific description of the issue
-- **Recommendation**: actionable suggestion
+Each finding must include:
+- **File**: path to the affected file
+- **Severity**: CRITICAL / HIGH / MEDIUM / LOW
+- **Category**: Entity Correctness / Migration Safety / Zero-Downtime / Rollback / Column Safety / Relation Integrity / Ownership / JSONB / Index / Conformance
+- **Why**: specific description of the issue
+- **Recommendation**: actionable fix
+
+Example:
+```markdown
+### Finding 1
+- **File**: `backend/src/migrations/1234567890-AddStatusColumn.js`
+- **Severity**: CRITICAL
+- **Category**: Column Safety
+- **Why**: NOT NULL column added to existing table without DEFAULT value—will fail on non-empty tables.
+- **Recommendation**: Add `default: 'active'` or make column nullable initially, then backfill and add constraint.
+```
+
+## Review verdict
+
+| Verdict | When to use |
+|---------|-------------|
+| **Approve** | No CRITICAL or HIGH findings; MEDIUM/LOW findings are advisory |
+| **Request changes** | Any CRITICAL or HIGH finding that must be resolved before merge |
+| **Needs discussion** | Architecture-level question or trade-off that requires team input |
 
 ## Expected outputs
 

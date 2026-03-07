@@ -26,27 +26,39 @@ This workflow sits above the data-model-governance skill, agents, and team and t
 
 ### Pre-implementation (builder guidance)
 1. Inspect the proposed schema change scope.
-2. Verify the change against the current entity definitions (source of truth).
-3. Recommend entity structure, column types, and relation declarations.
-4. Recommend migration approach (TypeORM JS or raw SQL).
-5. Identify cascade and ownership chain implications.
-6. Identify JSONB shape documentation needs.
-7. Identify index requirements.
-8. Emit schema implementation guidance.
+2. **Conformance check**: read sibling entity files and existing migrations to match conventions.
+3. Verify the change against the current entity definitions (source of truth).
+4. Recommend entity structure, column types, and relation declarations.
+5. Recommend migration approach (TypeORM JS or raw SQL).
+6. Assess whether the change is destructive or non-destructive.
+7. For destructive changes, recommend the blue-green 5-phase zero-downtime pattern.
+8. Recommend rollback strategy (transaction-based or checkpoint-based).
+9. Apply column operation safety rules (add/rename/remove/type-change).
+10. Identify cascade and ownership chain implications.
+11. Identify JSONB shape documentation needs.
+12. Identify index requirements.
+13. Emit schema implementation guidance.
 
 ### Post-implementation (review)
 1. Inspect the changed entity and migration files.
-2. Verify entity correctness: column types, relations, table name, EntitySchema pattern.
-3. Verify migration safety: idempotent/transactional, handles fresh and existing DBs, no modification of applied migrations.
-4. Verify relation integrity: foreign keys, cascade behavior, orphan prevention.
-5. Verify ownership compliance: userId on user-scoped entities, ownership chain respected.
-6. Verify JSONB discipline: shape documented, changes treated as schema changes.
-7. Verify index quality: justified by query patterns, not speculative.
-8. Confirm source-of-truth clarity: entities are primary, migrations are history.
-9. Apply code quality governance for naming and structure.
-10. Determine whether the change maintained data integrity.
-11. Emit data-model review findings with severity levels.
-12. Determine cross-family triggers:
+2. **Conformance check**: verify patterns match sibling entities and existing migrations.
+3. Verify entity correctness: column types, relations, table name, EntitySchema pattern.
+4. Verify migration safety: idempotent/transactional, handles fresh and existing DBs, no modification of applied migrations.
+5. **Zero-downtime assessment**: verify destructive changes follow the 5-phase pattern.
+6. **Rollback review**: verify `down()` method or documented rollback strategy exists.
+7. **Column operation safety**: verify safe approaches for add/rename/remove/type-change.
+8. Verify relation integrity: foreign keys, cascade behavior, orphan prevention.
+9. Verify ownership compliance: userId on user-scoped entities, ownership chain respected.
+10. Verify JSONB discipline: shape documented, changes treated as schema changes.
+11. Verify index quality: justified by query patterns, not speculative; large tables use CONCURRENTLY.
+12. Confirm source-of-truth clarity: entities are primary, migrations are history.
+13. Apply code quality governance for naming and structure.
+14. Determine whether the change maintained data integrity.
+15. **Cross-cutting analysis** (multi-entity or multi-layer changes): verify consistency across related entities, repositories, and domain objects.
+16. Classify each finding with severity: CRITICAL / HIGH / MEDIUM / LOW.
+17. Emit data-model review findings in structured format (File / Severity / Category / Why / Recommendation).
+18. Emit review verdict: Approve / Request changes / Needs discussion.
+19. Determine cross-family triggers:
     - Documentation governance: `docs/data-model/`, `docs/api/`
     - Backend governance: repository/domain impacts
     - CI/CD governance: deployment database impacts
@@ -99,3 +111,9 @@ Emit warnings when:
 - speculative indexes without query evidence
 - entities outside the established entity directory
 - modification of already-applied migrations
+- destructive schema changes without zero-downtime migration plan
+- migrations without rollback strategy or `down()` method
+- adding NOT NULL column to existing table without default value
+- large data backfills without batching
+- creating indexes on large tables without CONCURRENTLY
+- foreign key constraints added to tables with potential orphan data

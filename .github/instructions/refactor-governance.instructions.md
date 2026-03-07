@@ -65,6 +65,64 @@ Refactoring must respect all applicable domain governance rules.
 - If tests don't exist for the affected area, consider adding test coverage before the refactor.
 - For UI refactors, verify visual behavior has not changed.
 
+### Safe refactoring loop
+Every refactoring step must follow the cycle:
+1. **Test** — verify existing tests pass (or add tests if none exist).
+2. **Refactor** — make one structural change.
+3. **Test** — verify all tests still pass.
+4. **Commit** — commit the atomic change with preserved-behavior statement.
+
+Never combine multiple refactoring operations into a single commit without intermediate test verification.
+
+### Refactoring types
+Classify each refactoring by its trigger:
+- **Preparatory** — restructure code to make an upcoming feature easier to add.
+- **Comprehension** — restructure code to make it easier to understand (naming, extraction, simplification).
+- **Litter-pickup** — fix small structural problems encountered while working on something else.
+
+State the refactoring type in your preserved-behavior statement.
+
+### Rule of Three
+- First occurrence: write it inline.
+- Second occurrence: note the duplication but tolerate it.
+- Third occurrence: extract a shared abstraction.
+
+Do not extract prematurely before the third occurrence unless the duplication is large (10+ lines) and identical in intent.
+
+### Named refactoring catalog (scoped to Lifeline JS/React)
+| Refactoring | When to use | Lifeline example |
+|-------------|-------------|-------------------|
+| Extract Function | Function does more than one thing | Extract validation from a route handler |
+| Extract Component | JSX block has independent concern | Extract a form section from a page |
+| Extract Hook | Stateful logic reused across components | Extract shared fetch logic |
+| Move Function | Function lives in the wrong module | Move business logic from controller to service |
+| Inline Function | Indirection adds no value | Inline a one-line wrapper |
+| Rename | Name no longer describes purpose | Rename after responsibility changes |
+| Replace Conditional with Guard Clause | Deeply nested if/else | Flatten controller error checks |
+| Decompose Conditional | Complex boolean expression | Break multi-condition filter into named predicates |
+
+### Smell families and smell-to-fix mapping
+Recognize these smell families as refactoring triggers:
+
+| Smell family | Examples | Typical fix |
+|--------------|----------|-------------|
+| **Bloaters** | Long function, large file, long parameter list | Extract Function, Extract Component, Introduce Parameter Object |
+| **Change Preventers** | Divergent change, shotgun surgery | Extract Module, Move Function |
+| **Dispensables** | Dead code, speculative generality, duplicate code | Delete, Inline, Extract shared |
+| **Couplers** | Feature envy, inappropriate intimacy | Move Function, Extract Component |
+
+### Dead code cleanup
+- Dead code is a first-class refactoring target, not a secondary concern.
+- Unreachable code, unused exports, commented-out code, and unused variables should be removed.
+- Before removing suspected dead code, search for all references across the codebase.
+- Prefer removing dead code in a dedicated commit with a clear description.
+
+### Large-scale refactoring strategies
+For refactors that span multiple modules or take more than one session:
+- **Branch by Abstraction**: introduce an abstraction layer → migrate consumers one by one → remove old implementation.
+- Never leave the codebase in a half-migrated state at the end of a session. Each step must be independently deployable.
+- Track large refactors as multi-step issues, not single commits.
+
 ### Preserved-behavior statements
 - Every refactor commit or PR description should include a preserved-behavior statement.
 - Format: "Preserved behavior: [specific behavior that remains unchanged]."
@@ -88,6 +146,15 @@ Refactoring must respect all applicable domain governance rules.
 - **Schema refactors** must respect entity source of truth, migration discipline, and ownership chains from data-model-governance
 - **Cross-cutting refactors** must involve all affected domain governance families
 
+## Severity taxonomy
+
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Behavior change without acknowledgment, data loss risk, or broken functionality |
+| HIGH | Missing preserved-behavior statement, scope creep, or bad abstraction replacing duplication |
+| MEDIUM | Incomplete justification, missing regression test, or naming quality gap |
+| LOW | Style preference, minor documentation gap, or cosmetic structure choice |
+
 ## Anti-patterns to flag
 
 - Refactors that change behavior without acknowledgment
@@ -99,6 +166,11 @@ Refactoring must respect all applicable domain governance rules.
 - Refactors justified only by style preference
 - Extractions that create files mixing unrelated concerns
 - Refactors that break existing tests
+- Premature extraction before the third occurrence (Rule of Three violation)
+- Leaving dead code behind after restructuring
+- Half-migrated Branch by Abstraction without cleanup
+- Combining multiple refactoring operations in one commit without intermediate testing
+- Missing refactoring type classification
 
 ## Documentation impact
 

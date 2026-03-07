@@ -33,11 +33,48 @@ It should also consult:
 
 ## Assessment criteria
 
-### Readability
+### Review categories
+
+Assess each change across six dimensions:
+
+#### 1. Correctness
+- Logic errors, off-by-one mistakes, unhandled null/undefined
+- Edge cases not covered
+- Race conditions in async code
+- Incorrect assumptions about data shape
+
+#### 2. Security
+- Hardcoded secrets, API keys, or tokens
+- Error messages that expose internal details to clients
+- Unsanitized user input used in queries or HTML
+- Missing authentication or authorization checks
+- Overly permissive CORS or access control
+
+#### 3. Performance
+- N+1 query patterns (loop-based database calls)
+- Unbounded memory growth (e.g., accumulating arrays without limits)
+- Blocking operations on the main thread or event loop
+- Missing pagination for list endpoints
+- Redundant re-computation that could be cached
+
+#### 4. Reliability
+- Missing error handling for I/O operations
+- Missing timeouts for external calls
+- Resource leaks (open handles, event listeners not removed)
+- No retry logic for transient failures
+- Silent error suppression (`catch (e) {}` with no handling)
+
+#### 5. Readability
 - Can each function's purpose be understood from its name and signature?
 - Is control flow clear without deep nesting?
 - Are early returns used appropriately?
 - Is the code self-documenting or does it require clarifying comments?
+
+#### 6. Testing
+- Does new behavior have corresponding tests?
+- Do tests assert meaningful outcomes, not just invocation?
+- Are edge cases tested?
+- Are error paths tested?
 
 ### Duplication
 - Are there copy-paste blocks larger than ~10 lines?
@@ -52,12 +89,6 @@ It should also consult:
 - Do functions have ≤4 parameters (or use options objects)?
 - Does the file focus on one cohesive concern?
 
-### Cohesion and coupling
-- Does each file have a single clear responsibility?
-- Are dependencies explicit (imports, parameters) rather than implicit (side effects, global state)?
-- Is the module's public interface (exports) clean and minimal?
-- Are unrelated concerns separated into different files?
-
 ### Naming quality
 - Do variable/function names follow Lifeline conventions (camelCase, PascalCase, boolean questions, action verbs)?
 - Are names descriptive and specific, not generic?
@@ -69,20 +100,48 @@ It should also consult:
 - Is preserved behavior stated explicitly in comments or commit messages?
 - Are there unintended side effects from the structural change?
 
-### Cleanliness
+### Dead code and cleanliness
 - Is dead code removed?
 - Are commented-out code blocks removed?
 - Are magic numbers/strings replaced with named constants?
 - Are TODOs accompanied by concrete plans?
 - Are errors handled explicitly, not suppressed silently?
 
+### Conformance check
+- Does the change follow patterns established in sibling files?
+- If a new pattern is introduced, is it justified and documented?
+- Are there competing patterns in the same area after the change?
+
+### Cross-cutting analysis (for multi-file changes)
+- Are all changed files internally consistent with each other?
+- Were new dependencies introduced? Do they follow dependency direction rules?
+- Are shared abstractions used consistently in all call sites?
+- Are there files that should have been changed but were not (missing changes)?
+
 ## Findings format
 
-Each finding should include:
-- **Severity**: blocker | warning | note
-- **Location**: file and approximate area
-- **Finding**: specific description of the issue
-- **Recommendation**: actionable suggestion
+Each finding must include:
+- **Severity**: CRITICAL | HIGH | MEDIUM | LOW
+- **Category**: Correctness | Security | Performance | Reliability | Readability | Testing | Duplication | Naming
+- **Location**: file path and function/area
+- **Finding**: specific description of the issue — always explain **why** it is a problem, not just what
+- **Recommendation**: actionable suggestion to fix
+
+Example:
+```
+### [HIGH] Performance: N+1 queries in getTodosWithTags
+**File**: backend/src/application/todo/GetTodosUseCase.js — getTodosWithTags()
+**Issue**: Each todo triggers a separate query to fetch its tags. With 100 todos this produces 101 queries.
+**Why**: This degrades linearly with data volume and will become a production bottleneck.
+**Recommendation**: Use a single JOIN query or batch the tag fetch with an IN clause.
+```
+
+## Review verdict
+
+Conclude every review with a verdict:
+- **Approve** — no CRITICAL or HIGH findings; change is a genuine improvement
+- **Request changes** — CRITICAL or HIGH findings must be addressed before acceptance
+- **Needs discussion** — findings are ambiguous or trade-offs need team-level input
 
 ## Expected outputs
 

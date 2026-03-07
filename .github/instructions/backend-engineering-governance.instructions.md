@@ -58,6 +58,35 @@ This instruction set builds on top of `.github/instructions/code-quality-governa
 - Contract changes require updating `docs/api/` and may require frontend coordination.
 - Do not silently add or remove fields from responses — name the contract change explicitly.
 
+### Dependency direction discipline
+- Dependencies must flow inward: routes → controllers → application → domain ← infrastructure.
+- Inner layers must never import outer layers. A use-case must never import a route or controller. A domain entity must never import a repository.
+- Infrastructure (repositories) may depend on domain interfaces but not on application or controllers.
+- Middleware is a cross-cutting concern and may access any layer, but it should not contain business logic.
+- Violations of dependency direction are architectural regressions — treat as HIGH severity.
+
+### Security discipline
+- Never hardcode secrets, API keys, or tokens in source files — use environment variables.
+- Never expose internal error details (stack traces, SQL errors, entity structure) in API responses.
+- Sanitize and validate all user input before use in queries, HTML, or file operations.
+- All user-scoped queries must filter by the authenticated user's ID — no cross-user data leakage.
+- Rate-limit sensitive endpoints (auth, password reset, export) to prevent abuse.
+- Log security-relevant events (failed auth, unauthorized access attempts) without logging sensitive data.
+
+### Performance discipline
+- Avoid N+1 query patterns: do not query inside loops. Use JOINs, IN clauses, or batch loading.
+- Add database indexes for columns used in WHERE, JOIN, and ORDER BY clauses on large tables.
+- Add pagination for all list endpoints — never return unbounded result sets.
+- Avoid blocking the event loop with synchronous computation — use async patterns for heavy work.
+- Set timeouts on external HTTP calls and database queries to prevent hanging requests.
+
+### Reliability discipline
+- Handle all I/O errors explicitly — database calls, HTTP calls, file system operations.
+- Set timeouts on external calls (HTTP, database) to prevent resource exhaustion.
+- For transient failures (network timeouts, connection resets), consider retry with backoff.
+- Close resources (database connections, file handles, streams) in finally blocks or use-case teardown.
+- Monitor response times and error rates for critical endpoints.
+
 ### Search/stats/export/import behavior
 - Search logic (`SearchTodos`, `AdvancedSearch`) should maintain consistent filter semantics.
 - Statistics logic (`GetStatistics`) should maintain consistent aggregation behavior.
@@ -84,6 +113,15 @@ infra/db/        → Data-source config and entity definitions
 validators/      → Request validation schemas
 ```
 
+## Severity taxonomy
+
+| Severity | Meaning |
+|----------|----------|
+| CRITICAL | Security vulnerability, data loss, or production outage risk |
+| HIGH | Dependency direction violation, missing error handling, or N+1 query |
+| MEDIUM | Missing validation, weak logging, or layer boundary blur |
+| LOW | Style preference, naming, or minor documentation gap |
+
 ## Anti-patterns to flag
 
 - Business logic in route files
@@ -96,6 +134,12 @@ validators/      → Request validation schemas
 - Ad-hoc auth checks instead of middleware-based auth
 - Undocumented contract changes (silently added/removed response fields)
 - God controllers with >100 lines doing multiple operations
+- Dependency direction violations (inner layers importing outer layers)
+- N+1 queries (database calls inside loops)
+- Unbounded list endpoints without pagination
+- Hardcoded secrets or API keys in source files
+- Internal error details exposed in API responses (stack traces, SQL errors)
+- Missing timeouts on external HTTP calls or database queries
 
 ## Documentation impact
 

@@ -26,33 +26,54 @@ This workflow sits above the backend-engineering-governance skill, agents, and t
 
 ### Pre-implementation (builder guidance)
 1. Inspect the proposed backend work scope.
-2. Recommend which layer should contain the new logic.
-3. Recommend file placement and naming.
-4. Recommend validation strategy (middleware, use-case, domain).
-5. Recommend error handling approach.
-6. Identify auth/user-scoping requirements.
-7. Identify API contract implications.
-8. Emit backend implementation guidance.
+2. **Conformance check**: study 2–3 existing files in the same layer to learn the established pattern.
+3. Recommend which layer should contain the new logic.
+4. Recommend file placement and naming following the established pattern.
+5. Validate dependency direction — inner layers must not import outer layers.
+6. Recommend validation strategy (middleware, use-case, domain).
+7. Recommend error handling approach.
+8. Identify auth/user-scoping requirements.
+9. Identify API contract implications.
+10. **Security check**: no hardcoded secrets, sanitized input, auth coverage on new endpoints.
+11. **Performance check**: no N+1 patterns, pagination for lists, indexes for queries.
+12. Emit backend implementation guidance.
+
+### Post-implementation (lint gate)
+1. Run `npm run lint` from `backend/`.
+2. Fix any new lint warnings or errors before review.
 
 ### Post-implementation (review)
 1. Inspect the changed backend files.
 2. Assess layer discipline: is logic in the correct layer?
-3. Assess controller thinness: are controllers limited to orchestration?
-4. Assess repository encapsulation: is data access contained?
-5. Assess validation placement: correct layer for each type of validation?
-6. Assess error handling: async safety, structured errors, no silent suppression?
-7. Assess auth/user-scoping: correct identity usage, user ID filtering, no leakage?
-8. Verify contract compliance: preserved shapes, explicit changes, documented updates?
-9. Check search/stats/export/import behavior consistency.
-10. Apply code quality governance for general readability, naming, and complexity.
-11. Determine whether the change genuinely improved backend structure.
-12. Emit backend review findings with severity levels.
-13. Determine cross-family triggers:
+3. **Dependency direction**: do dependencies flow inward? Any inner-layer imports of outer layers?
+4. Assess controller thinness: are controllers limited to orchestration?
+5. Assess repository encapsulation: is data access contained?
+6. Assess validation placement: correct layer for each type of validation?
+7. Assess error handling: async safety, structured errors, no silent suppression?
+8. Assess auth/user-scoping: correct identity usage, user ID filtering, no leakage?
+9. **Security review**: hardcoded secrets, exposed error details, unsanitized input, auth gaps, rate limiting?
+10. **Performance review**: N+1 queries, unbounded lists, missing indexes, blocking operations, missing timeouts?
+11. **Reliability review**: missing error handling on I/O, missing timeouts, resource leaks?
+12. Verify contract compliance: preserved shapes, explicit changes, documented updates?
+13. **Conformance check**: does the change follow established patterns in the same layer?
+14. Check search/stats/export/import behavior consistency.
+15. Apply code quality governance for general readability, naming, and complexity.
+16. Determine whether the change genuinely improved backend structure.
+17. Classify findings with severity: CRITICAL / HIGH / MEDIUM / LOW.
+18. Produce verdict: Approve / Request changes / Needs discussion.
+19. Determine cross-family triggers:
     - Documentation governance: if API contracts or backend behavior changed
     - Data-model governance: if entity or repository changes affect schema
     - CI/CD governance: if deployment surfaces are affected
     - Refactor governance: if deeper restructuring is needed
     - ADR: if durable backend architecture decisions were made
+
+### Cross-cutting analysis (for multi-layer changes)
+For changes that span multiple layers:
+1. Check internal consistency across all changed layers.
+2. Verify dependency direction is maintained.
+3. Check for missing changes — layers that should have been updated but were not.
+4. Ensure shared patterns are applied consistently.
 
 ## Rules it enforces
 

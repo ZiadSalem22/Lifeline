@@ -30,6 +30,9 @@ Use this team when:
 - enforcing separation of concerns across module boundaries
 - detecting cross-cutting duplication (e.g., similar patterns in frontend and backend)
 - consolidating quality findings from domain-specific review agents
+- verifying lint/format gate compliance before accepting changes
+- ensuring severity levels (CRITICAL/HIGH/MEDIUM/LOW) are applied consistently across findings
+- performing cross-cutting analysis for multi-file changes (internal consistency, dependency direction, missing changes)
 - determining when quality changes also require:
   - documentation updates (module boundaries, public APIs)
   - architecture documentation updates (structural changes)

@@ -17,6 +17,10 @@ Use this skill to assess and guide:
 - behavior-preserving change discipline
 - hack and accidental-complexity avoidance
 - dead code and commented-out code cleanup
+- lint/format gate compliance
+- security surface awareness (hardcoded secrets, error exposure, input handling)
+- performance surface awareness (N+1 patterns, unbounded allocations, blocking operations)
+- cross-cutting consistency for multi-file changes
 
 ## When to use it
 
@@ -78,6 +82,52 @@ Then consult the implementation surface:
 - Catch-all error suppression without logging
 - Circular dependencies
 - Boolean flag parameters that change function behavior
+- Barrel re-exports that re-export everything
+- Utility files that grow into unrelated grab-bags
+
+### Severity taxonomy
+
+When reporting quality findings, use these severity levels consistently:
+
+| Severity | Meaning |
+|----------|---------|
+| **CRITICAL** | Correctness risk, data loss potential, or security exposure — must fix |
+| **HIGH** | Significant maintainability or reliability regression — should fix in same change |
+| **MEDIUM** | Quality regression increasing future cost — fix if practical |
+| **LOW** | Style or minor readability — informational, fix opportunistically |
+
+### Review categories
+
+Quality review examines six dimensions (adapted from TerminalSkills and timi-ty code-review practices):
+
+1. **Correctness** — logic errors, off-by-one, null handling, edge cases, race conditions
+2. **Security** — hardcoded secrets, exposed error details, unsanitized inputs, missing auth checks
+3. **Performance** — N+1 queries, unbounded allocations, blocking operations, missing pagination
+4. **Reliability** — missing error handling, missing timeouts, resource leaks, no retry for transient failures
+5. **Readability** — naming, nesting, function size, file focus, self-documenting intent
+6. **Testing** — missing tests for new behavior, tests that don't assert meaningful outcomes, untested edge cases
+
+### Lint and format gate
+
+Every code change must pass the project lint commands before being declared complete:
+- Backend: `npm run lint` from `backend/`
+- Frontend: `npm run lint` from `client/`
+- Never disable a lint rule globally to silence one violation — use an inline disable with an explanation
+
+### Conformance discipline
+
+Before writing new code or reviewing changes:
+- Study 2–3 existing files that do similar work to learn the established pattern
+- Follow the existing pattern unless the change is explicitly improving it
+- Do not introduce competing patterns — converge on one approach per concern
+
+### Large-change handling
+
+For changes touching more than 5 files or exceeding ~500 changed lines:
+- Perform cross-cutting analysis: check for internal consistency across all changed files
+- Check for new dependencies introduced and whether they follow the existing dependency direction
+- Verify that shared abstractions are used consistently in all call sites
+- Look for missing changes — files that should have been updated but were not
 
 ## Practical checklist
 
@@ -85,13 +135,18 @@ When reviewing code for quality:
 1. Can you understand each function's purpose from its name?
 2. Is each file focused on one coherent concern?
 3. Are there copy-paste blocks that should be extracted?
-4. Is nesting depth reasonable?
+4. Is nesting depth reasonable (≤3 levels)?
 5. Are names descriptive and consistent within the file?
 6. Is dead code or commented-out code present?
 7. Are magic values replaced with named constants?
 8. Does the change preserve existing behavior when structural?
 9. Are there hacks or TODOs without plans?
 10. Is the code genuinely cleaner, or just different?
+11. Does the change pass lint (`npm run lint`) with no new warnings?
+12. Are there any security concerns (hardcoded secrets, exposed errors, unsanitized input)?
+13. Are there any performance concerns (N+1 queries, unbounded allocations, missing pagination)?
+14. For multi-file changes: is the change internally consistent across all files?
+15. Always explain **why** something is a problem, not just what — enable the developer to learn the principle.
 
 ## Cross-family integration
 
