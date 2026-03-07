@@ -18,6 +18,9 @@ Production currently deploys by pushing to `deploy`, which triggers the VPS depl
 - Active long-term documentation belongs under `docs/`.
 - Historical phase and issue artifacts belong under `docs/issues/...`.
 - Stale or superseded material belongs under `docs/archive/...`.
+- Default all temporary execution artifacts, progress reports, discovery notes, plans, and workstream reports away from the repo root.
+- Only create a root-level final report when it is explicitly required, singular, and intentionally retained as a current top-level deliverable.
+- When a phase or implementation pass completes, compact temporary reporting into one final summary when needed or move the temporary artifacts into `docs/issues/report-history/`.
 - Before making a non-trivial code or runtime change, evaluate documentation impact.
 
 ## Documentation domains

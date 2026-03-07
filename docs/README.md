@@ -33,6 +33,13 @@ Phase 6A removes ongoing root-level report clutter and normalizes documentation 
 - [archive/](archive)
   - stale or superseded documentation retained for history
 
+## Report and output hygiene
+
+- The repository root is not a report drop-zone.
+- Temporary discovery notes, plans, workstream reports, checkpoint outputs, and progress summaries belong under `docs/issues/...`, with `docs/issues/report-history/` as the default fallback location.
+- Superseded long-term docs belong under `docs/archive/...`, not mixed with execution reporting.
+- A root-level report is acceptable only when a single final handoff report is explicitly required and intentionally retained.
+
 ## Current starting points
 
 - Project overview: [../README.md](../README.md)
@@ -41,10 +48,13 @@ Phase 6A removes ongoing root-level report clutter and normalizes documentation 
 - Testing reference: [reference/TESTING_CHECKLIST.md](reference/TESTING_CHECKLIST.md)
 - Feature inventory: [features/FEATURES.md](features/FEATURES.md)
 - Deployment and phase history: [issues/deployment-prep](issues/deployment-prep)
+- Report/output policy: [reference/REPORT_OUTPUT_POLICY.md](reference/REPORT_OUTPUT_POLICY.md)
+- Historical report storage: [issues/report-history](issues/report-history)
 
 ## Historical issue groupings
 
 - [DB migration prep](issues/db-migration-prep)
 - [Deployment prep](issues/deployment-prep)
+- [Report history](issues/report-history)
 - [Repo hygiene](issues/repo-hygiene)
 - [Repo history notes](issues/repo-history)

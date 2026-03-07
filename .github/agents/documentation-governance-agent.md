@@ -15,6 +15,7 @@ Use this agent when:
 - reviewing a pull request for docs completeness
 - deciding whether an ADR is warranted
 - deciding where a new document or report belongs
+- deciding whether a requested report should be temporary issue-history output or a singular final retained report
 
 ## Core skill dependencies
 
@@ -34,6 +35,7 @@ Consult first:
 - `.github/skills/documentation-governance.md`
 - `.github/instructions/docs-governance.instructions.md`
 - `docs/README.md`
+- `docs/reference/REPORT_OUTPUT_POLICY.md`
 - `docs/reference/DOCUMENTATION_OWNERSHIP_MATRIX.md`
 - `docs/templates/docs-update-checklist.md`
 - `docs/templates/change-impact-matrix.md`
@@ -51,7 +53,8 @@ Then consult the actual implementation surface being changed:
 - whether a change should update multiple docs domains
 - whether the change is really a business-rule change rather than only an API or backend change
 - whether an ADR should be created or refreshed
-- whether a report or artifact belongs in `docs/issues/...` or `docs/archive/...`
+- whether a report or artifact is temporary or final
+- whether a report or artifact belongs in `docs/issues/report-history/`, another issue-history folder, `docs/archive/...`, or a singular justified root location
 
 ## Domain distinctions it must preserve
 
@@ -65,6 +68,7 @@ Then consult the actual implementation surface being changed:
 
 - dump documentation into one generic file
 - place reports back into the repo root
+- allow multi-report root clutter to accumulate after a phase closes
 - collapse frontend, backend, API, and product behavior into one narrative
 - treat API docs as the place to describe business rules by default
 - ignore documentation impact for deployment or schema changes
@@ -74,6 +78,7 @@ Then consult the actual implementation surface being changed:
 The agent should produce one or more of:
 - a documentation impact map
 - recommended docs targets
+- recommended artifact/report storage target
 - multi-domain update warnings
 - missing-docs warnings
 - ADR-needed signals
@@ -85,4 +90,5 @@ The agent should produce one or more of:
 - secondary docs targets
 - rationale for each target
 - whether an ADR is needed
+- whether any report is temporary or final and where it belongs
 - whether documentation can be updated now or should be deferred explicitly

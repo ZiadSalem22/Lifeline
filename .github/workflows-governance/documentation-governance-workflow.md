@@ -27,8 +27,9 @@ This workflow sits above the documentation-governance skill, agent, and team and
 4. Determine primary and secondary docs targets.
 5. Decide whether an ADR is required.
 6. Generate or refresh the documentation update checklist.
-7. Flag missing docs, stale docs, or unresolved documentation debt.
-8. Route outputs to the correct docs areas under `docs/`.
+7. Decide whether any produced report or artifact is temporary or final.
+8. Flag missing docs, stale docs, unresolved documentation debt, or root-clutter risk.
+9. Route outputs to the correct docs areas under `docs/` and keep temporary reporting out of root by default.
 
 ## Rules it enforces
 
@@ -37,12 +38,15 @@ This workflow sits above the documentation-governance skill, agent, and team and
 - business rules must not be collapsed into API-only documentation
 - frontend docs must not be treated as secondary to backend or API docs
 - historical reports belong in `docs/issues/...` or `docs/archive/...`
+- temporary execution artifacts default to `docs/issues/report-history/` unless a narrower issue-history folder exists
+- root-level reporting is limited to a singular explicitly required final report, not a rolling stack of phase/workstream artifacts
 
 ## Outputs it produces
 
 - documentation impact map
 - required docs target list
 - primary versus secondary docs targets
+- report/output placement decision
 - ADR-needed signal when applicable
 - docs-update checklist
 - missing-docs or unresolved-doc-debt warnings
@@ -54,6 +58,7 @@ Emit warnings when:
 - business-rule changes are being routed only to backend or API docs
 - frontend UX changes are not routed to `docs/frontend/`
 - historical implementation artifacts are being routed back to the repo root
+- multiple temporary phase/workstream reports are being left in root instead of compacted or relocated
 - an ADR-worthy structural change has no ADR evaluation
 
 ## Anti-patterns this workflow prevents
@@ -61,5 +66,6 @@ Emit warnings when:
 - dumping all documentation into one generic document
 - treating docs as optional for non-trivial changes
 - sending reports back to the root
+- treating every phase checkpoint as a permanent root-level deliverable
 - confusing product behavior docs with API contract docs
 - leaving documentation debt implicit instead of naming it

@@ -29,7 +29,8 @@ Use this team when:
 - identifying multi-domain documentation updates
 - identifying missing documentation
 - identifying ADR-needed cases
-- keeping reports and historical artifacts out of the repo root
+- enforcing report/output placement hygiene and root cleanliness
+- deciding when a single final report is justified versus when temporary artifacts must be compacted or relocated
 - preserving the distinction between:
   - product
   - features
@@ -53,6 +54,7 @@ Use this team when:
 
 - documentation impact plan
 - required docs target list
+- report/output placement decision
 - missing-doc warnings
 - ADR-needed recommendation
 - docs-update checklist
@@ -61,12 +63,13 @@ Use this team when:
 
 - the skill provides rule-level knowledge
 - the agent provides role-level analysis
-- this team coordinates the overall documentation-governance responsibility and expected outputs
+- this team coordinates the overall documentation-governance responsibility, including report/output hygiene and expected outputs
 
 ## What it must not do
 
 - behave like an execution workflow
 - collapse all docs into one target
 - route reports back to the root
+- leave closed-phase workstream artifacts sitting in root by inertia
 - treat frontend docs as secondary
 - confuse business rules with API-only documentation
