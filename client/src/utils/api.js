@@ -11,6 +11,7 @@ const EXPORT_URL = joinUrl('/export');
 const IMPORT_URL = joinUrl('/import');
 const TODOS_BATCH_URL = joinUrl('/todos/batch');
 const SETTINGS_URL = joinUrl('/settings');
+const MCP_API_KEYS_URL = joinUrl('/mcp-api-keys');
 const RESET_ACCOUNT_URL = joinUrl('/reset-account');
 export const ME_URL = joinUrl('/me');
 
@@ -258,6 +259,18 @@ export const saveSettings = async (settings, fetchWithAuth, options = {}) => {
     }
 };
 
+export const saveProfile = async (profile, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'saveProfile');
+    return withLoading(async () => {
+        const response = await executeFetch(joinUrl('/profile'), {
+            method: 'POST',
+            body: JSON.stringify(profile || {}),
+        });
+        ensureOk(response, 'Failed to save profile', 'saveProfile');
+        return response.json();
+    }, 'Saving…');
+};
+
 export const createTag = async (name, color, fetchWithAuth) => {
     const executeFetch = assertFetcher(fetchWithAuth, 'createTag');
     const response = await executeFetch(TAGS_URL, {
@@ -302,6 +315,36 @@ export const fetchMe = async (fetchWithAuth) => {
         ensureOk(response, 'Failed to fetch user profile', 'fetchMe');
         return response.json();
     }, 'Loading…');
+};
+
+export const listMcpApiKeys = async (fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'listMcpApiKeys');
+    const response = await executeFetch(MCP_API_KEYS_URL);
+    ensureOk(response, 'Failed to fetch API keys', 'listMcpApiKeys');
+    return response.json();
+};
+
+export const createMcpApiKey = async (payload, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'createMcpApiKey');
+    return withLoading(async () => {
+        const response = await executeFetch(MCP_API_KEYS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload || {}),
+        });
+        ensureOk(response, 'Failed to create API key', 'createMcpApiKey');
+        return response.json();
+    }, 'Creating API key…');
+};
+
+export const revokeMcpApiKey = async (apiKeyId, fetchWithAuth) => {
+    const executeFetch = assertFetcher(fetchWithAuth, 'revokeMcpApiKey');
+    return withLoading(async () => {
+        const response = await executeFetch(`${MCP_API_KEYS_URL}/${encodeURIComponent(apiKeyId)}/revoke`, {
+            method: 'POST',
+        });
+        ensureOk(response, 'Failed to revoke API key', 'revokeMcpApiKey');
+        return response.json();
+    }, 'Revoking API key…');
 };
 
 export const getTodoByNumber = async (taskNumber, fetchWithAuth) => {

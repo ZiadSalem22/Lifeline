@@ -9,6 +9,9 @@ This document defines the current frontend behavior for the onboarding and profi
 - [client/src/pages/OnboardingPage.jsx](../../client/src/pages/OnboardingPage.jsx)
 - [client/src/pages/ProfilePage.jsx](../../client/src/pages/ProfilePage.jsx)
 - [client/src/components/ProfilePanel.jsx](../../client/src/components/ProfilePanel.jsx)
+- [client/src/components/profile/ProfilePanel.jsx](../../client/src/components/profile/ProfilePanel.jsx)
+- [client/src/components/profile/ProfileDetailsCard.jsx](../../client/src/components/profile/ProfileDetailsCard.jsx)
+- [client/src/components/profile/ApiKeysCard.jsx](../../client/src/components/profile/ApiKeysCard.jsx)
 - [client/src/components/auth/ProtectedRoute.jsx](../../client/src/components/auth/ProtectedRoute.jsx)
 - [client/src/providers/AuthProvider.jsx](../../client/src/providers/AuthProvider.jsx)
 - [client/src/app/App.jsx](../../client/src/app/App.jsx)
@@ -62,16 +65,56 @@ The profile screen is exposed at `/profile` and protected by `ProtectedRoute`.
 
 `ProfilePage` uses the shared app shell and renders `ProfilePanel` inside the main content area.
 
+The current profile surface is a stacked account-management layout rather than a single form card.
+
 ### Profile panel behavior
 
-The profile panel:
+The profile panel now contains two major cards:
+
+- a personal-details card
+- an `API Keys` card for MCP client access
+
+### Personal-details card behavior
+
+The personal-details card:
 
 - loads the current authenticated profile from the backend
 - shows a card-style editing form
 - requires first and last name for save
 - supports editing optional fields such as email, phone, country, city, and avatar URL
 - shows avatar preview when an avatar URL is present
-- shows toast-style success feedback after save
+- shows inline success/error feedback after save
+
+### API Keys card behavior
+
+The `API Keys` card:
+
+- loads the current user's existing MCP API keys by metadata only
+- shows a create action inside the profile surface rather than sending the user to a separate developer area
+- allows the user to choose a bounded access preset:
+	- `Read only`
+	- `Read and write`
+- allows the user to choose a bounded expiry preset:
+	- `1 day`
+	- `7 days`
+	- `30 days`
+	- `90 days`
+	- `Never`
+- reveals the plaintext key once after creation and warns that it will not be shown again
+- supports copy-to-clipboard from the one-time reveal panel
+- allows revocation from the key list with confirmation
+
+### Metadata shown for each key
+
+Current frontend behavior surfaces:
+
+- key name
+- key prefix
+- access label derived from scopes
+- current status
+- created time
+- expiry time
+- last-used time
 
 ### Important current limitation
 
@@ -86,7 +129,7 @@ The two screens are related but not identical.
 Current frontend model:
 
 - onboarding is the required first authenticated completion step
-- profile is the later ongoing editing surface
+- profile is the later ongoing editing surface for both personal details and self-serve MCP API keys
 - both rely on the same backend profile endpoint and current-user refresh behavior
 
 ## Redirect behavior worth preserving

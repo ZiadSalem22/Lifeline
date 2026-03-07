@@ -146,6 +146,16 @@ Current route-prefix enforcement includes:
 - `/api/admin` guarded by `requireRole('admin')`
 - `/api/ai` guarded by `requirePaid()` and its own rate limiter
 
+## Current-user-scoped account surfaces
+
+Current authenticated account-management routes now include:
+
+- `/api/profile`
+- `/api/settings`
+- `/api/mcp-api-keys`
+
+The MCP API key surface is also current-user scoped through the same attached `req.currentUser` identity and does not provide cross-user lookup behavior.
+
 ## Error normalization for auth failures
 
 The global error handler maps common OAuth-related failures into friendly API errors.
@@ -166,6 +176,7 @@ Canonical backend and API docs should therefore treat authenticated access as th
 ## Related canonical documents
 
 - [runtime-composition.md](runtime-composition.md)
+- [mcp-api-key-management.md](mcp-api-key-management.md)
 - [../api/auth-profile-and-settings-endpoints.md](../api/auth-profile-and-settings-endpoints.md)
 - [../api/validation-auth-and-error-behavior.md](../api/validation-auth-and-error-behavior.md)
 - [../product/identity-and-access-modes.md](../product/identity-and-access-modes.md)

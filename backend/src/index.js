@@ -11,11 +11,19 @@ const { attachCurrentUser } = require('./middleware/attachCurrentUser');
 const { createRateLimiter } = require('./middleware/rateLimit');
 const { validateTodoCreate, validateTodoUpdate, validateTodoBatch } = require('./middleware/validateTodo');
 const { requireAuth, requireRole, requireRoleIn, requirePaid } = require('./middleware/roles');
+const { CreateSelfServeMcpApiKey } = require('./application/mcpApiKeys/CreateSelfServeMcpApiKey');
+const { ListCurrentUserMcpApiKeys } = require('./application/mcpApiKeys/ListCurrentUserMcpApiKeys');
+const { RevokeCurrentUserMcpApiKey } = require('./application/mcpApiKeys/RevokeCurrentUserMcpApiKey');
+const { IssueMcpApiKey } = require('./application/IssueMcpApiKey');
+const McpApiKeyController = require('./controllers/McpApiKeyController');
 const { createInternalMcpRouter } = require('./internal/mcp/router');
+const createMcpApiKeyRoutes = require('./routes/mcpApiKeyRoutes');
 const logger = require('./config/logger');
 
+const TypeORMMcpApiKeyRepository = require('./infrastructure/TypeORMMcpApiKeyRepository');
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
 const TypeORMTagRepository = require('./infrastructure/TypeORMTagRepository');
+const TypeORMUserRepository = require('./infrastructure/TypeORMUserRepository');
 const TypeORMUserSettingsRepository = require('./infrastructure/TypeORMUserSettingsRepository');
 const { AppDataSource } = require('./infra/db/data-source');
 const NotificationService = require('./application/NotificationService');
@@ -403,8 +411,32 @@ const aiLimiter = createRateLimiter({
     keyGenerator: (req) => (req.currentUser && req.currentUser.id) || req.ip,
     exempt: (req) => Array.isArray(req.currentUser?.roles) && req.currentUser.roles.includes('admin'),
 });
+const mcpApiKeyWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 10,
+    keyGenerator: (req) => (req.currentUser && req.currentUser.id) || req.ip,
+});
 app.use('/api/todos', todosLimiter);
 app.use('/api/ai', aiLimiter);
+
+const issueMcpApiKey = new IssueMcpApiKey({
+    mcpApiKeyRepository: TypeORMMcpApiKeyRepository,
+    userRepository: TypeORMUserRepository,
+});
+const mcpApiKeyController = new McpApiKeyController({
+    listCurrentUserMcpApiKeys: new ListCurrentUserMcpApiKeys({
+        mcpApiKeyRepository: TypeORMMcpApiKeyRepository,
+    }),
+    createSelfServeMcpApiKey: new CreateSelfServeMcpApiKey({
+        issueMcpApiKey,
+    }),
+    revokeCurrentUserMcpApiKey: new RevokeCurrentUserMcpApiKey({
+        mcpApiKeyRepository: TypeORMMcpApiKeyRepository,
+    }),
+});
+app.use('/api/mcp-api-keys', requireAuth(), createMcpApiKeyRoutes(mcpApiKeyController, {
+    writeLimiter: mcpApiKeyWriteLimiter,
+}));
 
 // /api/me - requireAuth
 /**

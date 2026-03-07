@@ -33,7 +33,11 @@ const validate = (schema, source = 'body') => {
         }
 
         // Replace request data with validated and sanitized data
-        req[source] = value;
+        if (source === 'query') {
+            req.validatedQuery = value;
+        } else {
+            req[source] = value;
+        }
         next();
     };
 };

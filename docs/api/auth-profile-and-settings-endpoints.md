@@ -10,6 +10,9 @@ This document describes the current authenticated identity, profile, settings, a
 - [backend/src/middleware/auth0.js](../../backend/src/middleware/auth0.js)
 - [backend/src/middleware/attachCurrentUser.js](../../backend/src/middleware/attachCurrentUser.js)
 - [backend/src/middleware/roles.js](../../backend/src/middleware/roles.js)
+- [backend/src/routes/mcpApiKeyRoutes.js](../../backend/src/routes/mcpApiKeyRoutes.js)
+- [backend/src/controllers/McpApiKeyController.js](../../backend/src/controllers/McpApiKeyController.js)
+- [backend/src/validators/index.js](../../backend/src/validators/index.js)
 
 ## Endpoint group summary
 
@@ -18,6 +21,9 @@ This document describes the current authenticated identity, profile, settings, a
 | `/api/me` | `GET` | Authenticated | Returns the normalized current-user payload |
 | `/api/profile` | `POST` | Authenticated | Creates or updates the current user's profile |
 | `/api/settings` | `POST` | Authenticated | Saves or updates user settings |
+| `/api/mcp-api-keys` | `GET` | Authenticated | Lists the current user's MCP API keys by metadata only |
+| `/api/mcp-api-keys` | `POST` | Authenticated | Creates a new self-serve MCP API key for the current user |
+| `/api/mcp-api-keys/:id/revoke` | `POST` | Authenticated | Revokes one of the current user's MCP API keys |
 | `/api/reset-account` | `POST` | Authenticated | Deletes todos, custom tags, and saved settings for the current user |
 | `/api/me/raw` | `GET` | JWT middleware path | Returns raw auth payload for debugging |
 | `/me` | `GET` | Public redirect | Redirects to `/api/me` |
@@ -91,6 +97,79 @@ The handler accepts fields such as:
 ### Response behavior
 
 On success, the endpoint returns the saved profile-facing fields.
+
+## `GET /api/mcp-api-keys`
+
+### Purpose
+
+Returns the authenticated user's existing MCP API keys by metadata only.
+
+### Current query parameters
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `limit` | integer | no | Maximum number of results to return, default `25`, maximum `50` |
+
+### Current response behavior
+
+Each item can include:
+
+- `id`
+- `name`
+- `keyPrefix`
+- `scopes`
+- `status`
+- `createdAt`
+- `expiresAt`
+- `lastUsedAt`
+- `revokedAt`
+
+### Important security rule
+
+This endpoint does **not** return plaintext key secrets or stored hash material.
+
+## `POST /api/mcp-api-keys`
+
+### Purpose
+
+Creates a new self-serve MCP API key for the authenticated user.
+
+### Current request body
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | string | yes | Human-readable label for the key |
+| `scopePreset` | string | yes | `read_only` or `read_write` |
+| `expiryPreset` | string | yes | `1_day`, `7_days`, `30_days`, `90_days`, or `never` |
+
+### Current response behavior
+
+The response returns:
+
+- `apiKey` metadata
+- `plaintextKey`
+
+`plaintextKey` is returned only on create and should be treated as a one-time reveal value.
+
+### Validation behavior
+
+- invalid scope presets return `400`
+- invalid expiry presets return `400`
+- blank names return `400`
+
+## `POST /api/mcp-api-keys/:id/revoke`
+
+### Purpose
+
+Revokes one of the authenticated user's own MCP API keys.
+
+### Current response behavior
+
+Returns the updated `apiKey` metadata with revoked status.
+
+### Current auth/scoping rule
+
+The lookup is user-scoped. A user cannot revoke another user's key.
 
 ## `POST /api/settings`
 

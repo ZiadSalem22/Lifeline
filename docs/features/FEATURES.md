@@ -36,7 +36,8 @@ This inventory uses these labels:
 | Guest-mode task management | Current | Local browser storage with seeded default tags and local task numbering |
 | Authenticated account mode | Current | Auth0-backed identity, server persistence, profile/settings support |
 | Onboarding gate for authenticated users | Current | Authenticated users are redirected to onboarding until required profile fields are completed |
-| Profile management | Current | Profile fields include name, email, phone, country, city, timezone, avatar URL, and start day of week |
+| Profile management | Current | Profile supports personal details editing, while week-start preference still exists elsewhere in the authenticated product model |
+| Self-serve MCP API key management | Current with constraints | Lives on Profile; supports metadata list, bounded create, one-time reveal, and revoke for the current user only |
 
 ### Task management
 
