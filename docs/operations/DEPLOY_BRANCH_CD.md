@@ -20,20 +20,30 @@ The workflow performs the following steps:
 5. Runs [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh) on the VPS.
 6. Repoints `/opt/lifeline/current` to the new release.
 7. Runs `docker compose` with [compose.production.yaml](../../compose.production.yaml) and `/opt/lifeline/shared/.env.production`.
-8. Verifies container health, public health, homepage availability, and the private `127.0.0.1:3020` bind.
+8. Verifies app, MCP, and Postgres container health plus public and private runtime checks, including the MCP-to-backend internal adapter path.
 
 ## Production runtime topology
 
 The current production path is:
 
 - public traffic enters through Nginx on the VPS
-- Nginx proxies to `127.0.0.1:3020`
+- Nginx proxies `lifeline.a2z-us.com` to `127.0.0.1:3020`
+- Nginx proxies `mcp.lifeline.a2z-us.com` to `127.0.0.1:3010`
 - Docker maps that loopback port to the app container's internal port `3000`
+- Docker maps the MCP loopback port to the `lifeline-mcp` container's internal MCP port
+- the `lifeline-mcp` container reaches `lifeline-app` over the compose network at `http://lifeline-app:3000`
 - the app container connects to the `lifeline-postgres` container over the compose network
 
 ## Required GitHub deployment secrets
 
 Production runtime secrets stay on the VPS in `/opt/lifeline/shared/.env.production`.
+
+That shared env file now also carries MCP runtime secrets and settings such as:
+
+- `MCP_INTERNAL_SHARED_SECRET`
+- `MCP_API_KEY_PEPPER`
+- `MCP_PORT`
+- `MCP_PUBLIC_BASE_URL`
 
 GitHub only needs deployment automation secrets:
 
@@ -45,12 +55,23 @@ GitHub only needs deployment automation secrets:
 
 The workflow expects these secrets in the `production` GitHub environment.
 
+## Nginx routing note
+
+The deploy workflow still deploys release contents, Compose configuration, and scripts.
+
+It does **not** install or reload VPS-host Nginx configuration automatically.
+
+When `deploy/nginx/` changes, operators must sync the relevant config files on the VPS and reload Nginx as a separate host-level step.
+
+For the first MCP cutover checklist, API-key issuance flow, and first real client validation steps, use [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md).
+
 ## Manual operator flow
 
 1. Merge or cherry-pick the desired commit(s) from `main` into `deploy`.
 2. Push `deploy`.
-3. Watch the GitHub Actions run for `Deploy Lifeline Production`.
-4. If needed, rerun the workflow manually from GitHub Actions.
+3. If the release includes changes under `deploy/nginx/`, sync the updated VPS host Nginx config and reload Nginx before treating the rollout as complete.
+4. Watch the GitHub Actions run for `Deploy Lifeline Production`.
+5. If needed, rerun the workflow manually from GitHub Actions.
 
 ## Rollback
 
@@ -63,4 +84,5 @@ The workflow expects these secrets in the `production` GitHub environment.
 
 - [production-runtime-and-rollback.md](production-runtime-and-rollback.md)
 - [deployment-verification-and-smoke-checks.md](deployment-verification-and-smoke-checks.md)
+- [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md)
 - [../architecture/runtime-topology.md](../architecture/runtime-topology.md)

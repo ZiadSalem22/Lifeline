@@ -11,6 +11,7 @@ const { attachCurrentUser } = require('./middleware/attachCurrentUser');
 const { createRateLimiter } = require('./middleware/rateLimit');
 const { validateTodoCreate, validateTodoUpdate, validateTodoBatch } = require('./middleware/validateTodo');
 const { requireAuth, requireRole, requireRoleIn, requirePaid } = require('./middleware/roles');
+const { createInternalMcpRouter } = require('./internal/mcp/router');
 const logger = require('./config/logger');
 
 const TypeORMTodoRepository = require('./infrastructure/TypeORMTodoRepository');
@@ -41,6 +42,7 @@ function splitOrigins(value) {
 function isReservedFrontendPath(requestPath) {
     return [
         '/api',
+        '/internal',
         '/api-docs',
         '/swagger-ui',
         '/swagger.json'
@@ -113,6 +115,8 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
+
+app.use('/internal/mcp', createInternalMcpRouter());
 
 /**
  * @openapi
@@ -1046,7 +1050,7 @@ app.delete('/api/todos/:id', requireAuth(), async (req, res, next) => {
 app.post('/api/todos/:id/archive', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
-        await todoRepository.archive(id);
+        await todoRepository.archive(id, req.currentUser.id);
         res.json({ id, archived: true });
     } catch (err) { next(err); }
 });
@@ -1076,7 +1080,7 @@ app.post('/api/todos/:id/archive', requireAuth(), async (req, res, next) => {
 app.post('/api/todos/:id/unarchive', requireAuth(), async (req, res, next) => {
     try {
         const { id } = req.params;
-        await todoRepository.unarchive(id);
+        await todoRepository.unarchive(id, req.currentUser.id);
         res.json({ id, archived: false });
     } catch (err) { next(err); }
 });

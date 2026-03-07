@@ -12,6 +12,7 @@
     "migration:run": "npx typeorm migration:run -d ./data-source-migrations.js",
     "migration:revert": "npx typeorm migration:revert -d ./data-source-migrations.js",
     "db:init:postgres": "node scripts/init-db.js",
+    "mcp:issue-key": "node src/scripts/issue-mcp-api-key.js",
     "promote-admin": "node src/scripts/promote-admin.js",
     "reset-db": "node src/scripts/reset-db.js",
     "soft-reset-db": "node src/scripts/soft-reset-db.js",

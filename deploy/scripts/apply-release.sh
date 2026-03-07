@@ -6,10 +6,8 @@ ROOT_DIR="/opt/lifeline"
 RELEASES_DIR="${ROOT_DIR}/releases"
 CURRENT_LINK="${ROOT_DIR}/current"
 PROJECT_NAME="lifeline"
-PUBLIC_HEALTH_URL="https://lifeline.a2z-us.com/api/health/db"
-PUBLIC_HOME_URL="https://lifeline.a2z-us.com/"
-INTERNAL_HEALTH_URL="http://127.0.0.1:3020/api/health/db"
 APP_CONTAINER="lifeline-app"
+MCP_CONTAINER="lifeline-mcp"
 DB_CONTAINER="lifeline-postgres"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 
@@ -31,6 +29,22 @@ if [[ ! -f "${shared_env_file}" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1090
+set -a
+source "${shared_env_file}"
+set +a
+
+APP_PORT="${APP_PORT:-3020}"
+APP_ORIGIN="${APP_ORIGIN:-https://lifeline.a2z-us.com}"
+MCP_PORT="${MCP_PORT:-3010}"
+MCP_PUBLIC_BASE_URL="${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}"
+
+PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"
+PUBLIC_HOME_URL="${APP_ORIGIN%/}/"
+INTERNAL_HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health/db"
+MCP_PUBLIC_HEALTH_URL="${MCP_PUBLIC_BASE_URL%/}/health"
+MCP_INTERNAL_HEALTH_URL="http://127.0.0.1:${MCP_PORT}/health"
+
 if [[ ! -f "${release_dir}/compose.production.yaml" ]]; then
   echo "compose.production.yaml is missing from ${release_dir}" >&2
   exit 1
@@ -50,6 +64,11 @@ rollback() {
   if [[ -n "${previous_release}" && -d "${previous_release}" ]]; then
     ln -sfn "${previous_release}" "${CURRENT_LINK}"
     echo "Restored current symlink to ${previous_release}" >&2
+
+    if [[ -f "${previous_release}/compose.production.yaml" ]]; then
+      echo "Re-applying previous release containers from ${previous_release}" >&2
+      docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f "${previous_release}/compose.production.yaml" up -d --build --remove-orphans >&2 || true
+    fi
   fi
 
   echo "--- docker ps ---" >&2
@@ -60,6 +79,9 @@ rollback() {
 
   echo "--- ${DB_CONTAINER} logs ---" >&2
   docker logs --tail 200 "${DB_CONTAINER}" >&2 || true
+
+  echo "--- ${MCP_CONTAINER} logs ---" >&2
+  docker logs --tail 200 "${MCP_CONTAINER}" >&2 || true
 
   exit "${exit_code}"
 }
@@ -101,6 +123,24 @@ wait_for_container_healthy() {
   return 1
 }
 
+wait_for_mcp_backend_path() {
+  local container_name="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+
+  while (( elapsed < timeout_seconds )); do
+    if docker exec "${container_name}" node -e "fetch(\`${process.env.LIFELINE_BACKEND_BASE_URL}/internal/mcp/health\`, { headers: { 'x-lifeline-internal-service-secret': process.env.MCP_INTERNAL_SHARED_SECRET } }).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
+      return 0
+    fi
+
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+
+  echo "MCP container ${container_name} could not reach the backend internal MCP adapter path." >&2
+  return 1
+}
+
 prune_old_releases() {
   mapfile -t release_paths < <(find "${RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -rn | awk '{print $2}')
 
@@ -129,17 +169,26 @@ trap rollback ERR
 ln -sfn "${release_dir}" "${CURRENT_LINK}"
 
 pushd "${release_dir}" > /dev/null
-docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f compose.production.yaml up -d --build
+docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f compose.production.yaml up -d --build --remove-orphans
 popd > /dev/null
 
 wait_for_container_healthy "${DB_CONTAINER}" 180
 wait_for_container_healthy "${APP_CONTAINER}" 240
+wait_for_container_healthy "${MCP_CONTAINER}" 180
 wait_for_url "${INTERNAL_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_HOME_URL}" 120
+wait_for_url "${MCP_INTERNAL_HEALTH_URL}" 120
+wait_for_url "${MCP_PUBLIC_HEALTH_URL}" 120
+wait_for_mcp_backend_path "${MCP_CONTAINER}" 120
 
-if ! docker port "${APP_CONTAINER}" 3000 | grep -qx '127.0.0.1:3020'; then
-  echo "Container port binding is no longer limited to 127.0.0.1:3020" >&2
+if ! docker port "${APP_CONTAINER}" 3000 | grep -qx "127.0.0.1:${APP_PORT}"; then
+  echo "Container port binding is no longer limited to 127.0.0.1:${APP_PORT}" >&2
+  exit 1
+fi
+
+if ! docker port "${MCP_CONTAINER}" "${MCP_PORT}" | grep -qx "127.0.0.1:${MCP_PORT}"; then
+  echo "MCP container port binding is no longer limited to 127.0.0.1:${MCP_PORT}" >&2
   exit 1
 fi
 

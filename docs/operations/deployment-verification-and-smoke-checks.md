@@ -19,10 +19,15 @@ The production deploy helper verifies:
 
 - Postgres container health
 - app container health
+- MCP container health
 - internal database health URL at `http://127.0.0.1:3020/api/health/db`
 - public database health URL at `https://lifeline.a2z-us.com/api/health/db`
 - public homepage availability at `https://lifeline.a2z-us.com/`
+- internal MCP health URL at `http://127.0.0.1:3010/health`
+- public MCP health URL at `https://mcp.lifeline.a2z-us.com/health`
+- MCP-to-backend internal adapter reachability from inside the `lifeline-mcp` container
 - loopback-only publication of container port `3000` as `127.0.0.1:3020`
+- loopback-only publication of the MCP port as `127.0.0.1:3010`
 
 If any of those checks fail, the deployment is treated as failed.
 
@@ -39,6 +44,18 @@ This provides a deeper schema-oriented health/debug surface.
 ### `/api/public/info`
 
 This exposes public environment/runtime information useful for low-risk verification.
+
+### `/health` on `lifeline-mcp`
+
+This is the MCP service liveness check used for container health and public/private smoke checks.
+
+It confirms that the MCP HTTP edge is listening, but it does not replace backend container health verification.
+
+### Internal adapter path check
+
+The deploy helper also performs an in-container fetch from `lifeline-mcp` to `http://lifeline-app:3000/internal/mcp/health` using the shared-secret header.
+
+That verifies the Docker-network path and shared-secret runtime wiring, not just MCP liveness.
 
 ## Local verification scripts
 
@@ -70,6 +87,17 @@ The compose verification script checks:
 
 It is a useful adjunct check when validating the integrated UI surface rather than only API/runtime behavior.
 
+## MCP client validation support
+
+The repo now includes two bounded MCP operator/dev utilities:
+
+- [backend/src/scripts/issue-mcp-api-key.js](../../backend/src/scripts/issue-mcp-api-key.js) for one-time API-key issuance to a specific Lifeline user
+- [services/lifeline-mcp/scripts/mcp-client-cli.js](../../services/lifeline-mcp/scripts/mcp-client-cli.js) for official-SDK tool discovery, direct tool calls, and repeatable read/write smoke checks through the real MCP service path
+
+Use [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md) for the concrete first-release sequence.
+
+For production validation, use a dedicated Lifeline smoke user and short-lived MCP API keys issued specifically for the validation window. Do not reuse a normal user's long-lived key for deploy smoke.
+
 ## Practical verification checklist
 
 After a production deployment, the minimum useful checks are:
@@ -77,8 +105,10 @@ After a production deployment, the minimum useful checks are:
 1. confirm the GitHub Actions deploy run finished successfully
 2. confirm `/api/health/db` is healthy publicly
 3. confirm `/` loads successfully
-4. confirm the loopback-only binding is still enforced
-5. review app and database container status if anything looks wrong
+4. confirm `https://mcp.lifeline.a2z-us.com/health` is healthy publicly
+5. confirm the loopback-only bindings are still enforced for both app and MCP services
+6. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
+7. review app, MCP, and database container status if anything looks wrong
 
 ## Failure diagnostics currently captured
 
@@ -87,10 +117,12 @@ When deployment fails, the workflow or deploy helper captures:
 - current release symlink state
 - `docker ps -a`
 - recent `lifeline-app` logs
+- recent `lifeline-mcp` logs
 - recent `lifeline-postgres` logs
 
 ## Related canonical documents
 
 - [DEPLOY_BRANCH_CD.md](DEPLOY_BRANCH_CD.md)
 - [production-runtime-and-rollback.md](production-runtime-and-rollback.md)
+- [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md)
 - [local-development-and-runtime-setup.md](local-development-and-runtime-setup.md)

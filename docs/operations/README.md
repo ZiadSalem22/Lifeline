@@ -8,3 +8,4 @@ Current active documents:
 - [local-development-and-runtime-setup.md](local-development-and-runtime-setup.md)
 - [production-runtime-and-rollback.md](production-runtime-and-rollback.md)
 - [deployment-verification-and-smoke-checks.md](deployment-verification-and-smoke-checks.md)
+- [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md)

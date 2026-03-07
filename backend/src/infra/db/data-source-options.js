@@ -8,6 +8,7 @@ const entities = [
   require('./entities/TodoEntity'),
   require('./entities/TagEntity'),
   require('./entities/TodoTagEntity'),
+  require('./entities/McpApiKeyEntity'),
   require('./entities/UserEntity'),
   require('./entities/UserProfileEntity'),
   require('./entities/UserSettingsEntity'),

@@ -7,6 +7,7 @@ const userRepo = require('../infrastructure/TypeORMUserRepository');
 const userProfileRepo = require('../infrastructure/TypeORMUserProfileRepository');
 const userSettingsRepo = require('../infrastructure/TypeORMUserSettingsRepository');
 const logger = require('../config/logger');
+const { getAuth0RolesFromClaims, getPrimaryRoleFromRoles } = require('../auth/auth0Claims');
 
 
 async function attachCurrentUser(req, res, next) {
@@ -65,15 +66,8 @@ async function attachCurrentUser(req, res, next) {
       return next();
     }
     // Auth0 roles as source of truth
-    const customClaims = claims || {};
-    const roles = customClaims["https://lifeline-api/roles"] || [];
-    // First valid role or 'free'
-    let role = 'free';
-    if (Array.isArray(roles)) {
-      if (roles.includes('admin')) role = 'admin';
-      else if (roles.includes('paid')) role = 'paid';
-      else if (roles.includes('free')) role = 'free';
-    }
+    const roles = getAuth0RolesFromClaims(claims);
+    const role = getPrimaryRoleFromRoles(roles);
     let user = await userRepo.ensureUserFromAuth0Claims(claims);
     if (!user) {
       req.currentUser = { id: sub, email: email || null, roles, role };

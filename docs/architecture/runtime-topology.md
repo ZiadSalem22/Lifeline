@@ -9,23 +9,36 @@ This document describes the current runtime topology for local development, comp
 - [compose.yaml](../../compose.yaml)
 - [compose.production.yaml](../../compose.production.yaml)
 - [Dockerfile](../../Dockerfile)
+- [services/lifeline-mcp/Dockerfile](../../services/lifeline-mcp/Dockerfile)
 - [deploy/nginx/lifeline.a2z-us.com.conf](../../deploy/nginx/lifeline.a2z-us.com.conf)
+- [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf)
 - [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh)
 - [.github/workflows/deploy-production.yml](../../.github/workflows/deploy-production.yml)
 - [backend/scripts/start-container.js](../../backend/scripts/start-container.js)
 - [backend/src/index.js](../../backend/src/index.js)
+- [services/lifeline-mcp/src/app.js](../../services/lifeline-mcp/src/app.js)
+- [../adr/0001-lifeline-mcp-runtime-boundary.md](../adr/0001-lifeline-mcp-runtime-boundary.md)
 
 ## Production topology
 
 The current production runtime is:
 
-`Internet -> Nginx on VPS -> app container on 127.0.0.1:3020 -> Express app on container port 3000 -> PostgreSQL container on 5432`
+`Internet -> Nginx on VPS -> lifeline-app on 127.0.0.1:3020 -> Express app on container port 3000 -> lifeline-postgres on 5432`
+
+and, for MCP traffic:
+
+`Internet -> Nginx on VPS -> lifeline-mcp on 127.0.0.1:3010 -> internal HTTP -> lifeline-app on Docker network -> lifeline-postgres on 5432`
 
 ## Production node roles
 
 ### Nginx on the VPS
 
-Nginx terminates the public HTTP(S) entrypoint for `lifeline.a2z-us.com` and proxies all traffic to `http://127.0.0.1:3020`.
+Nginx terminates the public HTTP(S) entrypoints for:
+
+- `lifeline.a2z-us.com` → `http://127.0.0.1:3020`
+- `mcp.lifeline.a2z-us.com` → `http://127.0.0.1:3010`
+
+That keeps both application containers off the public interface and preserves Nginx as the only public edge.
 
 ### App container
 
@@ -35,6 +48,15 @@ The `lifeline-app` container runs the Node runtime that:
 - runs TypeORM migrations
 - starts the Express backend
 - serves the built frontend shell when client assets are present
+
+### MCP container
+
+The `lifeline-mcp` container runs the separate MCP edge service that:
+
+- exposes `POST /mcp` and `GET /health`
+- resolves API-key principals through the backend-internal auth surface
+- delegates task operations to `http://lifeline-app:3000/internal/mcp/*`
+- does not connect to PostgreSQL directly
 
 ### Postgres container
 
@@ -59,12 +81,20 @@ This layout supports rollback by restoring the `current` symlink to the previous
 ### On the VPS host
 
 - the app container is published as `127.0.0.1:${APP_PORT:-3020}:3000` in production
+- the MCP container is published as `127.0.0.1:${MCP_PORT:-3010}:${MCP_PORT:-3010}` in production
 - the production deployment script verifies that the binding remains limited to `127.0.0.1:3020`
+- the same deploy helper verifies that the MCP bind remains limited to `127.0.0.1:${MCP_PORT:-3010}`
 
 ### Database network path
 
 - the app container reaches PostgreSQL through the compose service name `lifeline-postgres`
 - the backend uses `PGHOST=lifeline-postgres` and port `5432`
+
+### Internal MCP adapter path
+
+- the MCP container reaches the backend through the compose service name `lifeline-app`
+- the MCP runtime uses `LIFELINE_BACKEND_BASE_URL=http://lifeline-app:3000`
+- backend-internal MCP routes stay private behind Docker networking plus the shared-secret header boundary
 
 ## Local runtime topology options
 
@@ -107,6 +137,7 @@ The main runtime verification surfaces are:
 - `/api/health/db`
 - `/api/health/db/schema`
 - `/`
+- `mcp.lifeline.a2z-us.com/health`
 - SPA fallback routes such as `/statistics`
 
 ## Related canonical documents

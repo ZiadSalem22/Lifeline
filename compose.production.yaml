@@ -54,6 +54,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-https://lifeline.a2z-us.com}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://lifeline.a2z-us.com}
       APP_ORIGIN: ${APP_ORIGIN:-https://lifeline.a2z-us.com}
+      MCP_INTERNAL_SHARED_SECRET: ${MCP_INTERNAL_SHARED_SECRET:-}
+      MCP_API_KEY_PEPPER: ${MCP_API_KEY_PEPPER:-}
     ports:
       - "127.0.0.1:${APP_PORT:-3020}:3000"
     healthcheck:
@@ -62,6 +64,34 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  lifeline-mcp:
+    container_name: lifeline-mcp
+    build:
+      context: ./services/lifeline-mcp
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      lifeline-app:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      MCP_PORT: ${MCP_PORT:-3010}
+      MCP_BIND_HOST: ${MCP_BIND_HOST:-0.0.0.0}
+      MCP_PUBLIC_BASE_URL: ${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp.lifeline.a2z-us.com,127.0.0.1,localhost}
+      LIFELINE_BACKEND_BASE_URL: ${LIFELINE_BACKEND_BASE_URL:-http://lifeline-app:3000}
+      MCP_INTERNAL_SHARED_SECRET: ${MCP_INTERNAL_SHARED_SECRET:-}
+      MCP_REQUEST_TIMEOUT_MS: ${MCP_REQUEST_TIMEOUT_MS:-5000}
+      MCP_LOG_LEVEL: ${MCP_LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:${MCP_PORT:-3010}:${MCP_PORT:-3010}"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${MCP_PORT:-3010}/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
 volumes:
   lifeline-postgres-data:

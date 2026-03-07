@@ -1,5 +1,6 @@
 const { AppDataSource } = require('../infra/db/data-source');
 const logger = require('../config/logger');
+const { getAuth0RolesFromClaims, getPrimaryRoleFromRoles } = require('../auth/auth0Claims');
 
 class TypeORMUserRepository {
   _repo() {
@@ -53,12 +54,8 @@ class TypeORMUserRepository {
     const safeEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
 
     // Role mapping
-    const roles = (claims['https://lifeline.app/roles'] || []);
-    let role = 'free';
-    if (Array.isArray(roles)) {
-      if (roles.includes('admin')) role = 'admin';
-      else if (roles.includes('paid')) role = 'paid';
-    }
+    const roles = getAuth0RolesFromClaims(claims);
+    const role = getPrimaryRoleFromRoles(roles);
 
     const subscription_status = 'none';
 
