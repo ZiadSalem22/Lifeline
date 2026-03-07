@@ -54,6 +54,7 @@ Then consult the actual implementation surface being changed:
 - whether the change is really a business-rule change rather than only an API or backend change
 - whether an ADR should be created or refreshed
 - whether a report or artifact is temporary or final
+- whether a proposed documentation source is stale historical material rather than current truth
 - the exact non-root path where a report or artifact belongs before output is written
 - whether a report or artifact belongs in a scoped `docs/issues/<initiative>/<step>/<artifact-class>/` path, `docs/issues/report-history/unscoped/`, `docs/archive/...`, or a singular explicitly approved permanent root location
 
@@ -83,6 +84,8 @@ The agent should produce one or more of:
 - exact artifact path recommendation when non-canonical output is requested
 - multi-domain update warnings
 - missing-docs warnings
+- stale-source warnings
+- stale-doc-debt warnings
 - ADR-needed signals
 - update-checklist suggestions
 
@@ -93,4 +96,5 @@ The agent should produce one or more of:
 - rationale for each target
 - whether an ADR is needed
 - whether any report is temporary or final and the exact path where it belongs
+- whether any proposed documentation source is stale or historical and therefore non-authoritative for current truth
 - whether documentation can be updated now or should be deferred explicitly

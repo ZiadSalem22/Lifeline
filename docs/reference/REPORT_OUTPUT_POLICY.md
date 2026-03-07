@@ -25,6 +25,7 @@ Use this preferred issue-history pattern for non-canonical artifacts:
 - `docs/issues/<initiative>/<step>/discovery/`
 - `docs/issues/<initiative>/<step>/planning/`
 - `docs/issues/<initiative>/<step>/implementation/`
+- `docs/issues/<initiative>/<step>/results/`
 - `docs/issues/<initiative>/<step>/final/`
 
 Canonical long-term docs do not use the issue-history pattern. They should go directly to their final `docs/<domain>/...` location.
@@ -78,6 +79,7 @@ When the initiative and step can be identified, route non-canonical artifacts to
 - `docs/issues/<initiative>/<step>/discovery/`
 - `docs/issues/<initiative>/<step>/planning/`
 - `docs/issues/<initiative>/<step>/implementation/`
+- `docs/issues/<initiative>/<step>/results/`
 - `docs/issues/<initiative>/<step>/final/`
 
 Examples:
@@ -142,6 +144,7 @@ Even then, the report should be reevaluated later and moved into `docs/issues/..
 | implementation plan | `docs/issues/<initiative>/<step>/planning/` |
 | workstream report | `docs/issues/<initiative>/<step>/implementation/` |
 | checkpoint/progress summary | `docs/issues/<initiative>/<step>/implementation/` |
+| validation/test result set | `docs/issues/<initiative>/<step>/results/` |
 | final historical phase report | `docs/issues/<initiative>/<step>/final/` |
 | canonical long-term doc | `docs/<domain>/...` |
 | superseded long-term doc | `docs/archive/` |

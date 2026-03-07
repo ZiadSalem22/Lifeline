@@ -38,6 +38,8 @@ Consult these first:
 - `deploy/scripts/`
 - `deploy/nginx/`
 - `docs/operations/DEPLOY_BRANCH_CD.md`
+- `docs/operations/deployment-verification-and-smoke-checks.md`
+- `docs/architecture/runtime-topology.md`
 - `.github/instructions/operations-docs.instructions.md`
 
 Host-side runtime source of truth:
@@ -91,7 +93,7 @@ When changing CI/CD or deployment logic, verify:
 - Compose still runs against `compose.production.yaml`
 - runtime secrets are still read from `/opt/lifeline/shared/.env.production`
 - the app is still privately bound to `127.0.0.1:3020`
-- public health and homepage checks still exist
+- public health, homepage, container-health, and private-bind checks still exist explicitly
 - failure diagnostics still exist
 
 ## Secret-governance heuristics
@@ -116,7 +118,7 @@ If CI/CD or deployment changes occur, update:
 - `docs/operations/`
 
 Also update when applicable:
-- `docs/architecture/` if runtime topology or deployment shape changes
+- `docs/architecture/` if runtime topology, proxy shape, bind model, or deployment shape changes
 - `docs/adr/` if the deployment model changes durably
 
 ## What this skill must not do

@@ -25,6 +25,8 @@ This agent relies on:
 It should also use:
 - `.github/instructions/operations-docs.instructions.md`
 - `docs/operations/DEPLOY_BRANCH_CD.md`
+- `docs/operations/deployment-verification-and-smoke-checks.md`
+- `docs/architecture/runtime-topology.md`
 - architecture and ADR guidance when deployment shape changes materially
 
 ## Sources of truth
@@ -56,6 +58,7 @@ Operational source-of-truth assumptions to preserve:
 - whether smoke checks or rollback assumptions were weakened
 - whether a change improperly moves runtime secrets into git or GitHub workflow logic
 - whether deployment docs must be updated
+- whether documentation-only deployment clarifications still match workflow, deploy-script, and runtime-topology reality
 - whether a deployment-model change also requires architecture docs or an ADR
 
 ## What it must protect
@@ -83,8 +86,10 @@ The agent should produce one or more of:
 - a CI/CD change-risk assessment
 - a sensitive-files warning list
 - a smoke-check preservation checklist
+- an exact smoke-check preservation checklist covering container health, public health, homepage response, and private-bind verification
 - secret-boundary warnings
 - deployment-doc update requirements
+- docs-alignment warnings for documentation-only deployment clarifications
 - architecture-doc or ADR-needed signals
 - deployment-model drift warnings
 

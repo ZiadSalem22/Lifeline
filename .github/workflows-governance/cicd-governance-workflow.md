@@ -24,7 +24,7 @@ This workflow sits above the CI/CD-governance skill, agent, and team and turns t
 1. Inspect the deployment-related change.
 2. Detect whether the production delivery model is affected.
 3. Assess CI/CD change risk.
-4. Verify smoke-check preservation requirements.
+4. Verify smoke-check preservation requirements for container health, public health, homepage response, and private-bind verification.
 5. Verify secret-boundary rules.
 6. Verify deploy-branch and VPS release-model assumptions.
 7. Determine whether operations docs, architecture docs, or ADRs must be updated.
@@ -45,9 +45,10 @@ This workflow sits above the CI/CD-governance skill, agent, and team and turns t
 
 - CI/CD change-risk assessment
 - deployment-model drift warnings
-- smoke-check preservation checklist
+- smoke-check preservation checklist covering container health, public health, homepage response, and private-bind verification
 - secret-boundary warnings
 - deployment-doc update requirements
+- docs-alignment warnings when documentation-only deployment clarifications drift from workflow, deploy-script, or runtime-topology reality
 - architecture-doc or ADR-needed signals when deployment shape changes materially
 
 ## Failure modes and warnings
@@ -59,6 +60,8 @@ Emit warnings when:
 - the release-based rollback model is weakened
 - Azure-era deployment assumptions are being reintroduced
 - deployment changes occur without corresponding operations-doc updates
+- runtime-topology or proxy-shape changes occur without corresponding architecture-doc evaluation
+- documentation-only deployment clarifications are proposed without re-checking workflow, deploy-script, and runtime-topology sources
 
 ## Anti-patterns this workflow prevents
 

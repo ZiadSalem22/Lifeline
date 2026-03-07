@@ -36,7 +36,7 @@ Phase 6A removes ongoing root-level report clutter and normalizes documentation 
 ## Report and output hygiene
 
 - The repository root is not a report drop-zone.
-- Non-canonical artifacts should use `docs/issues/<initiative>/<step>/<artifact-class>/`, with `discovery/`, `planning/`, `implementation/`, and `final/` as the default artifact-class folders.
+- Non-canonical artifacts should use `docs/issues/<initiative>/<step>/<artifact-class>/`, with `discovery/`, `planning/`, `implementation/`, `results/`, and `final/` as the default artifact-class folders.
 - Temporary discovery notes, plans, workstream reports, checkpoint outputs, validation outputs, and progress summaries belong under `docs/issues/...`, not at root.
 - Use `docs/issues/report-history/unscoped/` only when a prompt does not provide a valid non-root path and the initiative/step cannot be derived confidently.
 - Superseded long-term docs belong under `docs/archive/...`, not mixed with execution reporting.

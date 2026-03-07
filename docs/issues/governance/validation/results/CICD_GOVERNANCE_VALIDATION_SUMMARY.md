@@ -2,7 +2,7 @@
 
 ## Overall verdict
 
-CI/CD governance is validated with hardening required.
+CI/CD governance is validated.
 
 ## Result mix
 
@@ -30,6 +30,10 @@ CI/CD governance is validated with hardening required.
 - strengthen architecture-doc escalation language for topology-shape changes
 - strengthen docs-alignment wording for documentation-only deployment changes
 
+## Hardening status
+
+Applied in Workstream 5.
+
 ## Workstream closeout
 
-CI/CD-governance validation workstream closed subject to Workstream 5 hardening.
+CI/CD-governance validation workstream closed.

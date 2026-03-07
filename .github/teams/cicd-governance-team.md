@@ -50,6 +50,7 @@ Use this team when:
 - smoke-check preservation requirements
 - secret-boundary warnings
 - deployment-doc update requirements
+- architecture-doc or ADR-needed signals when runtime topology changes materially
 
 ## Team role versus agent role
 

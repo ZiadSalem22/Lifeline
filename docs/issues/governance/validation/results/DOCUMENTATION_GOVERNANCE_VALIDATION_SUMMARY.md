@@ -28,6 +28,10 @@ Documentation governance is validated.
 
 - add explicit stale-source and stale-doc-debt warning language to the documentation-governance layer outputs
 
+## Hardening status
+
+Applied in Workstream 5.
+
 ## Workstream closeout
 
 Documentation-governance validation workstream closed.

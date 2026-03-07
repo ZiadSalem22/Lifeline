@@ -19,7 +19,7 @@ Production currently deploys by pushing to `deploy`, which triggers the VPS depl
 - Historical phase and issue artifacts belong under `docs/issues/...`.
 - Stale or superseded material belongs under `docs/archive/...`.
 - Route non-canonical artifacts using `docs/issues/<initiative>/<step>/<artifact-class>/` whenever the initiative and step can be identified.
-- Use `discovery/`, `planning/`, `implementation/`, and `final/` as the default artifact-class folders for issue-history work.
+- Use `discovery/`, `planning/`, `implementation/`, `results/`, and `final/` as the default artifact-class folders for issue-history work.
 - If a prompt asks for a report but does not provide a valid non-root path, derive the initiative and step from the work and use the scoped `docs/issues/<initiative>/<step>/...` pattern.
 - Use `docs/issues/report-history/unscoped/` only as a secondary fallback when the work cannot be scoped confidently.
 - Default all temporary execution artifacts, progress reports, discovery notes, plans, workstream reports, implementation reports, validation reports, and phase summaries away from the repo root.

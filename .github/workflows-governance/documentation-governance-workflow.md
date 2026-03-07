@@ -53,6 +53,7 @@ This workflow sits above the documentation-governance skill, agent, and team and
 - exact artifact path when non-canonical output is required
 - ADR-needed signal when applicable
 - docs-update checklist
+- stale-source or stale-doc-debt warnings
 - missing-docs or unresolved-doc-debt warnings
 
 ## Failure modes and warnings
@@ -65,6 +66,8 @@ Emit warnings when:
 - historical implementation artifacts are being routed back to the repo root
 - `docs/issues/report-history/unscoped/` is being used even though a valid initiative/step path is available
 - multiple temporary phase/workstream reports are being left in root instead of compacted or relocated
+- archived or historical artifacts are being treated as current authoritative docs without revalidation
+- documentation debt is being deferred without making the debt explicit
 - an ADR-worthy structural change has no ADR evaluation
 
 ## Anti-patterns this workflow prevents

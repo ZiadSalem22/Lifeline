@@ -14,9 +14,10 @@ Ensure documentation changes are routed to the correct domain and kept current w
 - Keep operations docs separate from architecture docs.
 - Keep historical reports and execution artifacts out of the repo root.
 - Decide the artifact class and destination path before writing any non-canonical output.
+- Do not treat archived, historical, or retained issue-history artifacts as current truth without confirming against active docs and implementation surfaces.
 - Treat discovery notes, implementation plans, workstream reports, checkpoint outputs, and progress summaries as temporary artifacts unless they are explicitly designated as a final retained report.
 - Route issue-history artifacts using `docs/issues/<initiative>/<step>/<artifact-class>/` whenever the initiative and step can be identified.
-- Use `discovery/`, `planning/`, `implementation/`, and `final/` as the default artifact-class folders.
+- Use `discovery/`, `planning/`, `implementation/`, `results/`, and `final/` as the default artifact-class folders.
 - If a prompt asks for a report but does not provide a valid non-root path, derive the initiative and step from the work and use the scoped pattern.
 - Use `docs/issues/report-history/unscoped/` only as a secondary fallback when a valid scoped path cannot be derived confidently.
 - Use `docs/archive/...` for superseded long-term docs, not as the default destination for execution reporting.

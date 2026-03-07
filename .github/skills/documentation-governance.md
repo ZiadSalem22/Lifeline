@@ -14,6 +14,7 @@ Use this skill to decide:
 - whether multiple docs domains are affected
 - whether the change should produce or refresh an ADR
 - whether a change is a product/business-rule change versus only a backend or API change
+- whether a proposed source is stale historical material rather than current truth
 
 ## When to use it
 
@@ -56,11 +57,12 @@ Then consult the relevant code or config source of truth:
 - Historical reports belong in `docs/issues/...` or `docs/archive/...`.
 - Temporary execution artifacts are not root deliverables by default.
 - The preferred routing pattern for issue-history artifacts is `docs/issues/<initiative>/<step>/<artifact-class>/`.
-- The default artifact-class folders are `discovery/`, `planning/`, `implementation/`, and `final/`.
+- The default artifact-class folders are `discovery/`, `planning/`, `implementation/`, `results/`, and `final/`.
 - If a prompt does not provide a valid non-root target, the initiative and step should be derived from the work before output is written.
 - `docs/issues/report-history/unscoped/` is a secondary fallback only when a valid scoped path cannot be derived confidently.
 - Repo root should contain intentional top-level project files, not working reports.
 - A root-level artifact is acceptable only as a singular, explicitly approved permanent top-level deliverable.
+- Archived docs and historical issue artifacts are preserved references, not current truth by default.
 - Frontend docs are first-class and must not be treated as secondary to backend or API docs.
 - Product/business behavior docs are separate from backend and API docs.
 - Operations/deployment docs are separate from architecture docs.
@@ -79,7 +81,7 @@ Then consult the relevant code or config source of truth:
 - `docs/reference/` → retained supporting reference material
 - `docs/archive/` → stale or superseded retained docs
 - `docs/issues/` → issue-centered phase and history artifacts
-- `docs/issues/<initiative>/<step>/<artifact-class>/` → preferred home for scoped discovery, planning, implementation, final, validation, and cleanup artifacts
+- `docs/issues/<initiative>/<step>/<artifact-class>/` → preferred home for scoped discovery, planning, implementation, results, final, validation, and cleanup artifacts
 - `docs/issues/report-history/unscoped/` → secondary fallback home when a valid initiative/step path cannot be derived confidently
 
 ## Routing heuristics
@@ -133,6 +135,7 @@ Create or refresh an ADR when the change materially affects:
 - Decide whether any report is temporary or final.
 - Route temporary or historical reports into `docs/issues/<initiative>/<step>/<artifact-class>/` whenever possible.
 - Use `docs/issues/report-history/unscoped/` only when the work cannot be scoped confidently.
+- Confirm that retained history or archive material is not being treated as the active current-state source without verification.
 - Keep superseded long-term docs in `docs/archive/...` instead of mixing them with execution artifacts.
 - If the change is durable and structural, evaluate ADR impact.
 
@@ -143,6 +146,7 @@ Create or refresh an ADR when the change materially affects:
 - treat repo root as a normal report destination
 - create multiple root-level phase/workstream reports by default
 - collapse frontend, backend, API, and product docs into a single generic document
+- treat archived or historical artifacts as the current authoritative state without revalidation
 - describe business rules only in API docs
 - route operations material into architecture docs by default
 
