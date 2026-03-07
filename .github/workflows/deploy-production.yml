@@ -119,7 +119,15 @@ jobs:
             blocking_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
             if [[ -n "${blocking_pids}" ]]; then
               echo "Stopping stale host listener(s) on MCP port ${port}: ${blocking_pids}"
+              for pid in ${blocking_pids}; do
+                pgid="$(sudo ps -o pgid= -p "${pid}" 2>/dev/null | tr -d ' ')"
+                if [[ -n "${pgid}" ]]; then
+                  echo "Stopping process group ${pgid} for stale MCP port listener ${pid}"
+                  sudo kill -- -"${pgid}" 2>/dev/null || true
+                fi
+              done
               sudo kill ${blocking_pids}
+              sudo pkill -f 'next-server' 2>/dev/null || true
               sleep 2
             fi
           fi
