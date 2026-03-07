@@ -9,6 +9,8 @@ This document defines the product-level behavior for authenticated onboarding, o
 - [client/src/pages/OnboardingPage.jsx](../../client/src/pages/OnboardingPage.jsx)
 - [client/src/pages/ProfilePage.jsx](../../client/src/pages/ProfilePage.jsx)
 - [client/src/components/ProfilePanel.jsx](../../client/src/components/ProfilePanel.jsx)
+- [client/src/components/profile/ProfileDetailsCard.jsx](../../client/src/components/profile/ProfileDetailsCard.jsx)
+- [client/src/components/profile/ApiKeysCard.jsx](../../client/src/components/profile/ApiKeysCard.jsx)
 - [client/src/components/settings/Settings.jsx](../../client/src/components/settings/Settings.jsx)
 - [client/src/components/settings/ExportImport.jsx](../../client/src/components/settings/ExportImport.jsx)
 - [client/src/components/statistics/Statistics.jsx](../../client/src/components/statistics/Statistics.jsx)
@@ -74,6 +76,8 @@ Once onboarding is complete, the user can manage their profile in the profile ar
 
 From the product perspective, profile management extends onboarding rather than replacing it with a different data model.
 
+The current Profile area now also includes self-serve MCP API key management for authenticated users.
+
 Canonical profile fields include:
 
 - first name
@@ -86,6 +90,28 @@ Canonical profile fields include:
 - avatar URL
 - start day of week
 - onboarding completion state
+
+## Self-serve MCP API keys in Profile
+
+Authenticated users can now manage their own MCP API keys from the Profile area.
+
+Current product behavior:
+
+- users can list their own existing keys by metadata only
+- users can create a new key with a human-readable label
+- users can choose a bounded access preset:
+	- `Read only`
+	- `Read and write`
+- users can choose a bounded expiry preset
+- the full plaintext key is shown once immediately after creation
+- users can revoke their own keys later from the same Profile surface
+
+Important product and security rules:
+
+- old plaintext keys cannot be recovered from the UI
+- users cannot manage another user's keys
+- the self-serve flow does not expose broader operator-oriented scopes
+- the current MCP write surface still treats `tasks:write` as including the bounded delete behavior used by the MCP tool layer
 
 ## Preferences and personalization
 
@@ -136,6 +162,7 @@ Canonical product docs should therefore avoid implying that guest mode has a tru
 - start day of week is both a profile field and a behavior-shaping preference
 - personalization can exist locally for all users, but authenticated users also get backend persistence
 - export, import, and reset-account are authenticated account-management actions
+- MCP API keys are authenticated account-management artifacts and plaintext secrets are shown only once at creation time
 
 ## Related canonical documents
 

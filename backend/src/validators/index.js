@@ -72,6 +72,53 @@ const createTagSchema = Joi.object({
 });
 
 /**
+ * Schema for creating a self-serve MCP API key.
+ */
+const createMcpApiKeySchema = Joi.object({
+    name: Joi.string()
+        .trim()
+        .min(1)
+        .max(100)
+        .required()
+        .messages({
+            'string.empty': 'API key name cannot be empty',
+            'string.max': 'API key name must be less than 100 characters',
+            'any.required': 'API key name is required',
+        }),
+    scopePreset: Joi.string()
+        .valid('read_only', 'read_write')
+        .required()
+        .messages({
+            'any.only': 'scopePreset must be one of: read_only, read_write',
+            'any.required': 'scopePreset is required',
+        }),
+    expiryPreset: Joi.string()
+        .valid('1_day', '7_days', '30_days', '90_days', 'never')
+        .required()
+        .messages({
+            'any.only': 'expiryPreset must be one of: 1_day, 7_days, 30_days, 90_days, never',
+            'any.required': 'expiryPreset is required',
+        }),
+});
+
+/**
+ * Schema for listing self-serve MCP API keys.
+ */
+const listMcpApiKeysQuerySchema = Joi.object({
+    limit: Joi.number()
+        .integer()
+        .min(1)
+        .max(50)
+        .default(25)
+        .messages({
+            'number.base': 'limit must be a number',
+            'number.integer': 'limit must be a whole number',
+            'number.min': 'limit must be at least 1',
+            'number.max': 'limit must be 50 or less',
+        }),
+});
+
+/**
  * Schema for UUID parameters
  */
 const uuidParamSchema = Joi.object({
@@ -87,5 +134,7 @@ const uuidParamSchema = Joi.object({
 module.exports = {
     createTodoSchema,
     createTagSchema,
+    createMcpApiKeySchema,
+    listMcpApiKeysQuerySchema,
     uuidParamSchema,
 };

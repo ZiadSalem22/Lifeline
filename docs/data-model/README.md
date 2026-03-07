@@ -5,6 +5,7 @@ Use this section for schema notes, entity relationships, migration strategy, and
 Current canonical documents:
 
 - [overview-and-current-source-of-truth.md](overview-and-current-source-of-truth.md)
+- [mcp-api-keys.md](mcp-api-keys.md)
 - [users-profiles-and-settings.md](users-profiles-and-settings.md)
 - [todos-tags-and-relationships.md](todos-tags-and-relationships.md)
 - [recurrence-subtasks-and-task-numbering.md](recurrence-subtasks-and-task-numbering.md)

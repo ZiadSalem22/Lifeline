@@ -26,9 +26,25 @@ class TypeORMMcpApiKeyRepository {
     return AppDataSource.getRepository('McpApiKey');
   }
 
+  async listByUserId(userId, { limit = 25 } = {}) {
+    if (!userId) return [];
+    const rows = await this.repo().find({
+      where: { user_id: userId },
+      order: { created_at: 'DESC' },
+      take: limit,
+    });
+    return rows.map(mapRow);
+  }
+
   async findById(id) {
     if (!id) return null;
     const row = await this.repo().findOne({ where: { id } });
+    return mapRow(row);
+  }
+
+  async findByIdForUser(id, userId) {
+    if (!id || !userId) return null;
+    const row = await this.repo().findOne({ where: { id, user_id: userId } });
     return mapRow(row);
   }
 
@@ -74,6 +90,22 @@ class TypeORMMcpApiKeyRepository {
       last_used_user_agent: usage.lastUsedUserAgent || null,
     });
     return this.findById(id);
+  }
+
+  async revokeByIdForUser(id, userId, details = {}) {
+    if (!id || !userId) return null;
+
+    const row = await this.repo().findOne({ where: { id, user_id: userId } });
+    if (!row) return null;
+
+    if (!row.revoked_at) {
+      row.status = 'revoked';
+      row.revoked_at = details.revokedAt || new Date().toISOString();
+      row.revocation_reason = details.revocationReason || row.revocation_reason || null;
+      await this.repo().save(row);
+    }
+
+    return mapRow(row);
   }
 }
 

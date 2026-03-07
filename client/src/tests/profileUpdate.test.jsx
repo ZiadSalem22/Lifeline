@@ -7,18 +7,27 @@ vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({ isAuthenticated: true })
 }));
 
-const fetchSpy = vi.fn(async (url, opts) => {
-  if (url.endsWith('/me')) {
-    return { ok: true, json: async () => ({ sub: 'user|1', profile: { first_name: 'Jane', last_name: 'Doe' } }) };
-  }
-  if (url.endsWith('/profile')) {
-    return { ok: true, json: async () => ({}) };
-  }
-  return { ok: true, json: async () => ({}) };
-});
+const fetchSpy = vi.fn(async () => ({ ok: true, json: async () => ({}) }));
+const fetchMe = vi.fn(async () => ({
+  email: 'jane@example.com',
+  profile: { first_name: 'Jane', last_name: 'Doe' },
+}));
+const saveProfile = vi.fn(async () => ({}));
 
 vi.mock('../hooks/useApi', () => ({
   useApi: () => ({ fetchWithAuth: fetchSpy })
+}));
+
+vi.mock('../context/LoadingContext', () => ({
+  useLoading: () => ({ isLoading: false })
+}));
+
+vi.mock('../utils/api', () => ({
+  fetchMe: (...args) => fetchMe(...args),
+  saveProfile: (...args) => saveProfile(...args),
+  listMcpApiKeys: vi.fn(async () => ({ apiKeys: [] })),
+  createMcpApiKey: vi.fn(async () => ({})),
+  revokeMcpApiKey: vi.fn(async () => ({})),
 }));
 
 describe('Profile update payload', () => {
@@ -29,10 +38,9 @@ describe('Profile update payload', () => {
     fireEvent.click(save);
 
     await waitFor(() => {
-      const calls = fetchSpy.mock.calls.filter(([url]) => url.endsWith('/profile'));
-      expect(calls.length).toBeGreaterThan(0);
-      const body = JSON.parse(calls[0][1].body);
-      expect(body.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+      expect(saveProfile).toHaveBeenCalledTimes(1);
+      const payload = saveProfile.mock.calls[0][0];
+      expect(payload.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
     });
   });
 });
