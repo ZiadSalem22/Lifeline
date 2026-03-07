@@ -92,9 +92,10 @@ At a high level, production deployment does the following:
 2. upload the release archive to the VPS
 3. extract it into a new release directory
 4. repoint `/opt/lifeline/current`
-5. run `docker compose up -d --build`
-6. verify database health, internal MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
-7. sync the MCP Nginx host config, run `nginx -t`, reload Nginx, and verify the public MCP health endpoint
+5. clear stale listeners from the reserved MCP loopback port if `127.0.0.1:3010` is still occupied
+6. run `docker compose up -d --build`
+7. verify database health, internal MCP health, public app info response, loopback-only app and MCP bindings, and the MCP-to-backend internal adapter path
+8. sync the MCP Nginx host config, run `nginx -t`, reload Nginx, and verify the public MCP health endpoint
 
 The deploy workflow currently supports VPS layouts that use either `/etc/nginx/conf.d/` or `/etc/nginx/sites-available` plus `/etc/nginx/sites-enabled`.
 

@@ -88,6 +88,48 @@ jobs:
           set -euo pipefail
           scp -P "${DEPLOY_PORT:-22}" "$RUNNER_TEMP/${{ steps.release.outputs.archive_name }}" "${DEPLOY_USER}@${DEPLOY_HOST}:${RELEASES_ROOT}/${{ steps.release.outputs.archive_name }}"
 
+      - name: Reserve MCP loopback port on VPS
+        run: |
+          set -euo pipefail
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'EOF'
+          set -euo pipefail
+
+          port="3010"
+
+          if ! command -v sudo >/dev/null 2>&1; then
+            echo "sudo is required to inspect and reserve port ${port} on the VPS host." >&2
+            exit 1
+          fi
+
+          if ! sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+            exit 0
+          fi
+
+          echo "Port ${port} is already in use; inspecting current listener..."
+          sudo ss -ltnp "( sport = :${port} )" || true
+
+          blocking_container="$(docker ps --format '{{.Names}}\t{{.Ports}}' | awk -F'\t' '$2 ~ /127\.0\.0\.1:'"${port}"'->/ { print $1; exit }')"
+          if [[ -n "${blocking_container}" && "${blocking_container}" != "lifeline-mcp" ]]; then
+            echo "Stopping Docker container that is occupying MCP port ${port}: ${blocking_container}"
+            docker rm -f "${blocking_container}"
+          fi
+
+          if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+            blocking_pids="$(sudo lsof -tiTCP:${port} -sTCP:LISTEN || true)"
+            if [[ -n "${blocking_pids}" ]]; then
+              echo "Stopping stale host listener(s) on MCP port ${port}: ${blocking_pids}"
+              sudo kill ${blocking_pids}
+              sleep 2
+            fi
+          fi
+
+          if sudo ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
+            echo "Port ${port} is still occupied after cleanup; refusing to continue." >&2
+            sudo ss -ltnp "( sport = :${port} )" || true
+            exit 1
+          fi
+          EOF
+
       - name: Apply release on VPS
         env:
           RELEASE_ID: ${{ steps.release.outputs.release_id }}

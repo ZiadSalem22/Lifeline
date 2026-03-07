@@ -20,8 +20,9 @@ The workflow performs the following steps:
 5. Runs [deploy/scripts/apply-release.sh](../../deploy/scripts/apply-release.sh) on the VPS.
 6. Repoints `/opt/lifeline/current` to the new release.
 7. Runs `docker compose` with [compose.production.yaml](../../compose.production.yaml) and `/opt/lifeline/shared/.env.production`.
-8. Verifies app, MCP, and Postgres container health plus internal and public app runtime checks, including the public app info endpoint and the MCP-to-backend internal adapter path.
-9. Syncs [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf) to the VPS host, tests Nginx, reloads it, and then verifies the public MCP health endpoint.
+8. Reserves the MCP loopback port on the VPS by clearing stale listeners on `127.0.0.1:3010` before the new MCP container starts.
+9. Verifies app, MCP, and Postgres container health plus internal and public app runtime checks, including the public app info endpoint and the MCP-to-backend internal adapter path.
+10. Syncs [deploy/nginx/mcp.lifeline.a2z-us.com.conf](../../deploy/nginx/mcp.lifeline.a2z-us.com.conf) to the VPS host, tests Nginx, reloads it, and then verifies the public MCP health endpoint.
 
 ## Production runtime topology
 
