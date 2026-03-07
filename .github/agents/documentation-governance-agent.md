@@ -54,7 +54,8 @@ Then consult the actual implementation surface being changed:
 - whether the change is really a business-rule change rather than only an API or backend change
 - whether an ADR should be created or refreshed
 - whether a report or artifact is temporary or final
-- whether a report or artifact belongs in `docs/issues/report-history/`, another issue-history folder, `docs/archive/...`, or a singular justified root location
+- the exact non-root path where a report or artifact belongs before output is written
+- whether a report or artifact belongs in a scoped `docs/issues/<initiative>/<step>/<artifact-class>/` path, `docs/issues/report-history/unscoped/`, `docs/archive/...`, or a singular explicitly approved permanent root location
 
 ## Domain distinctions it must preserve
 
@@ -79,6 +80,7 @@ The agent should produce one or more of:
 - a documentation impact map
 - recommended docs targets
 - recommended artifact/report storage target
+- exact artifact path recommendation when non-canonical output is requested
 - multi-domain update warnings
 - missing-docs warnings
 - ADR-needed signals
@@ -90,5 +92,5 @@ The agent should produce one or more of:
 - secondary docs targets
 - rationale for each target
 - whether an ADR is needed
-- whether any report is temporary or final and where it belongs
+- whether any report is temporary or final and the exact path where it belongs
 - whether documentation can be updated now or should be deferred explicitly

@@ -1,16 +1,23 @@
 # Report History
 
-This folder is the default non-root storage area for historical execution reporting in Lifeline.
+This folder is the secondary non-root fallback area for historical execution reporting in Lifeline.
+
+Preferred routing for non-canonical artifacts is:
+
+- `docs/issues/<initiative>/<step>/discovery/`
+- `docs/issues/<initiative>/<step>/planning/`
+- `docs/issues/<initiative>/<step>/implementation/`
+- `docs/issues/<initiative>/<step>/final/`
 
 Use this folder for:
 
-- discovery reports
-- implementation plans
-- workstream reports
-- checkpoint outputs
-- older final reports that no longer need to remain at repo root
+- unscoped discovery reports
+- unscoped implementation plans
+- unscoped workstream reports
+- unscoped checkpoint outputs
+- older final reports that no longer need to remain at repo root when no scoped issue-history path can be derived confidently
 
-Use a narrower `docs/issues/...` folder instead when a specific initiative or issue grouping already owns the material.
+Use a narrower `docs/issues/...` folder instead when a specific initiative or issue grouping already owns the material or can be derived confidently.
 
 Do not use repo root for these artifacts by default.
 

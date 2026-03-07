@@ -11,5 +11,5 @@
 | System boundaries and runtime topology | `docs/architecture/` | `docs/adr/` |
 | Setup, deployment, CI/CD, runbooks | `docs/operations/` | `docs/architecture/` |
 | Durable design decisions | `docs/adr/` | `docs/architecture/` |
-| Temporary phase/workstream/discovery outputs | `docs/issues/report-history/` | a narrower `docs/issues/...` initiative folder when available |
-| Singular explicitly retained final handoff report | repo root only when justified | `docs/issues/report-history/` for later historical retention |
+| Temporary phase/workstream/discovery outputs | `docs/issues/<initiative>/<step>/<artifact-class>/` | `docs/issues/report-history/unscoped/` when the work cannot be scoped confidently |
+| Singular explicitly retained final handoff report | `docs/issues/<initiative>/<step>/final/` | repo root only when explicitly approved as a permanent top-level artifact |

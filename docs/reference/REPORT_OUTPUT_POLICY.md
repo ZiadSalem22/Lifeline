@@ -15,7 +15,30 @@ Default behavior:
 - do not create root-level phase reports
 - do not create root-level workstream reports
 - do not create root-level checkpoint outputs
-- do not leave discovery notes, plans, or progress summaries in root by default
+- do not leave discovery notes, plans, implementation summaries, validation reports, or progress summaries in root by default
+- do not treat repo root as the fallback destination when a prompt asks for a report
+
+## Canonical routing pattern
+
+Use this preferred issue-history pattern for non-canonical artifacts:
+
+- `docs/issues/<initiative>/<step>/discovery/`
+- `docs/issues/<initiative>/<step>/planning/`
+- `docs/issues/<initiative>/<step>/implementation/`
+- `docs/issues/<initiative>/<step>/final/`
+
+Canonical long-term docs do not use the issue-history pattern. They should go directly to their final `docs/<domain>/...` location.
+
+## Root allowlist rule
+
+Repo root should contain intentional top-level project files such as:
+
+- project readmes and licensing files
+- top-level configuration files
+- root runtime and deployment manifests
+- other durable project entrypoint files that belong at top level
+
+Reports, phase notes, plans, workstream summaries, validation outputs, and similar execution artifacts do not belong there by default.
 
 ## Artifact classes
 
@@ -39,7 +62,7 @@ A final report is a compacted end-of-pass or end-of-phase summary intended to co
 
 A final report may be retained at root only when all of the following are true:
 
-- it is explicitly required
+- it is explicitly approved as a permanent top-level artifact
 - it is singular for that pass or deliverable
 - it is intentionally retained as a current top-level handoff artifact
 - leaving it at root is more useful than routing it into `docs/issues/...`
@@ -48,21 +71,36 @@ If those conditions are not met, the final report should also live under `docs/i
 
 ## Preferred storage pattern
 
-### Default fallback location
+### Primary scoped location
 
-Use [docs/issues/report-history](../issues/report-history) as the default fallback home for historical execution reporting.
+When the initiative and step can be identified, route non-canonical artifacts to:
+
+- `docs/issues/<initiative>/<step>/discovery/`
+- `docs/issues/<initiative>/<step>/planning/`
+- `docs/issues/<initiative>/<step>/implementation/`
+- `docs/issues/<initiative>/<step>/final/`
+
+Examples:
+
+- `docs/issues/governance/artifact-routing/implementation/`
+- `docs/issues/governance/validation/discovery/`
+- `docs/issues/deployment-prep/phase-35/planning/`
+
+### Secondary fallback location
+
+Use [docs/issues/report-history/unscoped](../issues/report-history/unscoped) only when a prompt requests a report or execution artifact but does not provide a valid non-root path and the initiative/step cannot be derived confidently.
 
 This includes:
 
-- phase discovery reports
-- implementation plans
-- workstream implementation reports
-- temporary checkpoint outputs
-- older final reports that no longer need to remain at root
+- unscoped discovery reports
+- unscoped implementation plans
+- unscoped workstream implementation reports
+- unscoped temporary checkpoint outputs
+- unscoped older final reports that no longer need to remain at root
 
 ### More specific issue-history location
 
-When a narrower issue or initiative folder already exists and clearly owns the material, use that path instead of the fallback folder.
+When a narrower issue or initiative folder already exists or can be derived confidently, use that scoped path instead of the fallback folder.
 
 Examples:
 
@@ -80,8 +118,8 @@ Execution artifacts should normally move to `docs/issues/...` rather than `docs/
 
 When a phase or implementation pass completes, do one of these:
 
-1. compact temporary reporting into one final summary when that is actually useful, or
-2. move the temporary reporting set into `docs/issues/...`
+1. compact temporary reporting into one final summary under a scoped `docs/issues/<initiative>/<step>/final/` path when that is actually useful, or
+2. move the temporary reporting set into a scoped `docs/issues/<initiative>/<step>/...` path
 
 Do not leave a stack of phase/workstream reports at root after the pass closes.
 
@@ -91,7 +129,7 @@ Root-level reports are an exception, not a default.
 
 Allowed root-level reporting is limited to:
 
-- one explicitly requested final handoff report
+- one explicitly approved permanent top-level artifact
 - one intentionally retained current top-level deliverable
 
 Even then, the report should be reevaluated later and moved into `docs/issues/...` once it is no longer the active handoff artifact.
@@ -100,12 +138,15 @@ Even then, the report should be reevaluated later and moved into `docs/issues/..
 
 | Artifact type | Default location |
 | --- | --- |
-| discovery report | `docs/issues/report-history/` |
-| implementation plan | `docs/issues/report-history/` |
-| workstream report | `docs/issues/report-history/` |
-| checkpoint/progress summary | `docs/issues/report-history/` |
+| discovery report | `docs/issues/<initiative>/<step>/discovery/` |
+| implementation plan | `docs/issues/<initiative>/<step>/planning/` |
+| workstream report | `docs/issues/<initiative>/<step>/implementation/` |
+| checkpoint/progress summary | `docs/issues/<initiative>/<step>/implementation/` |
+| final historical phase report | `docs/issues/<initiative>/<step>/final/` |
+| canonical long-term doc | `docs/<domain>/...` |
 | superseded long-term doc | `docs/archive/` |
-| singular explicitly required final handoff report | repo root only when justified; otherwise `docs/issues/report-history/` |
+| unscoped fallback artifact | `docs/issues/report-history/unscoped/` |
+| singular permanent top-level artifact | repo root only when explicitly approved; otherwise scoped `docs/issues/<initiative>/<step>/final/` |
 
 ## Enforcement expectations
 
@@ -123,5 +164,6 @@ The governance stack should enforce this policy through:
 
 - [../README.md](../README.md)
 - [../issues/README.md](../issues/README.md)
+- [../issues/governance/README.md](../issues/governance/README.md)
 - [DOCUMENTATION_OWNERSHIP_MATRIX.md](DOCUMENTATION_OWNERSHIP_MATRIX.md)
 - [../templates/docs-update-checklist.md](../templates/docs-update-checklist.md)

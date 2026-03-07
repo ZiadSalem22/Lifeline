@@ -8,5 +8,5 @@
 | schema or entity change | `docs/data-model/` | `docs/architecture/` |
 | deployment or runtime change | `docs/operations/` | `docs/architecture/` |
 | durable design decision | `docs/adr/` | `docs/architecture/` |
-| temporary phase/workstream/discovery artifact | `docs/issues/report-history/` | a narrower `docs/issues/...` folder when one already owns the initiative |
-| singular explicitly requested final handoff report | repo root only when justified | otherwise `docs/issues/report-history/` |
+| temporary phase/workstream/discovery artifact | `docs/issues/<initiative>/<step>/<artifact-class>/` | `docs/issues/report-history/unscoped/` when the work cannot be scoped confidently |
+| singular explicitly retained final handoff report | `docs/issues/<initiative>/<step>/final/` | repo root only when explicitly approved as a permanent top-level artifact |

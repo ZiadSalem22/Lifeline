@@ -18,9 +18,14 @@ Production currently deploys by pushing to `deploy`, which triggers the VPS depl
 - Active long-term documentation belongs under `docs/`.
 - Historical phase and issue artifacts belong under `docs/issues/...`.
 - Stale or superseded material belongs under `docs/archive/...`.
-- Default all temporary execution artifacts, progress reports, discovery notes, plans, and workstream reports away from the repo root.
-- Only create a root-level final report when it is explicitly required, singular, and intentionally retained as a current top-level deliverable.
-- When a phase or implementation pass completes, compact temporary reporting into one final summary when needed or move the temporary artifacts into `docs/issues/report-history/`.
+- Route non-canonical artifacts using `docs/issues/<initiative>/<step>/<artifact-class>/` whenever the initiative and step can be identified.
+- Use `discovery/`, `planning/`, `implementation/`, and `final/` as the default artifact-class folders for issue-history work.
+- If a prompt asks for a report but does not provide a valid non-root path, derive the initiative and step from the work and use the scoped `docs/issues/<initiative>/<step>/...` pattern.
+- Use `docs/issues/report-history/unscoped/` only as a secondary fallback when the work cannot be scoped confidently.
+- Default all temporary execution artifacts, progress reports, discovery notes, plans, workstream reports, implementation reports, validation reports, and phase summaries away from the repo root.
+- Treat repo root as a home for intentional top-level project files only.
+- Only create a root-level artifact when it is explicitly approved as a singular permanent top-level deliverable.
+- When a phase or implementation pass completes, compact temporary reporting into a scoped non-root history location instead of leaving reporting in root.
 - Before making a non-trivial code or runtime change, evaluate documentation impact.
 
 ## Documentation domains
@@ -44,7 +49,7 @@ Keep these domains separate:
 - Use `.github/agents/...` for domain-specific documentation workflows.
 - Use `.github/teams/...` for grouped governance responsibilities.
 - Use `.github/workflows-governance/...` for repeatable governance workflow sequences.
-- Use `.github/prompts/...` for reusable AI documentation tasks.
+- Use `.github/prompts/...` for reusable AI documentation tasks, including artifact-routing conventions.
 - Use `docs/templates/...` when creating or refreshing documentation.
 
 ## Documentation update expectations

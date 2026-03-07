@@ -1,5 +1,7 @@
 # Post-Phase-6C Report Hygiene Enforcement Report
 
+> Historical note: this report was originally produced at repo root because that earlier pass explicitly required a root-level handoff artifact. It has since been relocated into scoped governance issue history by the artifact-routing correction pass.
+
 ## 1. Executive Summary
 
 This pass implemented a focused governance-hardening update to stop root-level report clutter from returning.

@@ -30,6 +30,7 @@ Use this skill especially before:
 - reviewing docs impact in a PR
 - deciding where a new doc belongs
 - creating or relocating phase/history artifacts
+- deciding the exact non-root path for a report or execution artifact
 - deciding whether a final report is actually needed versus compacting or relocating temporary outputs
 
 ## Sources of truth
@@ -54,8 +55,12 @@ Then consult the relevant code or config source of truth:
 - Active long-term docs live under `docs/`, not at repo root.
 - Historical reports belong in `docs/issues/...` or `docs/archive/...`.
 - Temporary execution artifacts are not root deliverables by default.
-- The preferred fallback storage path for historical execution reporting is `docs/issues/report-history/`.
-- A root-level report is acceptable only as a singular, explicitly required final handoff artifact.
+- The preferred routing pattern for issue-history artifacts is `docs/issues/<initiative>/<step>/<artifact-class>/`.
+- The default artifact-class folders are `discovery/`, `planning/`, `implementation/`, and `final/`.
+- If a prompt does not provide a valid non-root target, the initiative and step should be derived from the work before output is written.
+- `docs/issues/report-history/unscoped/` is a secondary fallback only when a valid scoped path cannot be derived confidently.
+- Repo root should contain intentional top-level project files, not working reports.
+- A root-level artifact is acceptable only as a singular, explicitly approved permanent top-level deliverable.
 - Frontend docs are first-class and must not be treated as secondary to backend or API docs.
 - Product/business behavior docs are separate from backend and API docs.
 - Operations/deployment docs are separate from architecture docs.
@@ -74,7 +79,8 @@ Then consult the relevant code or config source of truth:
 - `docs/reference/` → retained supporting reference material
 - `docs/archive/` → stale or superseded retained docs
 - `docs/issues/` → issue-centered phase and history artifacts
-- `docs/issues/report-history/` → fallback home for discovery reports, plans, workstream reports, checkpoint outputs, and other historical execution artifacts
+- `docs/issues/<initiative>/<step>/<artifact-class>/` → preferred home for scoped discovery, planning, implementation, final, validation, and cleanup artifacts
+- `docs/issues/report-history/unscoped/` → secondary fallback home when a valid initiative/step path cannot be derived confidently
 
 ## Routing heuristics
 
@@ -123,8 +129,10 @@ Create or refresh an ADR when the change materially affects:
 - Identify any secondary docs domains.
 - Update existing docs before creating new duplicates.
 - Keep product, frontend, backend, API, and operations docs separate.
+- Decide the exact non-root artifact path before writing any non-canonical output.
 - Decide whether any report is temporary or final.
-- Route temporary or historical reports into `docs/issues/...`, preferring `docs/issues/report-history/` unless a narrower issue folder exists.
+- Route temporary or historical reports into `docs/issues/<initiative>/<step>/<artifact-class>/` whenever possible.
+- Use `docs/issues/report-history/unscoped/` only when the work cannot be scoped confidently.
 - Keep superseded long-term docs in `docs/archive/...` instead of mixing them with execution artifacts.
 - If the change is durable and structural, evaluate ADR impact.
 
@@ -132,6 +140,7 @@ Create or refresh an ADR when the change materially affects:
 
 - treat all docs as one bucket
 - put reports back in the repo root
+- treat repo root as a normal report destination
 - create multiple root-level phase/workstream reports by default
 - collapse frontend, backend, API, and product docs into a single generic document
 - describe business rules only in API docs
@@ -144,5 +153,6 @@ Create or refresh an ADR when the change materially affects:
 - `/api/me` contract change → `docs/api/`, maybe `docs/backend/`
 - identity-mapping schema change → `docs/data-model/`, maybe `docs/backend/`, maybe `docs/architecture/`
 - deploy workflow verification change → `docs/operations/`, maybe `docs/architecture/`
-- discovery/workstream checkpoint output → `docs/issues/report-history/` unless a more specific issue-history folder already owns that program
-- explicitly requested final handoff report → root only if singular and clearly justified; otherwise keep it under `docs/issues/...`
+- discovery/workstream checkpoint output for governance artifact routing → `docs/issues/governance/artifact-routing/discovery/` or `docs/issues/governance/artifact-routing/implementation/` depending on the pass
+- unscoped discovery/planning/report output with no valid initiative path → `docs/issues/report-history/unscoped/`
+- explicitly approved permanent top-level artifact → root only if singular and intentionally retained; otherwise keep it under a scoped `docs/issues/<initiative>/<step>/final/` path

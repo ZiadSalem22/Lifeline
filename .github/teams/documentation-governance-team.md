@@ -30,7 +30,8 @@ Use this team when:
 - identifying missing documentation
 - identifying ADR-needed cases
 - enforcing report/output placement hygiene and root cleanliness
-- deciding when a single final report is justified versus when temporary artifacts must be compacted or relocated
+- deciding the exact scoped `docs/issues/<initiative>/<step>/<artifact-class>/` destination before non-canonical output is written
+- deciding when a single permanent top-level artifact is explicitly approved versus when artifacts must remain non-root
 - preserving the distinction between:
   - product
   - features
@@ -55,6 +56,7 @@ Use this team when:
 - documentation impact plan
 - required docs target list
 - report/output placement decision
+- exact artifact path decision when non-canonical output is requested
 - missing-doc warnings
 - ADR-needed recommendation
 - docs-update checklist
