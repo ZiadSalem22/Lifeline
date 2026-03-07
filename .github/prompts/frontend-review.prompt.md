@@ -26,7 +26,7 @@ Use this prompt when you want an assessment of React component quality, state ma
    - Barrel imports (CRITICAL — use direct imports)
    - Unnecessary `React.memo` (MEDIUM)
    - Data fetching in frequently-rendering components
-7. **UX anti-pattern check**: toast for errors, modals for multi-step, small touch targets, missing feedback, placeholders as sole labels
+7. **UX anti-pattern check**: toast for errors, modals for multi-step, touch targets <44×44px, body text <16px, line height outside 1.4–1.6, animation duration outside 200–400ms, feedback latency >100ms, placeholders as sole labels
 8. **Responsive and UX coherence**: CSS Modules, graceful degradation, navigation predictability, form behavior
 9. Apply code quality governance for general readability, naming, and complexity.
 10. **Classify findings**: CRITICAL / HIGH / MEDIUM / LOW with category and location.

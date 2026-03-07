@@ -54,6 +54,7 @@ This instruction set builds on top of `.github/instructions/code-quality-governa
 ### JSONB shape discipline
 - JSONB columns must have documented shape expectations.
 - Do not silently add or remove keys from JSONB objects — treat shape changes as schema changes.
+- Feature-flagged code that conditionally writes new JSONB keys is still a shape change — governance applies regardless of whether the flag is currently enabled.
 - Validate JSONB shape in the application layer when reading, not just when writing.
 - If JSONB shape evolves, create a migration that handles existing data transformation.
 

@@ -104,6 +104,9 @@ Flag these UX anti-patterns when found:
 - Modals with multi-step workflows (use full page instead)
 - Touch targets smaller than 44×44 CSS px
 - Body text below 16px
+- Line height outside 1.4–1.6 range for body text
+- Line length outside 50–75 characters for readable paragraph blocks
+- Animation/transition duration outside 200–400ms for UI transitions
 - Missing feedback for user actions (>100ms response time)
 - Hidden navigation or non-discoverable actions
 - Placeholder text used as the only label for inputs
