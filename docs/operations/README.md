@@ -9,3 +9,4 @@ Current active documents:
 - [production-runtime-and-rollback.md](production-runtime-and-rollback.md)
 - [deployment-verification-and-smoke-checks.md](deployment-verification-and-smoke-checks.md)
 - [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md)
+- [lifeline-mcp-auth0-oauth-runbook.md](lifeline-mcp-auth0-oauth-runbook.md)

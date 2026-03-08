@@ -54,7 +54,13 @@ The `lifeline-app` container runs the Node runtime that:
 The `lifeline-mcp` container runs the separate MCP edge service that:
 
 - exposes `POST /mcp` and `GET /health`
+- exposes OAuth discovery metadata for `/mcp` at:
+	- `GET /.well-known/oauth-protected-resource/mcp`
+	- `GET /.well-known/oauth-authorization-server`
+- accepts either MCP API keys or Auth0 OAuth bearer tokens at the public edge
 - resolves API-key principals through the backend-internal auth surface
+- validates Auth0 bearer tokens against the configured Auth0 issuer JWKS
+- resolves validated Auth0 claims into a Lifeline principal through the backend-internal OAuth resolver
 - delegates task operations to `http://lifeline-app:3000/internal/mcp/*`
 - does not connect to PostgreSQL directly
 
@@ -138,6 +144,8 @@ The main runtime verification surfaces are:
 - `/api/health/db/schema`
 - `/`
 - `mcp.lifeline.a2z-us.com/health`
+- `mcp.lifeline.a2z-us.com/.well-known/oauth-protected-resource/mcp`
+- `mcp.lifeline.a2z-us.com/.well-known/oauth-authorization-server`
 - SPA fallback routes such as `/statistics`
 
 ## Related canonical documents
@@ -147,3 +155,4 @@ The main runtime verification surfaces are:
 - [../operations/DEPLOY_BRANCH_CD.md](../operations/DEPLOY_BRANCH_CD.md)
 - [../operations/production-runtime-and-rollback.md](../operations/production-runtime-and-rollback.md)
 - [../operations/deployment-verification-and-smoke-checks.md](../operations/deployment-verification-and-smoke-checks.md)
+- [../operations/lifeline-mcp-auth0-oauth-runbook.md](../operations/lifeline-mcp-auth0-oauth-runbook.md)

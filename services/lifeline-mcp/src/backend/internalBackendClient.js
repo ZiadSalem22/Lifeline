@@ -138,6 +138,17 @@ export class LifelineBackendClient {
     });
   }
 
+  async resolveOAuthPrincipal({ claims, scopes = [] }) {
+    return this.request({
+      method: 'POST',
+      path: '/auth/resolve-oauth-principal',
+      body: {
+        claims,
+        scopes,
+      },
+    });
+  }
+
   async searchTasks(principal, filters = {}) {
     return this.request({
       method: 'GET',

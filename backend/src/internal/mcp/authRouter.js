@@ -6,6 +6,7 @@ function createInternalMcpAuthRouter(dependencies) {
   const handlers = createInternalMcpAuthHandlers(dependencies);
 
   router.post('/resolve-api-key', handlers.resolveApiKey);
+  router.post('/resolve-oauth-principal', handlers.resolveOAuthPrincipal);
 
   return router;
 }

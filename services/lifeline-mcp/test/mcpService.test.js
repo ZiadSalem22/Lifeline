@@ -4,9 +4,11 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import express from 'express';
+import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createApp } from '../src/app.js';
+import { loadConfig } from '../src/config.js';
 
 const require = createRequire(import.meta.url);
 const { createInternalMcpRouter } = require('../../../backend/src/internal/mcp/router');
@@ -27,6 +29,20 @@ const INIT_REQUEST = {
     },
   },
 };
+
+function buildMcpConfig(env = {}) {
+  return loadConfig({
+    NODE_ENV: 'test',
+    MCP_BIND_HOST: '127.0.0.1',
+    MCP_PORT: '3030',
+    MCP_ALLOWED_HOSTS: '',
+    LIFELINE_BACKEND_BASE_URL: 'http://127.0.0.1:3000',
+    MCP_INTERNAL_SHARED_SECRET: 'shared-secret',
+    MCP_REQUEST_TIMEOUT_MS: '5000',
+    MCP_LOG_LEVEL: 'info',
+    ...env,
+  });
+}
 
 function createTask(overrides = {}) {
   return {
@@ -198,6 +214,51 @@ async function closeServer(server) {
   });
 }
 
+async function createJwksServer() {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = await exportJWK(publicKey);
+  jwk.use = 'sig';
+  jwk.alg = 'RS256';
+  jwk.kid = 'lifeline-test-key';
+
+  const app = express();
+  app.get('/.well-known/jwks.json', (_req, res) => {
+    res.json({ keys: [jwk] });
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+
+  return {
+    server,
+    issuer: `${baseUrl}/`,
+    kid: jwk.kid,
+    privateKey,
+  };
+}
+
+async function signAccessToken({
+  issuer,
+  audience,
+  subject = 'auth0|oauth-user-1',
+  scope = 'tasks:read tasks:write',
+  expiresIn = '1h',
+  privateKey,
+  kid,
+  claims = {},
+}) {
+  return new SignJWT({
+    scope,
+    ...claims,
+  })
+    .setProtectedHeader({ alg: 'RS256', kid })
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setSubject(subject)
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(privateKey);
+}
+
 async function createClient(baseUrl, apiKey) {
   const client = new Client({ name: 'lifeline-mcp-test-client', version: '1.0.0' }, { capabilities: {} });
   const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
@@ -217,17 +278,7 @@ async function createClient(baseUrl, apiKey) {
 
 test('lifeline-mcp service health endpoint initializes successfully', async () => {
   const app = createApp({
-    config: {
-      serviceName: 'lifeline-mcp',
-      serviceVersion: '0.1.0',
-      host: '127.0.0.1',
-      port: 0,
-      allowedHosts: [],
-      backendBaseUrl: 'http://127.0.0.1:3000',
-      internalSharedSecret: 'shared-secret',
-      requestTimeoutMs: 5000,
-      logLevel: 'info',
-    },
+    config: buildMcpConfig(),
   });
 
   const { server, baseUrl } = await listenOnRandomPort(app);
@@ -244,17 +295,7 @@ test('lifeline-mcp service health endpoint initializes successfully', async () =
 
 test('lifeline-mcp rejects missing API keys clearly', async () => {
   const app = createApp({
-    config: {
-      serviceName: 'lifeline-mcp',
-      serviceVersion: '0.1.0',
-      host: '127.0.0.1',
-      port: 0,
-      allowedHosts: [],
-      backendBaseUrl: 'http://127.0.0.1:3000',
-      internalSharedSecret: 'shared-secret',
-      requestTimeoutMs: 5000,
-      logLevel: 'info',
-    },
+    config: buildMcpConfig(),
     backendClient: {
       async resolveApiKey() {
         throw new Error('should not be called');
@@ -341,17 +382,7 @@ test('lifeline-mcp runs representative read and write tools end-to-end through t
   const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
 
   const mcpApp = createApp({
-    config: {
-      serviceName: 'lifeline-mcp',
-      serviceVersion: '0.1.0',
-      host: '127.0.0.1',
-      port: 0,
-      allowedHosts: [],
-      backendBaseUrl,
-      internalSharedSecret: 'shared-secret',
-      requestTimeoutMs: 5000,
-      logLevel: 'info',
-    },
+    config: buildMcpConfig({ LIFELINE_BACKEND_BASE_URL: backendBaseUrl }),
   });
   const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
 
@@ -464,17 +495,7 @@ test('lifeline-mcp reports scope failures clearly for write tools', async () => 
 
   const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
   const mcpApp = createApp({
-    config: {
-      serviceName: 'lifeline-mcp',
-      serviceVersion: '0.1.0',
-      host: '127.0.0.1',
-      port: 0,
-      allowedHosts: [],
-      backendBaseUrl,
-      internalSharedSecret: 'shared-secret',
-      requestTimeoutMs: 5000,
-      logLevel: 'info',
-    },
+    config: buildMcpConfig({ LIFELINE_BACKEND_BASE_URL: backendBaseUrl }),
   });
   const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
 
@@ -553,17 +574,7 @@ test('lifeline-mcp rejects conflicting id and taskNumber selectors for mutations
 
   const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
   const mcpApp = createApp({
-    config: {
-      serviceName: 'lifeline-mcp',
-      serviceVersion: '0.1.0',
-      host: '127.0.0.1',
-      port: 0,
-      allowedHosts: [],
-      backendBaseUrl,
-      internalSharedSecret: 'shared-secret',
-      requestTimeoutMs: 5000,
-      logLevel: 'info',
-    },
+    config: buildMcpConfig({ LIFELINE_BACKEND_BASE_URL: backendBaseUrl }),
   });
   const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
 
@@ -589,5 +600,185 @@ test('lifeline-mcp rejects conflicting id and taskNumber selectors for mutations
     }
     await closeServer(mcpServer);
     await closeServer(backendServer);
+  }
+});
+
+test('lifeline-mcp exposes OAuth metadata and executes tools through a validated Auth0 bearer token', async () => {
+  const jwks = await createJwksServer();
+  let observedPrincipal = null;
+
+  const app = createApp({
+    config: buildMcpConfig({
+      MCP_PUBLIC_BASE_URL: 'http://127.0.0.1:43030',
+      MCP_AUTH0_DOMAIN: '127.0.0.1',
+      MCP_AUTH0_ISSUER: jwks.issuer,
+      MCP_AUTH0_AUDIENCE: 'https://lifeline-api',
+      MCP_AUTH0_SUPPORTED_SCOPES: 'tasks:read,tasks:write',
+    }),
+    backendClient: {
+      async resolveOAuthPrincipal({ claims, scopes }) {
+        return {
+          subjectType: 'oauth_access_token',
+          lifelineUserId: claims.sub,
+          authMethod: 'auth0_oauth',
+          scopes,
+          subjectId: claims.sub,
+          displayName: claims.name,
+        };
+      },
+      async searchTasks(principal) {
+        observedPrincipal = principal;
+        return {
+          tasks: [{ id: 'task-oauth-1', taskNumber: 1, title: 'OAuth task' }],
+          total: 1,
+          page: 1,
+          limit: 30,
+        };
+      },
+    },
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+
+  try {
+    const accessToken = await signAccessToken({
+      issuer: jwks.issuer,
+      audience: 'https://lifeline-api',
+      privateKey: jwks.privateKey,
+      kid: jwks.kid,
+      claims: { name: 'OAuth User One' },
+    });
+
+    const metadataResponse = await fetch(`${baseUrl}/.well-known/oauth-authorization-server`);
+    assert.equal(metadataResponse.status, 200);
+    const oauthMetadata = await metadataResponse.json();
+    assert.equal(oauthMetadata.issuer, jwks.issuer);
+    assert.equal(oauthMetadata.authorization_endpoint, new URL('/authorize', jwks.issuer).href);
+    assert.equal(oauthMetadata.token_endpoint, new URL('/oauth/token', jwks.issuer).href);
+
+    const resourceMetadataResponse = await fetch(`${baseUrl}/.well-known/oauth-protected-resource/mcp`);
+    assert.equal(resourceMetadataResponse.status, 200);
+    const resourceMetadata = await resourceMetadataResponse.json();
+    assert.equal(resourceMetadata.resource, 'http://127.0.0.1:43030/mcp');
+    assert.deepEqual(resourceMetadata.authorization_servers, [jwks.issuer]);
+
+    const client = new Client({ name: 'lifeline-mcp-oauth-test-client', version: '1.0.0' }, { capabilities: {} });
+    const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
+      requestInit: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    });
+
+    await client.connect(transport);
+
+    const tools = await client.listTools();
+    assert.ok(tools.tools.some((tool) => tool.name === 'search_tasks'));
+
+    const result = await client.callTool({
+      name: 'search_tasks',
+      arguments: { query: 'oauth' },
+    });
+
+    assert.equal(result.structuredContent.total, 1);
+    assert.equal(result.structuredContent.tasks[0].title, 'OAuth task');
+    assert.equal(observedPrincipal?.authMethod, 'auth0_oauth');
+    assert.deepEqual(observedPrincipal?.scopes, ['tasks:read', 'tasks:write']);
+
+    await transport.close();
+  } finally {
+    await closeServer(server);
+    await closeServer(jwks.server);
+  }
+});
+
+test('lifeline-mcp rejects expired OAuth bearer tokens and advertises protected-resource metadata', async () => {
+  const jwks = await createJwksServer();
+  const app = createApp({
+    config: buildMcpConfig({
+      MCP_PUBLIC_BASE_URL: 'http://127.0.0.1:43031',
+      MCP_AUTH0_DOMAIN: '127.0.0.1',
+      MCP_AUTH0_ISSUER: jwks.issuer,
+      MCP_AUTH0_AUDIENCE: 'https://lifeline-api',
+    }),
+    backendClient: {
+      async resolveOAuthPrincipal() {
+        throw new Error('should not be called');
+      },
+    },
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+
+  try {
+    const expiredToken = await signAccessToken({
+      issuer: jwks.issuer,
+      audience: 'https://lifeline-api',
+      expiresIn: '-10s',
+      privateKey: jwks.privateKey,
+      kid: jwks.kid,
+    });
+
+    const response = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${expiredToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(INIT_REQUEST),
+    });
+
+    assert.equal(response.status, 401);
+    assert.match(response.headers.get('www-authenticate') || '', /resource_metadata="http:\/\/127\.0\.0\.1:43031\/.well-known\/oauth-protected-resource\/mcp"/i);
+    const payload = await response.json();
+    assert.equal(payload.error.data.code, 'oauth_token_expired');
+  } finally {
+    await closeServer(server);
+    await closeServer(jwks.server);
+  }
+});
+
+test('lifeline-mcp rejects OAuth bearer tokens with the wrong audience', async () => {
+  const jwks = await createJwksServer();
+  const app = createApp({
+    config: buildMcpConfig({
+      MCP_PUBLIC_BASE_URL: 'http://127.0.0.1:43032',
+      MCP_AUTH0_DOMAIN: '127.0.0.1',
+      MCP_AUTH0_ISSUER: jwks.issuer,
+      MCP_AUTH0_AUDIENCE: 'https://lifeline-api',
+    }),
+    backendClient: {
+      async resolveOAuthPrincipal() {
+        throw new Error('should not be called');
+      },
+    },
+  });
+
+  const { server, baseUrl } = await listenOnRandomPort(app);
+
+  try {
+    const wrongAudienceToken = await signAccessToken({
+      issuer: jwks.issuer,
+      audience: 'https://other-audience',
+      privateKey: jwks.privateKey,
+      kid: jwks.kid,
+    });
+
+    const response = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${wrongAudienceToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(INIT_REQUEST),
+    });
+
+    assert.equal(response.status, 401);
+    const payload = await response.json();
+    assert.equal(payload.error.data.code, 'invalid_oauth_token');
+  } finally {
+    await closeServer(server);
+    await closeServer(jwks.server);
   }
 });

@@ -4,6 +4,7 @@ const CreateTodo = require('../../application/CreateTodo');
 const DeleteTodo = require('../../application/DeleteTodo');
 const ListTodos = require('../../application/ListTodos');
 const { ResolveMcpApiKeyPrincipal } = require('../../application/ResolveMcpApiKeyPrincipal');
+const { ResolveMcpOAuthPrincipal } = require('../../application/ResolveMcpOAuthPrincipal');
 const SetTodoCompletion = require('../../application/SetTodoCompletion');
 const SearchTodos = require('../../application/SearchTodos');
 const UpdateTodo = require('../../application/UpdateTodo');
@@ -28,6 +29,8 @@ function createInternalMcpRouter(dependencies = {}) {
   const setTodoCompletion = dependencies.setTodoCompletion || new SetTodoCompletion(todoRepository);
   const resolveMcpApiKeyPrincipal = dependencies.resolveMcpApiKeyPrincipal
     || new ResolveMcpApiKeyPrincipal({ mcpApiKeyRepository, userRepository });
+  const resolveMcpOAuthPrincipal = dependencies.resolveMcpOAuthPrincipal
+    || new ResolveMcpOAuthPrincipal({ userRepository });
   const searchTodos = dependencies.searchTodos || new SearchTodos(todoRepository);
   const listTodos = dependencies.listTodos || new ListTodos(todoRepository);
 
@@ -43,6 +46,7 @@ function createInternalMcpRouter(dependencies = {}) {
 
   router.use('/auth', createInternalMcpAuthRouter({
     resolveMcpApiKeyPrincipal,
+    resolveMcpOAuthPrincipal,
   }));
 
   router.use('/tasks', createInternalMcpTaskReadRouter({
