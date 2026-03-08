@@ -32,6 +32,8 @@ The production deploy helper verifies:
 
 If any of those checks fail, the deployment is treated as failed.
 
+OAuth metadata endpoints are not currently a workflow-gated deploy check. Treat them as required post-deploy validation when OAuth is enabled.
+
 ## Primary runtime health endpoints
 
 ### `/api/health/db`
@@ -95,6 +97,11 @@ The repo now includes two bounded MCP operator/dev utilities:
 - [backend/src/scripts/issue-mcp-api-key.js](../../backend/src/scripts/issue-mcp-api-key.js) for one-time API-key issuance to a specific Lifeline user
 - [services/lifeline-mcp/scripts/mcp-client-cli.js](../../services/lifeline-mcp/scripts/mcp-client-cli.js) for official-SDK tool discovery, direct tool calls, and repeatable read/write smoke checks through the real MCP service path
 
+The MCP CLI supports both:
+
+- `--api-key <issued-key>` for the existing API-key path
+- `--access-token <auth0-token>` for the new Auth0/OAuth path
+
 Use [lifeline-mcp-first-cutover-runbook.md](lifeline-mcp-first-cutover-runbook.md) for the concrete first-release sequence.
 
 For production validation, use a dedicated Lifeline smoke user and short-lived MCP API keys issued specifically for the validation window. Do not reuse a normal user's long-lived key for deploy smoke.
@@ -107,9 +114,11 @@ After a production deployment, the minimum useful checks are:
 2. confirm `/api/health/db` is healthy publicly
 3. confirm `/api/public/info` responds successfully publicly
 4. confirm `https://mcp.lifeline.a2z-us.com/health` is healthy publicly
-5. confirm the loopback-only bindings are still enforced for both app and MCP services
-6. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
-7. review app, MCP, and database container status if anything looks wrong
+5. if OAuth is enabled, confirm both MCP well-known metadata endpoints respond publicly
+6. confirm the loopback-only bindings are still enforced for both app and MCP services
+7. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
+8. if OAuth is enabled, obtain a valid Auth0 access token and run at least one MCP `list-tools` or `search_tasks` call over the bearer-token path
+9. review app, MCP, and database container status if anything looks wrong
 
 ## Failure diagnostics currently captured
 

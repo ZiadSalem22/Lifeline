@@ -1,11 +1,18 @@
 export class LifelineMcpError extends Error {
-  constructor(message, { status = 500, code = 'lifeline_mcp_error', details = null, cause = null } = {}) {
+  constructor(message, {
+    status = 500,
+    code = 'lifeline_mcp_error',
+    details = null,
+    cause = null,
+    headers = null,
+  } = {}) {
     super(message);
     this.name = this.constructor.name;
     this.status = status;
     this.code = code;
     this.details = details;
     this.cause = cause;
+    this.headers = headers;
   }
 }
 

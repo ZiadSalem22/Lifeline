@@ -2,4 +2,7 @@
 
 Use this section for durable architecture decision records.
 
-Phase 6A creates the stable ADR location so future changes can be documented without returning to root-level reports.
+Current ADRs:
+
+- [0001-lifeline-mcp-runtime-boundary.md](0001-lifeline-mcp-runtime-boundary.md)
+- [0002-lifeline-mcp-dual-auth-with-auth0.md](0002-lifeline-mcp-dual-auth-with-auth0.md)

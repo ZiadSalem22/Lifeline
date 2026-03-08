@@ -1,18 +1,20 @@
 const express = require('express');
 const request = require('supertest');
 const { ResolveMcpApiKeyPrincipal } = require('../../src/application/ResolveMcpApiKeyPrincipal');
+const { ResolveMcpOAuthPrincipal } = require('../../src/application/ResolveMcpOAuthPrincipal');
 const { errorHandler } = require('../../src/middleware/errorHandler');
 const { createInternalMcpRouter } = require('../../src/internal/mcp/router');
 const { INTERNAL_MCP_SHARED_SECRET_HEADER } = require('../../src/internal/mcp/constants');
 const { hashMcpApiKeySecret } = require('../../src/utils/mcpApiKeys');
 
-function makeApp({ mcpApiKeyRepository, userRepository, resolveMcpApiKeyPrincipal } = {}) {
+function makeApp({ mcpApiKeyRepository, userRepository, resolveMcpApiKeyPrincipal, resolveMcpOAuthPrincipal } = {}) {
   const app = express();
   app.use(express.json());
   app.use('/internal/mcp', createInternalMcpRouter({
     mcpApiKeyRepository,
     userRepository,
     resolveMcpApiKeyPrincipal,
+    resolveMcpOAuthPrincipal,
     todoRepository: {
       findById: jest.fn(),
       findByTaskNumber: jest.fn(),
@@ -234,5 +236,69 @@ describe('internal MCP API-key resolution routes', () => {
 
     expect(mcpApiKeyRepository.recordUsage).not.toHaveBeenCalled();
     expect(res.body.message).toMatch(/API key revoked/i);
+  });
+
+  it('resolves validated OAuth claims to a normalized internal MCP principal', async () => {
+    const userRepository = {
+      ensureUserFromAuth0Claims: jest.fn(async (claims) => ({
+        id: claims.sub,
+        name: claims.name,
+        email: claims.email,
+      })),
+      findById: jest.fn(async () => null),
+    };
+    const resolveMcpOAuthPrincipal = new ResolveMcpOAuthPrincipal({ userRepository });
+
+    const app = makeApp({ userRepository, resolveMcpOAuthPrincipal });
+    const res = await request(app)
+      .post('/internal/mcp/auth/resolve-oauth-principal')
+      .set(INTERNAL_MCP_SHARED_SECRET_HEADER, 'shared-secret')
+      .send({
+        claims: {
+          sub: 'auth0|oauth-user-1',
+          email: 'oauth-user-1@example.com',
+          name: 'OAuth User One',
+          'https://lifeline-api/roles': ['paid'],
+        },
+        scopes: ['tasks:read', 'tasks:write'],
+      })
+      .expect(200);
+
+    expect(userRepository.ensureUserFromAuth0Claims).toHaveBeenCalledWith(expect.objectContaining({
+      sub: 'auth0|oauth-user-1',
+    }));
+    expect(res.body.principal).toEqual({
+      subjectType: 'oauth_access_token',
+      lifelineUserId: 'auth0|oauth-user-1',
+      authMethod: 'auth0_oauth',
+      scopes: ['tasks:read', 'tasks:write'],
+      subjectId: 'auth0|oauth-user-1',
+      displayName: 'OAuth User One',
+    });
+  });
+
+  it('rejects OAuth principal resolution when the validated claims have no subject', async () => {
+    const userRepository = {
+      ensureUserFromAuth0Claims: jest.fn(async () => {
+        throw new Error('should not be called');
+      }),
+      findById: jest.fn(async () => null),
+    };
+    const resolveMcpOAuthPrincipal = new ResolveMcpOAuthPrincipal({ userRepository });
+
+    const app = makeApp({ userRepository, resolveMcpOAuthPrincipal });
+    const res = await request(app)
+      .post('/internal/mcp/auth/resolve-oauth-principal')
+      .set(INTERNAL_MCP_SHARED_SECRET_HEADER, 'shared-secret')
+      .send({
+        claims: {
+          email: 'missing-sub@example.com',
+        },
+        scopes: ['tasks:read'],
+      })
+      .expect(400);
+
+    expect(userRepository.ensureUserFromAuth0Claims).not.toHaveBeenCalled();
+    expect(res.body.message).toMatch(/OAuth token subject is required/i);
   });
 });

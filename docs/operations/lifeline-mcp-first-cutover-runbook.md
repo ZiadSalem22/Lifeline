@@ -50,8 +50,13 @@ Also confirm the existing app/runtime values remain valid:
 - `POSTGRES_PASSWORD`
 - `AUTH0_DOMAIN`
 - `AUTH0_AUDIENCE`
+- `AUTH0_ISSUER`
 - `CORS_ORIGIN`
 - `APP_ORIGIN`
+
+For Auth0/OAuth-enabled MCP rollout, also review:
+
+- [docs/operations/lifeline-mcp-auth0-oauth-runbook.md](lifeline-mcp-auth0-oauth-runbook.md)
 
 `MCP_INTERNAL_SHARED_SECRET` and `MCP_API_KEY_PEPPER` must stay host-side only. Do not move them into git or GitHub Actions secrets.
 
@@ -184,6 +189,7 @@ Auth expectation:
 
 - send the issued MCP API key as `Authorization: Bearer <key>`
 - the service also accepts `x-api-key`, but the validated path used Bearer auth
+- OAuth-capable clients can now also use an Auth0 bearer token plus the metadata endpoints documented in [docs/api/mcp-server-endpoints-and-auth.md](../api/mcp-server-endpoints-and-auth.md)
 
 If your desktop or CLI MCP client supports remote Streamable HTTP plus custom headers, configure:
 

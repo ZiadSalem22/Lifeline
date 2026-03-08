@@ -1,7 +1,7 @@
 import { AuthError, BackendAdapterError } from '../errors.js';
 import { buildNormalizedLifelinePrincipal } from './principal.js';
 
-function extractBearerToken(headerValue) {
+export function extractBearerToken(headerValue) {
   if (!headerValue) return null;
   const normalized = String(headerValue).trim();
   if (!normalized) return null;
@@ -10,7 +10,7 @@ function extractBearerToken(headerValue) {
   return match ? match[1].trim() : normalized;
 }
 
-function extractClientIp(req) {
+export function extractClientIp(req) {
   const forwardedFor = req.get('x-forwarded-for');
   if (forwardedFor) {
     return String(forwardedFor).split(',')[0].trim() || null;

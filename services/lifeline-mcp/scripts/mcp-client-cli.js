@@ -27,7 +27,7 @@ function parseArguments(argv) {
 }
 
 function printUsage() {
-  console.error('Usage: node scripts/mcp-client-cli.js <list-tools|call-tool|smoke-rw|smoke-ro> --server-url <url> --api-key <key> [--tool <name>] [--args-json <json>] [--assert-query-absent <text>] [--title-prefix <text>]');
+  console.error('Usage: node scripts/mcp-client-cli.js <list-tools|call-tool|smoke-rw|smoke-ro> --server-url <url> (--api-key <key> | --access-token <token>) [--tool <name>] [--args-json <json>] [--assert-query-absent <text>] [--title-prefix <text>]');
 }
 
 function normalizeServerUrl(value) {
@@ -59,7 +59,7 @@ function assertRequiredOptions(options, requiredKeys) {
   });
 }
 
-async function connectClient({ serverUrl, apiKey }) {
+async function connectClient({ serverUrl, bearerToken }) {
   const client = new Client({
     name: 'lifeline-mcp-cli-client',
     version: '0.1.0',
@@ -70,7 +70,7 @@ async function connectClient({ serverUrl, apiKey }) {
   const transport = new StreamableHTTPClientTransport(serverUrl, {
     requestInit: {
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${bearerToken}`,
       },
     },
   });
@@ -296,11 +296,16 @@ async function main(argv = process.argv.slice(2)) {
       throw new Error('A command is required.');
     }
 
-    assertRequiredOptions(options, ['server-url', 'api-key']);
+    assertRequiredOptions(options, ['server-url']);
+    const bearerToken = String(options['access-token'] || options['api-key'] || '').trim();
+    if (!bearerToken) {
+      throw new Error('Either --api-key or --access-token is required.');
+    }
+
     const normalizedOptions = {
       command,
       serverUrl: normalizeServerUrl(options['server-url']),
-      apiKey: String(options['api-key']),
+      bearerToken,
       tool: options.tool ? String(options.tool).trim() : null,
       args: parseArgsJson(options['args-json']),
       assertQueryAbsent: options['assert-query-absent'] ? String(options['assert-query-absent']) : null,

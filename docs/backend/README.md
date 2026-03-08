@@ -7,6 +7,7 @@ Current backend documents:
 - [runtime-composition.md](runtime-composition.md)
 - [auth-user-attachment-and-rbac.md](auth-user-attachment-and-rbac.md)
 - [mcp-api-key-management.md](mcp-api-key-management.md)
+- [mcp-authentication-and-principal-resolution.md](mcp-authentication-and-principal-resolution.md)
 - [todo-services-and-use-cases.md](todo-services-and-use-cases.md)
 - [tag-search-stats-and-data-transfer-services.md](tag-search-stats-and-data-transfer-services.md)
 

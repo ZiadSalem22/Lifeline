@@ -9,9 +9,13 @@ function getClientIp(req) {
   return req.ip || req.socket?.remoteAddress || null;
 }
 
-function createInternalMcpAuthHandlers({ resolveMcpApiKeyPrincipal }) {
+function createInternalMcpAuthHandlers({ resolveMcpApiKeyPrincipal, resolveMcpOAuthPrincipal }) {
   if (!resolveMcpApiKeyPrincipal) {
     throw new Error('resolveMcpApiKeyPrincipal is required for internal MCP auth handlers');
+  }
+
+  if (!resolveMcpOAuthPrincipal) {
+    throw new Error('resolveMcpOAuthPrincipal is required for internal MCP auth handlers');
   }
 
   return {
@@ -44,6 +48,19 @@ function createInternalMcpAuthHandlers({ resolveMcpApiKeyPrincipal }) {
             scopes: principal.scopes,
           },
         });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async resolveOAuthPrincipal(req, res, next) {
+      try {
+        const principal = await resolveMcpOAuthPrincipal.execute({
+          claims: req.body?.claims || null,
+          scopes: req.body?.scopes || [],
+        });
+
+        return res.json({ principal });
       } catch (error) {
         return next(error);
       }
