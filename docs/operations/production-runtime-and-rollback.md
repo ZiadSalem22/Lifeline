@@ -128,6 +128,36 @@ Important operational assumptions include:
 
 - the app container must stay bound to `127.0.0.1:3020` in production
 - the MCP container must stay bound to `127.0.0.1:${MCP_PORT:-3030}` in production
+
+## Auth-path resilience and runtime hardening
+
+The following hardening measures are in place to prevent the auth middleware from blocking the event loop on cold JWKS cache scenarios or DNS resolution failures:
+
+### Auth middleware timeout guard
+
+The JWT validation middleware wraps `express-oauth2-jwt-bearer`'s `auth()` handler with a full-lifecycle `setTimeout` guard (default 10 s, configurable via `AUTH_TIMEOUT_MS`). If the underlying OIDC/JWKS fetch stalls — including DNS resolution, TCP connect, TLS handshake, or HTTP response — the guard fires, logs the timeout, and returns a 503 instead of blocking indefinitely.
+
+### JWKS pre-warm at startup
+
+On server startup, the backend fetches the Auth0 OIDC discovery document and the JWKS endpoint before accepting user traffic. This populates the `jose` library's internal cache so the first authenticated request does not trigger a blocking JWKS fetch.
+
+### Auth-aware readiness endpoint
+
+`/api/health/ready` returns 200 only when the database is reachable and the auth path is healthy (JWKS warmed, fewer than 3 consecutive auth failures). It returns 503 with diagnostic detail when degraded. This endpoint is pre-auth.
+
+### Container memory limits
+
+Production containers have explicit memory limits in `compose.production.yaml`:
+
+- `lifeline-postgres`: 2 GB
+- `lifeline-app`: 2 GB
+- `lifeline-mcp`: 512 MB
+
+These prevent any single container from consuming all VPS memory and destabilizing the host.
+
+### Explicit DNS resolver configuration
+
+`lifeline-app` and `lifeline-mcp` containers are configured with `dns: [1.1.1.1, 8.8.4.4]` in compose. This bypasses Docker's multi-hop embedded DNS resolver chain (container 127.0.0.11 → Docker embedded → host systemd-resolved 127.0.0.53 → upstream), reducing the chance of DNS resolution hanging during outbound HTTPS calls to Auth0.
 - the shared env file must exist and be valid
 - migrations must succeed before the app can start normally
 - the public domains and Nginx proxy targets must remain aligned with the compose port mappings

@@ -22,6 +22,7 @@ The production deploy helper verifies:
 - MCP container health
 - deterministic MCP host-loopback publication after the targeted post-app `lifeline-mcp` recreate
 - internal database health URL at `http://127.0.0.1:3020/api/health/db`
+- internal readiness URL at `http://127.0.0.1:3020/api/health/ready` (covers DB + auth-path health)
 - public database health URL at `https://lifeline.a2z-us.com/api/health/db`
 - public app info availability at `https://lifeline.a2z-us.com/api/public/info`
 - internal MCP health URL at `http://127.0.0.1:3030/health`
@@ -39,6 +40,12 @@ OAuth metadata endpoints are not currently a workflow-gated deploy check. Treat 
 ### `/api/health/db`
 
 This is the main application/database liveness check used in container healthchecks and deploy verification.
+
+### `/api/health/ready`
+
+This is the combined readiness check that covers both database connectivity (`SELECT 1`) and auth-path health (JWKS cache warmed, no consecutive auth failures). It returns 200 when the service is fully ready to handle authenticated traffic and 503 when degraded. This endpoint is registered before the auth middleware and does not require authentication itself.
+
+Use this endpoint to verify that the auth path is healthy after deployment, not just that the server is alive.
 
 ### `/api/health/db/schema`
 
@@ -112,12 +119,13 @@ After a production deployment, the minimum useful checks are:
 
 1. confirm the GitHub Actions deploy run finished successfully
 2. confirm `/api/health/db` is healthy publicly
-3. confirm `/api/public/info` responds successfully publicly
-4. confirm `https://mcp.lifeline.a2z-us.com/health` is healthy publicly
-5. if OAuth is enabled, confirm both MCP well-known metadata endpoints respond publicly
-6. confirm the loopback-only bindings are still enforced for both app and MCP services
-7. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
-8. if OAuth is enabled, obtain a valid Auth0 access token and run at least one MCP `list-tools` or `search_tasks` call over the bearer-token path
+3. confirm `/api/health/ready` returns 200 (DB + auth-path both healthy)
+4. confirm `/api/public/info` responds successfully publicly
+5. confirm `https://mcp.lifeline.a2z-us.com/health` is healthy publicly
+6. if OAuth is enabled, confirm both MCP well-known metadata endpoints respond publicly
+7. confirm the loopback-only bindings are still enforced for both app and MCP services
+8. issue a short-lived MCP API key for the dedicated smoke user and run `list-tools` plus the bounded MCP smoke flow
+9. if OAuth is enabled, obtain a valid Auth0 access token and run at least one MCP `list-tools` or `search_tasks` call over the bearer-token path
 9. review app, MCP, and database container status if anything looks wrong
 
 ### Step-09 tool smoke checks

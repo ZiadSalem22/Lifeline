@@ -5,7 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { checkJwt } = require('./middleware/auth0');
+const { checkJwt, warmUpAuth, getAuthReadiness } = require('./middleware/auth0');
 const { errorHandler, notFoundHandler, AppError } = require('./middleware/errorHandler');
 const { attachCurrentUser } = require('./middleware/attachCurrentUser');
 const { createRateLimiter } = require('./middleware/rateLimit');
@@ -206,6 +206,37 @@ app.get('/api/health/db', async (req, res) => {
             message: err.message
         });
     }
+});
+
+// Combined readiness check: DB + auth-path health (must be before checkJwt)
+/**
+ * @openapi
+ * /api/health/ready:
+ *   get:
+ *     summary: Readiness check covering DB and auth-path health
+ *     tags: [Health]
+ *     responses:
+ *       '200':
+ *         description: Service is ready to handle authenticated traffic
+ *       '503':
+ *         description: Service is degraded — auth path or DB is unhealthy
+ */
+app.get('/api/health/ready', async (req, res) => {
+    const authState = getAuthReadiness();
+    let dbOk = false;
+    try {
+        if (AppDataSource.isInitialized) {
+            await AppDataSource.query('SELECT 1');
+            dbOk = true;
+        }
+    } catch (_) { /* DB check failed */ }
+
+    const ready = dbOk && authState.ready;
+    res.status(ready ? 200 : 503).json({
+        ready,
+        db: dbOk ? 'ok' : 'error',
+        auth: authState,
+    });
 });
 
 // Save or update user settings
@@ -1641,8 +1672,15 @@ app.use(errorHandler);
 
 // Start Server
 if (require.main === module) {
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
         console.log(`Backend running on port ${PORT}`);
+        // Pre-warm JWKS cache so the first authenticated request doesn't
+        // need to wait for OIDC discovery + JWKS fetch from Auth0.
+        try {
+            await warmUpAuth();
+        } catch (err) {
+            logger.warn('[startup] JWKS pre-warm failed; auth will warm on first request', { error: err.message });
+        }
     });
 }
 

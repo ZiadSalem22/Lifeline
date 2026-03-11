@@ -43,6 +43,7 @@ COMPOSE_FILE_PATH="${release_dir}/compose.production.yaml"
 PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"
 PUBLIC_INFO_URL="${APP_ORIGIN%/}/api/public/info"
 INTERNAL_HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health/db"
+INTERNAL_READY_URL="http://127.0.0.1:${APP_PORT}/api/health/ready"
 MCP_INTERNAL_HEALTH_URL="http://127.0.0.1:${MCP_PORT}/health"
 
 compose_cmd=(docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f "${COMPOSE_FILE_PATH}")
@@ -218,6 +219,7 @@ wait_for_container_healthy "${APP_CONTAINER}" 240
 recreate_mcp_service
 wait_for_container_healthy "${MCP_CONTAINER}" 180
 wait_for_url "${INTERNAL_HEALTH_URL}" 120
+wait_for_url "${INTERNAL_READY_URL}" 120
 wait_for_url "${PUBLIC_HEALTH_URL}" 120
 wait_for_url "${PUBLIC_INFO_URL}" 120
 wait_for_mcp_loopback 120
