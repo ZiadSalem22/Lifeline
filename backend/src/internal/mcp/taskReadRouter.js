@@ -9,6 +9,8 @@ function createInternalMcpTaskReadRouter(dependencies) {
   router.use(requireInternalMcpPrincipal());
 
   router.get('/search', handlers.searchTasks);
+  router.get('/statistics', handlers.getStatistics);
+  router.get('/export', handlers.exportData);
   router.get('/by-number/:taskNumber', handlers.getTaskByNumber);
   router.get('/day/:dateToken', handlers.listTasksByDay);
   router.get('/upcoming', handlers.listUpcomingTasks);

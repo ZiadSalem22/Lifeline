@@ -78,11 +78,23 @@ function createInMemoryTaskStore() {
     ['user-2', [createTask({ id: 'task-u2-1', taskNumber: 1, title: 'User two task', userId: 'user-2' })]],
   ]);
 
+  const tagsByUser = new Map([
+    ['user-1', [{ id: 'tag-1', name: 'Inbox', color: '#000', userId: 'user-1', isDefault: true }]],
+    ['user-2', [{ id: 'tag-2', name: 'Inbox', color: '#000', userId: 'user-2', isDefault: true }]],
+  ]);
+
   function getUserTasks(userId) {
     if (!tasksByUser.has(userId)) {
       tasksByUser.set(userId, []);
     }
     return tasksByUser.get(userId);
+  }
+
+  function getUserTags(userId) {
+    if (!tagsByUser.has(userId)) {
+      tagsByUser.set(userId, []);
+    }
+    return tagsByUser.get(userId);
   }
 
   function findTaskById(userId, id) {
@@ -92,6 +104,8 @@ function createInMemoryTaskStore() {
   function findTaskByNumber(userId, taskNumber) {
     return getUserTasks(userId).find((task) => task.taskNumber === taskNumber && !task.archived) || null;
   }
+
+  let tagIdCounter = 100;
 
   return {
     todoRepository: {
@@ -193,6 +207,37 @@ function createInMemoryTaskStore() {
     },
     snapshot(userId) {
       return getUserTasks(userId).map(cloneTask);
+    },
+    createTag: {
+      async execute(userId, name, color) {
+        const tags = getUserTags(userId);
+        const tag = { id: `tag-${++tagIdCounter}`, name, color, userId, isDefault: false };
+        tags.push(tag);
+        return { ...tag };
+      },
+    },
+    listTags: {
+      async execute(userId) {
+        return getUserTags(userId).map((t) => ({ ...t }));
+      },
+    },
+    updateTag: {
+      async execute(userId, id, name, color) {
+        const tags = getUserTags(userId);
+        const tag = tags.find((t) => t.id === id);
+        if (!tag) throw new Error('Tag not found');
+        if (tag.isDefault || tag.userId !== userId) throw new Error('Forbidden');
+        tag.name = name;
+        tag.color = color;
+        return { ...tag };
+      },
+    },
+    deleteTag: {
+      async execute(userId, id) {
+        const tags = getUserTags(userId);
+        const idx = tags.findIndex((t) => t.id === id);
+        if (idx >= 0) tags.splice(idx, 1);
+      },
     },
   };
 }
@@ -376,6 +421,10 @@ test('lifeline-mcp runs representative read and write tools end-to-end through t
     updateTodo: taskStore.updateTodo,
     deleteTodo: taskStore.deleteTodo,
     setTodoCompletion: taskStore.setTodoCompletion,
+    createTag: taskStore.createTag,
+    listTags: taskStore.listTags,
+    updateTag: taskStore.updateTag,
+    deleteTag: taskStore.deleteTag,
   }));
   backendApp.use(errorHandler);
 
@@ -440,6 +489,176 @@ test('lifeline-mcp runs representative read and write tools end-to-end through t
   }
 });
 
+test('lifeline-mcp exposes statistics, tags, batch, and export tools end-to-end', async () => {
+  process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+  process.env.MCP_API_KEY_PEPPER = 'pepper';
+
+  const taskStore = createInMemoryTaskStore();
+  const mcpApiKeyRepository = {
+    async findByKeyPrefix(keyPrefix) {
+      const records = {
+        lk_rw: {
+          id: 'key-rw',
+          userId: 'user-1',
+          name: 'RW key',
+          keyPrefix: 'lk_rw',
+          keyHash: hashMcpApiKeySecret('secret-rw', 'pepper'),
+          scopes: ['tasks:read', 'tasks:write'],
+          status: 'active',
+          expiresAt: null,
+          revokedAt: null,
+        },
+      };
+      return records[keyPrefix] || null;
+    },
+    async recordUsage() {
+      return undefined;
+    },
+  };
+  const userRepository = {
+    async findById(id) {
+      return { id, name: 'User One', role: 'paid' };
+    },
+  };
+  const resolveMcpApiKeyPrincipal = new ResolveMcpApiKeyPrincipal({
+    mcpApiKeyRepository,
+    userRepository,
+    now: () => new Date('2026-03-07T12:00:00.000Z'),
+  });
+
+  const backendApp = express();
+  backendApp.use(express.json());
+  backendApp.use('/internal/mcp', createInternalMcpRouter({
+    mcpApiKeyRepository,
+    userRepository,
+    resolveMcpApiKeyPrincipal,
+    todoRepository: taskStore.todoRepository,
+    searchTodos: taskStore.searchTodos,
+    listTodos: taskStore.listTodos,
+    createTodoForInternalMcp: taskStore.createTodoForInternalMcp,
+    updateTodo: taskStore.updateTodo,
+    deleteTodo: taskStore.deleteTodo,
+    setTodoCompletion: taskStore.setTodoCompletion,
+    createTag: taskStore.createTag,
+    listTags: taskStore.listTags,
+    updateTag: taskStore.updateTag,
+    deleteTag: taskStore.deleteTag,
+    getNow: () => new Date('2026-03-07T12:00:00.000Z'),
+  }));
+  backendApp.use(errorHandler);
+
+  const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
+  const mcpApp = createApp({
+    config: buildMcpConfig({ LIFELINE_BACKEND_BASE_URL: backendBaseUrl }),
+  });
+  const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
+
+  let clientTransport = null;
+  try {
+    const { client, transport } = await createClient(mcpBaseUrl, 'lk_rw.secret-rw');
+    clientTransport = transport;
+
+    // Verify all new tools are listed
+    const tools = await client.listTools();
+    const toolNames = tools.tools.map((t) => t.name);
+    for (const expected of ['get_statistics', 'list_tags', 'create_tag', 'update_tag', 'delete_tag', 'batch_complete', 'batch_uncomplete', 'batch_archive', 'export_tasks']) {
+      assert.ok(toolNames.includes(expected), `expected tool ${expected} to be listed`);
+    }
+
+    // get_statistics
+    const statsResult = await client.callTool({ name: 'get_statistics', arguments: {} });
+    assert.equal(statsResult.isError, undefined);
+    assert.equal(statsResult.structuredContent.total, 1);
+    assert.equal(statsResult.structuredContent.active, 1);
+
+    // list_tags
+    const tagsResult = await client.callTool({ name: 'list_tags', arguments: {} });
+    assert.ok(Array.isArray(tagsResult.structuredContent.tags));
+    assert.equal(tagsResult.structuredContent.tags[0].name, 'Inbox');
+
+    // create_tag
+    const createTagResult = await client.callTool({
+      name: 'create_tag',
+      arguments: { name: 'Work', color: '#FF0000' },
+    });
+    assert.equal(createTagResult.isError, undefined);
+    const createdTag = createTagResult.structuredContent.tag || createTagResult.structuredContent;
+    assert.equal(createdTag.name, 'Work');
+
+    // update_tag
+    const updateTagResult = await client.callTool({
+      name: 'update_tag',
+      arguments: { id: createdTag.id, name: 'Office', color: '#00FF00' },
+    });
+    assert.equal(updateTagResult.isError, undefined);
+
+    // delete_tag
+    const deleteTagResult = await client.callTool({
+      name: 'delete_tag',
+      arguments: { id: createdTag.id },
+    });
+    assert.equal(deleteTagResult.isError, undefined);
+
+    // Create extra tasks for batch operations
+    await client.callTool({ name: 'create_task', arguments: { title: 'Batch A' } });
+    await client.callTool({ name: 'create_task', arguments: { title: 'Batch B' } });
+
+    // batch_complete
+    const batchCompleteResult = await client.callTool({
+      name: 'batch_complete',
+      arguments: { taskNumbers: [2, 3] },
+    });
+    assert.equal(batchCompleteResult.isError, undefined);
+    assert.ok(Array.isArray(batchCompleteResult.structuredContent.results));
+    assert.equal(batchCompleteResult.structuredContent.results.length, 2);
+    assert.equal(batchCompleteResult.structuredContent.results[0].status, 'completed');
+
+    // batch_uncomplete
+    const batchUncompleteResult = await client.callTool({
+      name: 'batch_uncomplete',
+      arguments: { taskNumbers: [2] },
+    });
+    assert.equal(batchUncompleteResult.isError, undefined);
+    assert.equal(batchUncompleteResult.structuredContent.results[0].status, 'uncompleted');
+
+    // batch_archive
+    const batchArchiveResult = await client.callTool({
+      name: 'batch_archive',
+      arguments: { taskNumbers: [3] },
+    });
+    assert.equal(batchArchiveResult.isError, undefined);
+    assert.equal(batchArchiveResult.structuredContent.results[0].status, 'archived');
+
+    // export_tasks
+    const exportResult = await client.callTool({ name: 'export_tasks', arguments: {} });
+    assert.equal(exportResult.isError, undefined);
+    assert.ok(exportResult.structuredContent.exported_at);
+    assert.ok(Array.isArray(exportResult.structuredContent.todos));
+    assert.ok(exportResult.structuredContent.stats.totalTodos >= 1);
+
+    // Verify preview text is present on read tools
+    const searchResult = await client.callTool({
+      name: 'search_tasks',
+      arguments: { query: 'User one' },
+    });
+    assert.ok(searchResult.content?.length > 0 || searchResult.structuredContent);
+
+    // Verify get_task returns rich detail
+    const getTaskResult = await client.callTool({
+      name: 'get_task',
+      arguments: { taskNumber: 1 },
+    });
+    assert.equal(getTaskResult.structuredContent.task.title, 'User one task');
+    assert.ok(getTaskResult.content?.some((c) => c.type === 'text'));
+  } finally {
+    if (clientTransport) {
+      await clientTransport.close();
+    }
+    await closeServer(mcpServer);
+    await closeServer(backendServer);
+  }
+});
+
 test('lifeline-mcp reports scope failures clearly for write tools', async () => {
   process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
   process.env.MCP_API_KEY_PEPPER = 'pepper';
@@ -490,6 +709,10 @@ test('lifeline-mcp reports scope failures clearly for write tools', async () => 
     updateTodo: taskStore.updateTodo,
     deleteTodo: taskStore.deleteTodo,
     setTodoCompletion: taskStore.setTodoCompletion,
+    createTag: taskStore.createTag,
+    listTags: taskStore.listTags,
+    updateTag: taskStore.updateTag,
+    deleteTag: taskStore.deleteTag,
   }));
   backendApp.use(errorHandler);
 
@@ -569,6 +792,10 @@ test('lifeline-mcp rejects conflicting id and taskNumber selectors for mutations
     updateTodo: taskStore.updateTodo,
     deleteTodo: taskStore.deleteTodo,
     setTodoCompletion: taskStore.setTodoCompletion,
+    createTag: taskStore.createTag,
+    listTags: taskStore.listTags,
+    updateTag: taskStore.updateTag,
+    deleteTag: taskStore.deleteTag,
   }));
   backendApp.use(errorHandler);
 

@@ -10,6 +10,7 @@ function createInternalMcpTaskWriteRouter(dependencies) {
   router.use(requireInternalMcpPrincipal());
 
   router.post('/', validateTodoCreate, handlers.createTask);
+  router.post('/batch', handlers.batchAction);
   router.patch('/:id', validateTodoUpdate, handlers.updateTask);
   router.post('/:id/complete', handlers.completeTask);
   router.post('/:id/uncomplete', handlers.uncompleteTask);
