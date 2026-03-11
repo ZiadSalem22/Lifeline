@@ -179,6 +179,18 @@ So the canonical product model is:
 - archived tasks are intentionally out of the active working set
 - unarchive can restore a task to active visibility where supported by the application flow
 
+### Archive-first lifecycle in MCP
+
+Through the MCP agent interface, archive is the primary removal action:
+
+- `archive_task` marks a task as archived
+- `restore_task` brings an archived task back to active status
+- `batch_restore` restores multiple archived tasks at once
+- `delete_task` is deprecated in favor of `archive_task` and retained only for backward compatibility
+- Mutations (update, complete, uncomplete) on archived tasks are blocked with a `409 TASK_ARCHIVED` response — the agent must restore the task first
+
+This archive-first model is formalized in [ADR 0004](../adr/0004-archive-first-lifecycle.md).
+
 ### Hard deletion context
 
 The product does have true destructive deletion in account reset workflows, where user-scoped data is removed in bulk.

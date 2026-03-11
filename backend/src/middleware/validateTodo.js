@@ -25,7 +25,13 @@ const todoSchemaCreate = Joi.object({
   duration: Joi.number().integer().min(0).max(1440).optional(),
   priority: Joi.string().valid('high','medium','low').optional(),
   dueTime: Joi.string().allow('', null).optional(),
-  subtasks: Joi.array().items(Joi.object()).optional(),
+  subtasks: Joi.array().items(Joi.object({
+    subtaskId: Joi.string().uuid().optional(),
+    title: Joi.string().trim().min(1).max(500).required(),
+    isCompleted: Joi.boolean().optional(),
+    position: Joi.number().integer().positive().optional(),
+    id: Joi.alternatives(Joi.string(), Joi.number()).optional(),
+  }).unknown(true)).max(50).optional(),
 });
 
 const todoSchemaUpdate = Joi.object({
@@ -46,7 +52,13 @@ const todoSchemaUpdate = Joi.object({
   duration: Joi.number().integer().min(0).max(1440).optional(),
   priority: Joi.string().valid('high','medium','low').optional(),
   dueTime: Joi.string().allow('', null).optional(),
-  subtasks: Joi.array().items(Joi.object()).optional(),
+  subtasks: Joi.array().items(Joi.object({
+    subtaskId: Joi.string().uuid().optional(),
+    title: Joi.string().trim().min(1).max(500).required(),
+    isCompleted: Joi.boolean().optional(),
+    position: Joi.number().integer().positive().optional(),
+    id: Joi.alternatives(Joi.string(), Joi.number()).optional(),
+  }).unknown(true)).max(50).optional(),
 });
 
 function validate(schema) {

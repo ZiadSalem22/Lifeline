@@ -283,4 +283,72 @@ export class LifelineBackendClient {
       body: { action, taskNumbers },
     });
   }
+
+  async restoreTask(principal, id) {
+    return this.request({
+      method: 'POST',
+      path: `/tasks/${encodeURIComponent(String(id))}/restore`,
+      principal,
+    });
+  }
+
+  async listTasksByWindow(principal, windowToken, options = {}) {
+    return this.request({
+      method: 'GET',
+      path: `/tasks/window/${encodeURIComponent(String(windowToken))}`,
+      principal,
+      query: options,
+    });
+  }
+
+  async findSimilarTasks(principal, options = {}) {
+    return this.request({
+      method: 'GET',
+      path: '/tasks/similar',
+      principal,
+      query: options,
+    });
+  }
+
+  async addSubtask(principal, taskId, payload) {
+    return this.request({
+      method: 'POST',
+      path: `/tasks/${encodeURIComponent(String(taskId))}/subtasks`,
+      principal,
+      body: payload,
+    });
+  }
+
+  async completeSubtask(principal, taskId, subtaskId) {
+    return this.request({
+      method: 'POST',
+      path: `/tasks/${encodeURIComponent(String(taskId))}/subtasks/${encodeURIComponent(String(subtaskId))}/complete`,
+      principal,
+    });
+  }
+
+  async uncompleteSubtask(principal, taskId, subtaskId) {
+    return this.request({
+      method: 'POST',
+      path: `/tasks/${encodeURIComponent(String(taskId))}/subtasks/${encodeURIComponent(String(subtaskId))}/uncomplete`,
+      principal,
+    });
+  }
+
+  async updateSubtask(principal, taskId, subtaskId, payload) {
+    return this.request({
+      method: 'PATCH',
+      path: `/tasks/${encodeURIComponent(String(taskId))}/subtasks/${encodeURIComponent(String(subtaskId))}`,
+      principal,
+      body: payload,
+    });
+  }
+
+  async removeSubtask(principal, taskId, subtaskId) {
+    return this.request({
+      method: 'DELETE',
+      path: `/tasks/${encodeURIComponent(String(taskId))}/subtasks/${encodeURIComponent(String(subtaskId))}`,
+      principal,
+    });
+  }
 }

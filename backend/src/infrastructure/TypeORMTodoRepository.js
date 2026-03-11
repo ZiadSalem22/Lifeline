@@ -109,7 +109,7 @@ class TypeORMTodoRepository extends ITodoRepository {
             .where('todo.user_id = :userId', { userId })
             .distinct(true);
 
-        if (!q && !taskNumber) {
+        if (!filters.includeArchived) {
             qb.andWhere('todo.archived = false');
         }
 
@@ -351,6 +351,19 @@ class TypeORMTodoRepository extends ITodoRepository {
             row.task_number || null,
             row.user_id,
         );
+    }
+
+    async findSimilarByTitle(userId, title, { limit = 5, threshold = 0.3 } = {}) {
+        const rows = await this.repo()
+            .createQueryBuilder('todo')
+            .leftJoinAndSelect('todo.tags', 'tag')
+            .where('todo.user_id = :userId', { userId })
+            .andWhere('similarity(todo.title, :title) > :threshold', { title, threshold })
+            .orderBy('similarity(todo.title, :title)', 'DESC')
+            .setParameter('title', title)
+            .take(limit)
+            .getMany();
+        return rows.map(row => ({ ...this._mapRowToDomain(row), archived: !!row.archived }));
     }
 }
 

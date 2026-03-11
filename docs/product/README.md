@@ -9,6 +9,8 @@ Current product documents:
 - [task-lifecycle.md](task-lifecycle.md)
 - [recurrence-behavior.md](recurrence-behavior.md)
 - [onboarding-profile-and-preferences.md](onboarding-profile-and-preferences.md)
+- [subtask-behavior.md](subtask-behavior.md)
+- [planning-queries.md](planning-queries.md)
 
 Scope of this domain:
 

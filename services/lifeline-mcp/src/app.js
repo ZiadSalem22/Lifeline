@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { getOAuthProtectedResourceMetadataUrl, mcpAuthMetadataRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -10,6 +11,7 @@ import { LifelineBackendClient } from './backend/internalBackendClient.js';
 import { loadConfig } from './config.js';
 import { LifelineMcpError } from './errors.js';
 import { createLifelineMcpServer } from './mcp/serverFactory.js';
+import { rateLimitMiddleware } from './middleware/rateLimiter.js';
 
 function toJsonRpcErrorCode(status) {
   if (status === 400) return -32602;
@@ -96,6 +98,11 @@ export function createApp({
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
 
+  app.use((req, _res, next) => {
+    req.correlationId = req.headers['x-correlation-id'] || randomUUID();
+    next();
+  });
+
   if (oauthEnabled && config.auth0.oauthMetadata) {
     app.use(mcpAuthMetadataRouter({
       oauthMetadata: config.auth0.oauthMetadata,
@@ -126,7 +133,7 @@ export function createApp({
     });
   });
 
-  app.post('/mcp', async (req, res) => {
+  app.post('/mcp', rateLimitMiddleware, async (req, res) => {
     let server = null;
     let transport = null;
 

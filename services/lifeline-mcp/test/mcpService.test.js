@@ -102,7 +102,7 @@ function createInMemoryTaskStore() {
   }
 
   function findTaskByNumber(userId, taskNumber) {
-    return getUserTasks(userId).find((task) => task.taskNumber === taskNumber && !task.archived) || null;
+    return getUserTasks(userId).find((task) => task.taskNumber === taskNumber) || null;
   }
 
   let tagIdCounter = 100;
@@ -115,7 +115,7 @@ function createInMemoryTaskStore() {
       },
       async findById(id, userId) {
         const task = findTaskById(userId, id);
-        return task && !task.archived ? cloneTask(task) : null;
+        return task ? cloneTask(task) : null;
       },
       async countByUser(userId) {
         return getUserTasks(userId).filter((task) => !task.archived).length;
@@ -136,6 +136,19 @@ function createInMemoryTaskStore() {
         if (index >= 0) {
           userTasks.splice(index, 1);
         }
+      },
+      async unarchive(id, userId) {
+        const task = findTaskById(userId, id);
+        if (task) {
+          task.archived = false;
+        }
+      },
+      async findSimilarByTitle(userId, title, { limit = 5 } = {}) {
+        const normalised = title.toLowerCase();
+        return getUserTasks(userId)
+          .filter((t) => !t.archived && t.title.toLowerCase().includes(normalised.slice(0, 4)))
+          .slice(0, limit)
+          .map(cloneTask);
       },
     },
     searchTodos: {
@@ -1008,5 +1021,155 @@ test('lifeline-mcp rejects OAuth bearer tokens with the wrong audience', async (
   } finally {
     await closeServer(server);
     await closeServer(jwks.server);
+  }
+});
+
+test('lifeline-mcp exposes archive, restore, subtask, and window tools end-to-end', async () => {
+  process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+  process.env.MCP_API_KEY_PEPPER = 'pepper';
+
+  const taskStore = createInMemoryTaskStore();
+  const mcpApiKeyRepository = {
+    async findByKeyPrefix(keyPrefix) {
+      if (keyPrefix !== 'lk_rw') return null;
+      return {
+        id: 'key-rw',
+        userId: 'user-1',
+        name: 'RW key',
+        keyPrefix: 'lk_rw',
+        keyHash: hashMcpApiKeySecret('secret-rw', 'pepper'),
+        scopes: ['tasks:read', 'tasks:write'],
+        status: 'active',
+        expiresAt: null,
+        revokedAt: null,
+      };
+    },
+    async recordUsage() {
+      return undefined;
+    },
+  };
+  const userRepository = {
+    async findById(id) {
+      return { id, name: 'User One', role: 'paid' };
+    },
+  };
+  const resolveMcpApiKeyPrincipal = new ResolveMcpApiKeyPrincipal({
+    mcpApiKeyRepository,
+    userRepository,
+    now: () => new Date('2026-03-10T12:00:00.000Z'),
+  });
+
+  const backendApp = express();
+  backendApp.use(express.json());
+  backendApp.use('/internal/mcp', createInternalMcpRouter({
+    mcpApiKeyRepository,
+    userRepository,
+    resolveMcpApiKeyPrincipal,
+    todoRepository: taskStore.todoRepository,
+    searchTodos: taskStore.searchTodos,
+    listTodos: taskStore.listTodos,
+    createTodoForInternalMcp: taskStore.createTodoForInternalMcp,
+    updateTodo: taskStore.updateTodo,
+    deleteTodo: taskStore.deleteTodo,
+    setTodoCompletion: taskStore.setTodoCompletion,
+    createTag: taskStore.createTag,
+    listTags: taskStore.listTags,
+    updateTag: taskStore.updateTag,
+    deleteTag: taskStore.deleteTag,
+    getNow: () => new Date('2026-03-10T12:00:00.000Z'),
+  }));
+  backendApp.use(errorHandler);
+
+  const { server: backendServer, baseUrl: backendBaseUrl } = await listenOnRandomPort(backendApp);
+  const mcpApp = createApp({
+    config: buildMcpConfig({ LIFELINE_BACKEND_BASE_URL: backendBaseUrl }),
+  });
+  const { server: mcpServer, baseUrl: mcpBaseUrl } = await listenOnRandomPort(mcpApp);
+
+  let clientTransport = null;
+  try {
+    const { client, transport } = await createClient(mcpBaseUrl, 'lk_rw.secret-rw');
+    clientTransport = transport;
+
+    // Verify the new tools appear in listing
+    const tools = await client.listTools();
+    const toolNames = tools.tools.map((t) => t.name);
+    for (const expected of [
+      'archive_task', 'restore_task', 'batch_restore',
+      'add_subtask', 'complete_subtask', 'uncomplete_subtask', 'update_subtask', 'remove_subtask',
+    ]) {
+      assert.ok(toolNames.includes(expected), `expected tool ${expected} to be listed`);
+    }
+
+    // Create a task with a dueDate in this_week range (2026-03-10 is tuesday)
+    const createResult = await client.callTool({
+      name: 'create_task',
+      arguments: { title: 'Week task', dueDate: '2026-03-12', priority: 'high' },
+    });
+    assert.equal(createResult.structuredContent.task.title, 'Week task');
+    const weekTaskNumber = createResult.structuredContent.task.taskNumber;
+
+    // archive_task
+    const archiveResult = await client.callTool({
+      name: 'archive_task',
+      arguments: { taskNumber: weekTaskNumber },
+    });
+    assert.equal(archiveResult.isError, undefined);
+
+    // restore_task
+    const restoreResult = await client.callTool({
+      name: 'restore_task',
+      arguments: { taskNumber: weekTaskNumber },
+    });
+    assert.equal(restoreResult.isError, undefined);
+
+    // add_subtask
+    const addSubResult = await client.callTool({
+      name: 'add_subtask',
+      arguments: { taskNumber: weekTaskNumber, title: 'Step 1' },
+    });
+    assert.equal(addSubResult.isError, undefined);
+
+    // Verify the task now has subtasks
+    const getResult = await client.callTool({
+      name: 'get_task',
+      arguments: { taskNumber: weekTaskNumber },
+    });
+    assert.ok(getResult.structuredContent.task.subtasks.length >= 1);
+    const subtaskId = getResult.structuredContent.task.subtasks[0].subtaskId;
+
+    // complete_subtask
+    const completeSubResult = await client.callTool({
+      name: 'complete_subtask',
+      arguments: { taskNumber: weekTaskNumber, subtaskId },
+    });
+    assert.equal(completeSubResult.isError, undefined);
+
+    // uncomplete_subtask
+    const uncompleteSubResult = await client.callTool({
+      name: 'uncomplete_subtask',
+      arguments: { taskNumber: weekTaskNumber, subtaskId },
+    });
+    assert.equal(uncompleteSubResult.isError, undefined);
+
+    // update_subtask
+    const updateSubResult = await client.callTool({
+      name: 'update_subtask',
+      arguments: { taskNumber: weekTaskNumber, subtaskId, title: 'Updated Step 1' },
+    });
+    assert.equal(updateSubResult.isError, undefined);
+
+    // remove_subtask
+    const removeSubResult = await client.callTool({
+      name: 'remove_subtask',
+      arguments: { taskNumber: weekTaskNumber, subtaskId },
+    });
+    assert.equal(removeSubResult.isError, undefined);
+  } finally {
+    if (clientTransport) {
+      await clientTransport.close();
+    }
+    await closeServer(mcpServer);
+    await closeServer(backendServer);
   }
 });

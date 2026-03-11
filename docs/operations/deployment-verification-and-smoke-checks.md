@@ -120,6 +120,18 @@ After a production deployment, the minimum useful checks are:
 8. if OAuth is enabled, obtain a valid Auth0 access token and run at least one MCP `list-tools` or `search_tasks` call over the bearer-token path
 9. review app, MCP, and database container status if anything looks wrong
 
+### Step-09 tool smoke checks
+
+After deploying the step-09 everyday-task-fluency changes, also verify:
+
+10. `list-tools` shows the new tools: `archive_task`, `restore_task`, `list_tasks`, `find_similar_tasks`, `add_subtask`, `complete_subtask`, `uncomplete_subtask`, `update_subtask`, `remove_subtask`
+11. call `search_tasks` — confirms basic backend connectivity
+12. call `list_tasks` with window `this_week` — confirms window-query handler and date-filter logic
+13. call `find_similar_tasks` with a title — confirms pg_trgm extension is active and the GiST index exists
+14. create a test task, `add_subtask`, `complete_subtask`, then `remove_subtask` — confirms subtask CRUD flow
+15. `archive_task` the test task, confirm an `update_task` call returns `409`, then `restore_task` — confirms archive lifecycle guards
+16. call `search_tasks` and `create_task` → `complete_task` → `uncomplete_task` to verify pre-step-09 tools still work (backward-compat)
+
 ## Failure diagnostics currently captured
 
 When deployment fails, the workflow or deploy helper captures:

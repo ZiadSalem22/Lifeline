@@ -1,3 +1,5 @@
+const { normalizeSubtasks } = require('./SubtaskContract');
+
 class Todo {
     constructor(id, title, isCompleted = false, dueDate = null, tags = [], isFlagged = false, duration = 0, priority = 'medium', dueTime = null, subtasks = [], order = 0, description = '', recurrence = null, nextRecurrenceDue = null, originalId = null, taskNumber = null, userId = null) {
         if (!title) throw new Error('Title cannot be empty');
@@ -10,7 +12,7 @@ class Todo {
         this.duration = duration;
         this.priority = priority; // 'high', 'medium', 'low'
         this.dueTime = dueTime; // Time string (HH:mm)
-        this.subtasks = subtasks; // Array of {id, title, isCompleted}
+        this.subtasks = normalizeSubtasks(subtasks); // Array of {subtaskId, title, isCompleted, position}
         this.order = order; // For drag & drop ordering
         this.description = description || '';
         this.recurrence = recurrence; // { type: 'daily'|'weekly'|'monthly'|'custom', endDate: null|string, interval: 1 }

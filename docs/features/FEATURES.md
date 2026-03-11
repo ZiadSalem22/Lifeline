@@ -91,6 +91,21 @@ This inventory uses these labels:
 | Font selection | Current | Part of layout-oriented settings persistence |
 | Week-start preference | Current | Derived from profile and settings, used by statistics/week-based behavior |
 
+### MCP agent capabilities
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Subtask CRUD via MCP | Current | Add, complete, uncomplete, update, remove individual subtasks through agent tools |
+| Stable subtask identity | Current | Each subtask carries a UUID `subtaskId` for reliable agent references |
+| Archive-first task removal | Current | `archive_task` is the primary removal action; `delete_task` is deprecated |
+| Restore archived tasks | Current | `restore_task` and `batch_restore` bring tasks back to active status |
+| Archive mutation guards | Current | Update, complete, and uncomplete on archived tasks return 409 with restore instructions |
+| Window-based planning queries | Current | `list_tasks` (with `window` parameter) supports this_week, next_week, this_month, next_month, overdue, YYYY-MM |
+| Similarity search | Current | `find_similar_tasks` uses pg_trgm trigram matching to detect near-duplicate titles |
+| Optimistic concurrency | Current | Update operations support If-Match / expectedUpdatedAt to detect stale edits |
+| Correlation IDs | Current | MCP requests carry X-Correlation-ID for request tracing |
+| Rate limiting | Current | 120 requests per minute per principal on the MCP HTTP endpoint |
+
 ## Current constraints and caveats
 
 ### Free-tier limits

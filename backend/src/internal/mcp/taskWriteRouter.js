@@ -14,6 +14,7 @@ function createInternalMcpTaskWriteRouter(dependencies) {
   router.patch('/:id', validateTodoUpdate, handlers.updateTask);
   router.post('/:id/complete', handlers.completeTask);
   router.post('/:id/uncomplete', handlers.uncompleteTask);
+  router.post('/:id/restore', handlers.restoreTask);
   router.delete('/:id', handlers.deleteTask);
 
   return router;

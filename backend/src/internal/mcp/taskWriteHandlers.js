@@ -15,7 +15,7 @@ const MUTABLE_UPDATE_FIELDS = Object.freeze([
 ]);
 
 function assertNoUnsupportedTodoUpdateFields(payload = {}) {
-  const unsupportedFields = Object.keys(payload).filter((fieldName) => !MUTABLE_UPDATE_FIELDS.includes(fieldName));
+  const unsupportedFields = Object.keys(payload).filter((fieldName) => !MUTABLE_UPDATE_FIELDS.includes(fieldName) && fieldName !== 'expectedUpdatedAt');
   if (unsupportedFields.length > 0) {
     throw new ValidationError(`Unsupported update fields: ${unsupportedFields.join(', ')}.`);
   }
@@ -77,6 +77,18 @@ function createInternalTaskWriteHandlers({
           return res.status(404).json({ status: 'error', message: 'Task not found.' });
         }
 
+        if (existingTask.archived) {
+          return res.status(409).json({ status: 'error', message: 'Cannot update an archived task. Restore it first.' });
+        }
+
+        const expectedUpdatedAt = req.headers['if-match'] || req.body.expectedUpdatedAt;
+        if (expectedUpdatedAt) {
+          const actual = existingTask.updated_at || existingTask.updatedAt;
+          if (actual && new Date(expectedUpdatedAt).getTime() !== new Date(actual).getTime()) {
+            return res.status(409).json({ status: 'error', code: 'STALE_UPDATE', message: 'Task was modified since you last read it. Re-fetch and retry.' });
+          }
+        }
+
         assertNoUnsupportedTodoUpdateFields(req.body);
         const updates = pickAllowedTodoUpdates(req.body);
         const task = await updateTodo.execute(userId, existingTask.id, updates);
@@ -105,6 +117,10 @@ function createInternalTaskWriteHandlers({
           return res.status(404).json({ status: 'error', message: 'Task not found.' });
         }
 
+        if (existingTask.archived) {
+          return res.status(409).json({ status: 'error', message: 'Cannot complete an archived task. Restore it first.' });
+        }
+
         const task = await setTodoCompletion.execute(userId, existingTask.id, true);
         return res.json({
           task: normalizeTaskForInternalMcp(task),
@@ -126,6 +142,10 @@ function createInternalTaskWriteHandlers({
 
         if (!existingTask) {
           return res.status(404).json({ status: 'error', message: 'Task not found.' });
+        }
+
+        if (existingTask.archived) {
+          return res.status(409).json({ status: 'error', message: 'Cannot uncomplete an archived task. Restore it first.' });
         }
 
         const task = await setTodoCompletion.execute(userId, existingTask.id, false);
@@ -158,11 +178,43 @@ function createInternalTaskWriteHandlers({
       }
     },
 
+    async restoreTask(req, res, next) {
+      try {
+        const userId = req.mcpPrincipal.lifelineUserId;
+        const existingTask = await resolveTaskForUser({
+          todoRepository,
+          userId,
+          id: req.params.id,
+        });
+
+        if (!existingTask) {
+          return res.status(404).json({ status: 'error', message: 'Task not found.' });
+        }
+
+        if (!existingTask.archived) {
+          return res.json({
+            task: normalizeTaskForInternalMcp(existingTask),
+            restored: true,
+            note: 'Task was already active.',
+          });
+        }
+
+        await todoRepository.unarchive(existingTask.id, userId);
+        const restored = await todoRepository.findById(existingTask.id, userId);
+        return res.json({
+          task: normalizeTaskForInternalMcp(restored || existingTask),
+          restored: true,
+        });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
     async batchAction(req, res, next) {
       try {
         const userId = req.mcpPrincipal.lifelineUserId;
         const { action, taskNumbers } = req.body;
-        const ALLOWED_ACTIONS = ['complete', 'uncomplete', 'delete'];
+        const ALLOWED_ACTIONS = ['complete', 'uncomplete', 'delete', 'restore'];
         if (!ALLOWED_ACTIONS.includes(action)) {
           return res.status(400).json({ status: 'error', message: `Invalid action. Allowed: ${ALLOWED_ACTIONS.join(', ')}` });
         }
@@ -179,14 +231,29 @@ function createInternalTaskWriteHandlers({
               continue;
             }
             if (action === 'complete') {
+              if (task.archived) {
+                results.push({ taskNumber: num, status: 'error', reason: 'Cannot complete an archived task.' });
+                continue;
+              }
               await setTodoCompletion.execute(userId, task.id, true);
               results.push({ taskNumber: num, status: 'completed' });
             } else if (action === 'uncomplete') {
+              if (task.archived) {
+                results.push({ taskNumber: num, status: 'error', reason: 'Cannot uncomplete an archived task.' });
+                continue;
+              }
               await setTodoCompletion.execute(userId, task.id, false);
               results.push({ taskNumber: num, status: 'uncompleted' });
             } else if (action === 'delete') {
               await deleteTodo.execute(userId, task.id);
               results.push({ taskNumber: num, status: 'archived' });
+            } else if (action === 'restore') {
+              if (!task.archived) {
+                results.push({ taskNumber: num, status: 'already_active' });
+              } else {
+                await todoRepository.unarchive(task.id, userId);
+                results.push({ taskNumber: num, status: 'restored' });
+              }
             }
           } catch (itemError) {
             results.push({ taskNumber: num, status: 'error', reason: itemError.message || 'Unknown error' });

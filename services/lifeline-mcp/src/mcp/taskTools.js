@@ -132,7 +132,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'search_tasks',
     {
       description:
-        'Search the current user\'s Lifeline tasks. Supports filters: query/q (text search), tags, priority (low/medium/high), status (active/completed), startDate, endDate, flagged, minDuration, maxDuration, sortBy (priority/duration/name/date_desc), page, limit (max 100), taskNumber. Returns compact previews — use get_task with taskNumber for full detail on any specific task.',
+        'Search the current user\'s tasks. Supports: query/q (text search on title/description), tags (array of tag ID strings — use list_tags to find IDs), priority (low/medium/high), status (active/completed), startDate/endDate (YYYY-MM-DD date range), flagged, minDuration/maxDuration, sortBy (priority/duration/name/date_desc), page, limit (max 100), taskNumber (direct lookup). Returns compact previews — use get_task for full detail.',
       inputSchema: searchSchema,
       annotations: {
         readOnlyHint: true,
@@ -335,7 +335,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'create_task',
     {
       description:
-        'Create a new Lifeline task for the current user. Required: title. Optional: description, dueDate (YYYY-MM-DD), dueTime, tags (array of {id, name, color}), isFlagged, duration (minutes, 0-1440), priority (high/medium/low), subtasks, recurrence. Returns the created task with its assigned taskNumber.',
+        'Create a new Lifeline task. Required: title. Optional: description, dueDate (YYYY-MM-DD), dueTime, tags [{id, name, color}], isFlagged, duration (minutes 0-1440), priority (high/medium/low), subtasks [{title}] (subtaskId and position are auto-assigned), recurrence. Recurrence shapes: { mode: "daily", startDate, endDate } for daily instances; { mode: "dateRange", startDate, endDate } for a spanning task; { mode: "specificDays", days: ["monday","wednesday"], startDate, endDate } for selected days. Recurrence cannot be changed after creation.',
       inputSchema: createTaskSchema,
       annotations: {
         readOnlyHint: false,
@@ -355,7 +355,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'update_task',
     {
       description:
-        'Update a Lifeline task. Identify by taskNumber (preferred) or id. Mutable fields: title, description, dueDate, dueTime, tags, isFlagged, duration, priority, subtasks. Provide at least one selector and one field to update.',
+        'Update a Lifeline task. Identify by taskNumber (preferred) or id. Mutable fields: title, description, dueDate, dueTime, tags, isFlagged, duration, priority, subtasks (whole-array replacement). Recurrence cannot be changed after creation. Archived tasks must be restored first.',
       inputSchema: updateTaskSchema,
       annotations: {
         readOnlyHint: false,
@@ -420,7 +420,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'delete_task',
     {
       description:
-        'Archive-remove a Lifeline task from the active set. This archives the task — it does not permanently delete it. Identify by taskNumber (preferred) or id. This action is destructive and cannot be easily undone from MCP.',
+        'Deprecated — use archive_task instead. Archives a Lifeline task (soft-delete, not permanent). Identify by taskNumber (preferred) or id. Use restore_task to undo.',
       inputSchema: selectorSchema,
       annotations: {
         readOnlyHint: false,
@@ -532,6 +532,263 @@ export function registerTaskTools(server, { principal, backendClient }) {
       const result = await backendClient.batchAction(principal, { action: 'delete', taskNumbers: input.taskNumbers });
       const summary = (result.results || []).map((r) => `#${r.taskNumber}: ${r.status}`).join(', ');
       return createToolSuccessResult(result, `Batch archive: ${summary}`);
+    }),
+  );
+
+  // -------------------------------------------------------------------
+  // ARCHIVE/RESTORE TOOLS (Phase 2 — archive-first lifecycle)
+  // -------------------------------------------------------------------
+
+  server.registerTool(
+    'archive_task',
+    {
+      description:
+        'Archive a Lifeline task, removing it from the active set. This is the recommended way to remove tasks. The task can be restored later with restore_task. Identify by taskNumber (preferred) or id.',
+      inputSchema: selectorSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.deleteTask(principal, resolvedId);
+      return createToolSuccessResult(result, `Archived task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}.`);
+    }),
+  );
+
+  server.registerTool(
+    'restore_task',
+    {
+      description:
+        'Restore an archived Lifeline task back to the active set. Identify by taskNumber (preferred) or id. Use this to undo an archive_task or delete_task operation.',
+      inputSchema: selectorSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.restoreTask(principal, resolvedId);
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Restored task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}: ${task.title || ''}`);
+    }),
+  );
+
+  server.registerTool(
+    'batch_restore',
+    {
+      description:
+        'Restore multiple archived tasks back to the active set in one call. Provide an array of task numbers.',
+      inputSchema: batchTaskNumbersSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const result = await backendClient.batchAction(principal, { action: 'restore', taskNumbers: input.taskNumbers });
+      const summary = (result.results || []).map((r) => `#${r.taskNumber}: ${r.status}`).join(', ');
+      return createToolSuccessResult(result, `Batch restore: ${summary}`);
+    }),
+  );
+
+  // -------------------------------------------------------------------
+  // WINDOW QUERY TOOL (Phase 2 — date-window queries)
+  // -------------------------------------------------------------------
+
+  server.registerTool(
+    'list_tasks',
+    {
+      description:
+        'List tasks in a date window. Supported windows: this_week, next_week, this_month, next_month, overdue, or YYYY-MM (specific month). Optional: includeCompleted (boolean). Returns compact previews — use get_task for full detail.',
+      inputSchema: z.object({
+        window: z.string().min(1).describe('Window token: this_week, next_week, this_month, next_month, overdue, or YYYY-MM'),
+        includeCompleted: z.boolean().optional(),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_READ]);
+      const opts = {};
+      if (input.includeCompleted) opts.includeCompleted = 'true';
+      const result = await backendClient.listTasksByWindow(principal, input.window, opts);
+      const tasks = result.tasks || [];
+      const preview = formatTaskListPreview(tasks, { total: result.count, label: `${input.window} tasks` });
+      return createToolSuccessResult(result, preview);
+    }),
+  );
+
+  // -------------------------------------------------------------------
+  // SIMILARITY TOOL (Phase 2 — history-aware retrieval)
+  // -------------------------------------------------------------------
+
+  server.registerTool(
+    'find_similar_tasks',
+    {
+      description:
+        'Find tasks with titles similar to the given text using fuzzy matching. Useful for detecting duplicates before creating a new task, or finding related past tasks. Returns tasks ranked by similarity.',
+      inputSchema: z.object({
+        title: z.string().min(1).max(200).describe('Text to find similar tasks for'),
+        limit: z.coerce.number().int().positive().max(20).optional(),
+        threshold: z.coerce.number().min(0.1).max(1.0).optional(),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_READ]);
+      const result = await backendClient.findSimilarTasks(principal, input);
+      const tasks = result.tasks || [];
+      const preview = formatTaskListPreview(tasks, { total: result.count, label: 'Similar tasks' });
+      return createToolSuccessResult(result, preview);
+    }),
+  );
+
+  // -------------------------------------------------------------------
+  // SUBTASK TOOLS (Phase 2 — subtask operations)
+  // -------------------------------------------------------------------
+
+  const subtaskSelectorSchema = z.object({
+    taskNumber: z.coerce.number().int().positive().optional(),
+    id: z.string().min(1).optional(),
+    subtaskId: z.string().uuid(),
+  }).refine((v) => v.taskNumber || v.id, { message: 'Provide taskNumber or id for the parent task.' });
+
+  const addSubtaskSchema = z.object({
+    taskNumber: z.coerce.number().int().positive().optional(),
+    id: z.string().min(1).optional(),
+    title: z.string().trim().min(1).max(500),
+  }).refine((v) => v.taskNumber || v.id, { message: 'Provide taskNumber or id for the parent task.' });
+
+  const updateSubtaskSchema2 = z.object({
+    taskNumber: z.coerce.number().int().positive().optional(),
+    id: z.string().min(1).optional(),
+    subtaskId: z.string().uuid(),
+    title: z.string().trim().min(1).max(500).optional(),
+    isCompleted: z.boolean().optional(),
+  }).refine((v) => v.taskNumber || v.id, { message: 'Provide taskNumber or id for the parent task.' })
+    .refine((v) => v.title !== undefined || v.isCompleted !== undefined, { message: 'Provide at least one field to update.' });
+
+  server.registerTool(
+    'add_subtask',
+    {
+      description:
+        'Add a new subtask to a Lifeline task. Identify the parent task by taskNumber (preferred) or id. Provide a title for the new subtask. Returns the updated parent task with all subtasks.',
+      inputSchema: addSubtaskSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.addSubtask(principal, resolvedId, { title: input.title });
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Added subtask "${input.title}" to task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}`);
+    }),
+  );
+
+  server.registerTool(
+    'complete_subtask',
+    {
+      description:
+        'Mark a specific subtask as completed. Identify the parent task by taskNumber or id, and the subtask by its subtaskId (UUID). Returns the updated parent task.',
+      inputSchema: subtaskSelectorSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.completeSubtask(principal, resolvedId, input.subtaskId);
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Completed subtask ${input.subtaskId} on task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}`);
+    }),
+  );
+
+  server.registerTool(
+    'uncomplete_subtask',
+    {
+      description:
+        'Mark a specific subtask as not completed. Identify the parent task by taskNumber or id, and the subtask by its subtaskId (UUID). Returns the updated parent task.',
+      inputSchema: subtaskSelectorSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.uncompleteSubtask(principal, resolvedId, input.subtaskId);
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Uncompleted subtask ${input.subtaskId} on task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}`);
+    }),
+  );
+
+  server.registerTool(
+    'update_subtask',
+    {
+      description:
+        'Update a specific subtask\'s title or completion state. Identify the parent task by taskNumber or id, and the subtask by its subtaskId (UUID). Returns the updated parent task.',
+      inputSchema: updateSubtaskSchema2,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const updates = {};
+      if (input.title !== undefined) updates.title = input.title;
+      if (input.isCompleted !== undefined) updates.isCompleted = input.isCompleted;
+      const result = await backendClient.updateSubtask(principal, resolvedId, input.subtaskId, updates);
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Updated subtask ${input.subtaskId} on task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}`);
+    }),
+  );
+
+  server.registerTool(
+    'remove_subtask',
+    {
+      description:
+        'Remove a subtask from a Lifeline task. Identify the parent task by taskNumber or id, and the subtask by its subtaskId (UUID). This permanently removes the subtask. Returns the updated parent task.',
+      inputSchema: subtaskSelectorSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => runTool(async () => {
+      assertPrincipalScopes(principal, [LIFELINE_MCP_SCOPES.TASKS_WRITE]);
+      const resolvedId = await resolveTaskIdForMutation({ backendClient, principal, taskNumber: input.taskNumber, id: input.id });
+      const result = await backendClient.removeSubtask(principal, resolvedId, input.subtaskId);
+      const task = result.task || result;
+      return createToolSuccessResult(result, `Removed subtask ${input.subtaskId} from task ${input.taskNumber ? `#${input.taskNumber}` : resolvedId}`);
     }),
   );
 }
