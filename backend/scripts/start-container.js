@@ -29,10 +29,16 @@ async function main() {
   await runNodeCommand([require.resolve('typeorm/cli.js'), 'migration:run', '-d', './data-source-migrations.js']);
 
   const app = require('../src/index');
+  const { warmUpAuth } = require('../src/middleware/auth0');
   const port = Number(process.env.PORT || 3000);
 
-  const server = app.listen(port, () => {
+  const server = app.listen(port, async () => {
     console.log(`[start-container] Lifeline app listening on port ${port}`);
+    try {
+      await warmUpAuth();
+    } catch (err) {
+      console.warn('[start-container] JWKS pre-warm failed; auth will warm on first request', err.message);
+    }
   });
 
   const shutdown = (signal) => {
