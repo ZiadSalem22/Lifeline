@@ -3,6 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: lifeline-postgres
     restart: unless-stopped
+    mem_limit: 2g
+    memswap_limit: 2g
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lifeline}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -29,6 +31,11 @@ services:
         BUILD_VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
         BUILD_VITE_AUTH0_SCOPE: ${VITE_AUTH0_SCOPE:-openid profile email offline_access}
     restart: unless-stopped
+    mem_limit: 2g
+    memswap_limit: 2g
+    dns:
+      - 1.1.1.1
+      - 8.8.4.4
     depends_on:
       lifeline-postgres:
         condition: service_healthy
@@ -71,6 +78,11 @@ services:
       context: ./services/lifeline-mcp
       dockerfile: Dockerfile
     restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    dns:
+      - 1.1.1.1
+      - 8.8.4.4
     depends_on:
       lifeline-app:
         condition: service_healthy
