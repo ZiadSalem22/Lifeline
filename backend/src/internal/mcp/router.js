@@ -11,8 +11,11 @@ const UpdateTodo = require('../../application/UpdateTodo');
 const TypeORMTodoRepository = require('../../infrastructure/TypeORMTodoRepository');
 const TypeORMMcpApiKeyRepository = require('../../infrastructure/TypeORMMcpApiKeyRepository');
 const TypeORMUserRepository = require('../../infrastructure/TypeORMUserRepository');
+const { CreateTag, ListTags, DeleteTag, UpdateTag } = require('../../application/TagUseCases');
+const TypeORMTagRepository = require('../../infrastructure/TypeORMTagRepository');
 const { requireInternalServiceAuth } = require('../../middleware/requireInternalServiceAuth');
 const { createInternalMcpAuthRouter } = require('./authRouter');
+const { createInternalMcpTagRouter } = require('./tagRouter');
 const { createInternalMcpTaskReadRouter } = require('./taskReadRouter');
 const { createInternalMcpTaskWriteRouter } = require('./taskWriteRouter');
 
@@ -33,6 +36,11 @@ function createInternalMcpRouter(dependencies = {}) {
     || new ResolveMcpOAuthPrincipal({ userRepository });
   const searchTodos = dependencies.searchTodos || new SearchTodos(todoRepository);
   const listTodos = dependencies.listTodos || new ListTodos(todoRepository);
+  const tagRepository = dependencies.tagRepository || new TypeORMTagRepository();
+  const createTag = dependencies.createTag || new CreateTag(tagRepository);
+  const listTags = dependencies.listTags || new ListTags(tagRepository);
+  const updateTag = dependencies.updateTag || new UpdateTag(tagRepository);
+  const deleteTag = dependencies.deleteTag || new DeleteTag(tagRepository);
 
   router.use(requireInternalServiceAuth());
 
@@ -62,6 +70,13 @@ function createInternalMcpRouter(dependencies = {}) {
     updateTodo,
     deleteTodo,
     setTodoCompletion,
+  }));
+
+  router.use('/tags', createInternalMcpTagRouter({
+    createTag,
+    listTags,
+    updateTag,
+    deleteTag,
   }));
 
   return router;

@@ -157,6 +157,47 @@ function createInternalTaskWriteHandlers({
         return next(error);
       }
     },
+
+    async batchAction(req, res, next) {
+      try {
+        const userId = req.mcpPrincipal.lifelineUserId;
+        const { action, taskNumbers } = req.body;
+        const ALLOWED_ACTIONS = ['complete', 'uncomplete', 'delete'];
+        if (!ALLOWED_ACTIONS.includes(action)) {
+          return res.status(400).json({ status: 'error', message: `Invalid action. Allowed: ${ALLOWED_ACTIONS.join(', ')}` });
+        }
+        if (!Array.isArray(taskNumbers) || taskNumbers.length === 0 || taskNumbers.length > 50) {
+          return res.status(400).json({ status: 'error', message: 'taskNumbers must be an array of 1-50 task numbers.' });
+        }
+
+        const results = [];
+        for (const num of taskNumbers) {
+          try {
+            const task = await resolveTaskForUser({ todoRepository, userId, taskNumber: num });
+            if (!task) {
+              results.push({ taskNumber: num, status: 'not_found' });
+              continue;
+            }
+            if (action === 'complete') {
+              await setTodoCompletion.execute(userId, task.id, true);
+              results.push({ taskNumber: num, status: 'completed' });
+            } else if (action === 'uncomplete') {
+              await setTodoCompletion.execute(userId, task.id, false);
+              results.push({ taskNumber: num, status: 'uncompleted' });
+            } else if (action === 'delete') {
+              await deleteTodo.execute(userId, task.id);
+              results.push({ taskNumber: num, status: 'archived' });
+            }
+          } catch (itemError) {
+            results.push({ taskNumber: num, status: 'error', reason: itemError.message || 'Unknown error' });
+          }
+        }
+
+        return res.json({ action, results });
+      } catch (error) {
+        return next(error);
+      }
+    },
   };
 }
 

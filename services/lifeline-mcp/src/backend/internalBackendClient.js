@@ -224,4 +224,63 @@ export class LifelineBackendClient {
       principal,
     });
   }
+
+  async getStatistics(principal) {
+    return this.request({
+      method: 'GET',
+      path: '/tasks/statistics',
+      principal,
+    });
+  }
+
+  async exportTasks(principal) {
+    return this.request({
+      method: 'GET',
+      path: '/tasks/export',
+      principal,
+    });
+  }
+
+  async listTags(principal) {
+    return this.request({
+      method: 'GET',
+      path: '/tags',
+      principal,
+    });
+  }
+
+  async createTag(principal, payload) {
+    return this.request({
+      method: 'POST',
+      path: '/tags',
+      principal,
+      body: payload,
+    });
+  }
+
+  async updateTag(principal, id, payload) {
+    return this.request({
+      method: 'PATCH',
+      path: `/tags/${encodeURIComponent(String(id))}`,
+      principal,
+      body: payload,
+    });
+  }
+
+  async deleteTag(principal, id) {
+    return this.request({
+      method: 'DELETE',
+      path: `/tags/${encodeURIComponent(String(id))}`,
+      principal,
+    });
+  }
+
+  async batchAction(principal, { action, taskNumbers }) {
+    return this.request({
+      method: 'POST',
+      path: '/tasks/batch',
+      principal,
+      body: { action, taskNumbers },
+    });
+  }
 }

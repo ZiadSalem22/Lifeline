@@ -76,6 +76,13 @@ function parseSearchFilters(query = {}) {
   const startDate = query.startDate || query.dueDateFrom || null;
   const endDate = query.endDate || query.dueDateTo || null;
 
+  if (startDate && !ISO_DATE_TOKEN_PATTERN.test(startDate)) {
+    throw new ValidationError('Invalid startDate. Use YYYY-MM-DD format.');
+  }
+  if (endDate && !ISO_DATE_TOKEN_PATTERN.test(endDate)) {
+    throw new ValidationError('Invalid endDate. Use YYYY-MM-DD format.');
+  }
+
   return {
     q: String(query.query || query.q || '').trim(),
     tags: normalizeTagsQueryValue(query.tags || query.tag),
@@ -100,6 +107,39 @@ function createInternalTaskReadHandlers({ todoRepository, searchTodos, listTodos
   }
 
   return {
+    async getStatistics(req, res, next) {
+      try {
+        const userId = req.mcpPrincipal.lifelineUserId;
+        const todos = await listTodos.execute(userId);
+        const tasks = Array.isArray(todos) ? todos : [];
+        const now = getNow();
+        const todayStr = now.toISOString().slice(0, 10);
+
+        const total = tasks.length;
+        const completed = tasks.filter((t) => t.isCompleted).length;
+        const active = total - completed;
+        const flagged = tasks.filter((t) => t.isFlagged && !t.isCompleted).length;
+        const overdue = tasks.filter((t) => {
+          if (t.isCompleted || !t.dueDate) return false;
+          const due = typeof t.dueDate === 'string' ? t.dueDate.slice(0, 10) : '';
+          return due < todayStr;
+        }).length;
+        const withDuration = tasks.filter((t) => !t.isCompleted && t.duration > 0);
+        const totalMinutes = withDuration.reduce((sum, t) => sum + Number(t.duration || 0), 0);
+
+        return res.json({
+          total,
+          active,
+          completed,
+          flagged,
+          overdue,
+          totalActiveMinutes: totalMinutes,
+        });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
     async searchTasks(req, res, next) {
       try {
         const userId = req.mcpPrincipal.lifelineUserId;
@@ -182,6 +222,26 @@ function createInternalTaskReadHandlers({ todoRepository, searchTodos, listTodos
           ordering: 'effectiveDateAsc,orderAsc,taskNumberAsc',
           tasks: normalizeTaskListForInternalMcp(upcomingTasks),
           count: upcomingTasks.length,
+        });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async exportData(req, res, next) {
+      try {
+        const userId = req.mcpPrincipal.lifelineUserId;
+        const todos = await listTodos.execute(userId);
+        const tasks = Array.isArray(todos) ? todos : [];
+
+        const total = tasks.length;
+        const completedCount = tasks.filter((t) => t.isCompleted).length;
+        const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+        return res.json({
+          exported_at: new Date().toISOString(),
+          todos: normalizeTaskListForInternalMcp(tasks),
+          stats: { totalTodos: total, completedCount, completionRate },
         });
       } catch (error) {
         return next(error);
