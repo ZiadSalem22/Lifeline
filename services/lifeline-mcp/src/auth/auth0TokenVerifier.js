@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { AuthError } from '../errors.js';
 
 function logOAuthValidationFailure(message, details = null) {
@@ -34,18 +34,62 @@ function buildScopeList(payload = {}) {
   ]));
 }
 
-function buildTokenError(error) {
+function buildUntrustedTokenSummary(token) {
+  if (!looksLikeJwt(token)) return null;
+
+  try {
+    const payload = decodeJwt(String(token || '').trim());
+
+    return {
+      issuer: typeof payload.iss === 'string' ? payload.iss : null,
+      audience: Array.isArray(payload.aud)
+        ? payload.aud.map((entry) => String(entry || '').trim()).filter(Boolean)
+        : (payload.aud ? [String(payload.aud).trim()] : []),
+      authorizedParty: typeof payload.azp === 'string' ? payload.azp : null,
+      scope: typeof payload.scope === 'string' ? payload.scope : null,
+      permissions: Array.isArray(payload.permissions)
+        ? payload.permissions.map((entry) => String(entry || '').trim()).filter(Boolean)
+        : [],
+      hasSubject: Boolean(payload.sub),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildTokenError(error, { token, config }) {
+  const reason = error?.message || null;
+  const details = {
+    reason,
+    expectedIssuer: config?.auth0?.issuerUrl || null,
+    expectedAudiences: Array.isArray(config?.auth0?.audiences) ? config.auth0.audiences : [],
+    untrustedToken: buildUntrustedTokenSummary(token),
+  };
+
   if (error?.code === 'ERR_JWT_EXPIRED') {
     return new AuthError('OAuth access token has expired.', {
       code: 'oauth_token_expired',
+      details,
+    });
+  }
+
+  if (/unexpected\s+"aud"\s+claim\s+value/i.test(reason || '')) {
+    return new AuthError('OAuth access token audience does not match the Lifeline API.', {
+      code: 'invalid_oauth_token',
+      details,
+    });
+  }
+
+  if (/unexpected\s+"iss"\s+claim\s+value/i.test(reason || '')) {
+    return new AuthError('OAuth access token issuer does not match the configured Auth0 tenant.', {
+      code: 'invalid_oauth_token',
+      details,
     });
   }
 
   return new AuthError('Invalid OAuth access token.', {
     code: 'invalid_oauth_token',
-    details: {
-      reason: error?.message || null,
-    },
+    details,
   });
 }
 
@@ -94,10 +138,9 @@ export function createAuth0TokenVerifier({ config }) {
           throw error;
         }
 
-        logOAuthValidationFailure('invalid_oauth_token', {
-          reason: error?.message || null,
-        });
-        throw buildTokenError(error);
+        const tokenError = buildTokenError(error, { token, config });
+        logOAuthValidationFailure(tokenError.code || 'invalid_oauth_token', tokenError.details || null);
+        throw tokenError;
       }
     },
   };

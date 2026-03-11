@@ -54,6 +54,16 @@ Enable it in the Auth0 Dashboard:
 
 This is important because MCP clients use the RFC 8707 `resource` parameter rather than Auth0's historical `audience`-only flow.
 
+### 1a. Set a tenant Default Audience for generic hosted connectors
+
+Recommended production default:
+
+- tenant **Default Audience**: `https://lifeline-api`
+
+This matters for hosted connector platforms that complete Auth0 login successfully but do not expose explicit `audience` or `resource` controls. Without a Default Audience, those connectors may receive a token for Auth0 `userinfo` instead of a Lifeline API access token.
+
+If the tenant serves multiple unrelated first-party APIs, evaluate the blast radius before changing this setting. For the current Lifeline production shape, the MCP service and the main web app both validate Lifeline API tokens, so `https://lifeline-api` is the correct default.
+
 ### 2. Decide client registration mode
 
 Recommended production default:
@@ -86,6 +96,27 @@ Recommended OAuth API permissions mirror the current MCP tool-layer contract:
 - `tasks:write`
 
 If a token authenticates successfully but does not include the required task scopes, the server will initialize but write or read tools may fail with `scope_denied`.
+
+### 5. Allow offline access for connector refresh-token flows
+
+If hosted connectors request `offline_access`, enable **Allow Offline Access** on the Lifeline API resource server.
+
+Recommended production default:
+
+- Lifeline API `allow_offline_access: true`
+
+Without this, a connector may complete login but fail to keep a usable API session for MCP.
+
+### 6. Add or update a Post-Login Action for Lifeline API tokens
+
+Recommended production default:
+
+- keep the existing custom claims enrichment
+- when the issued access token targets `https://lifeline-api`, add:
+	- `tasks:read`
+	- `tasks:write`
+
+This prevents generic hosted connectors from authenticating successfully but receiving an API token with no MCP-usable task scopes.
 
 ## Deployment behavior
 
@@ -154,6 +185,7 @@ Check:
 - issuer matches the token `iss`
 - audience matches the token `aud`
 - Auth0 Resource Parameter Compatibility Profile is enabled
+- tenant Default Audience is set to `https://lifeline-api` when the client does not explicitly request `audience` or `resource`
 - the token was issued for the MCP resource/API and not only for browser login
 
 ### Token authenticates but tools fail with `scope_denied`
@@ -162,6 +194,7 @@ Check:
 
 - the token contains `tasks:read` and/or `tasks:write`
 - Auth0 API permissions were granted to the client
+- the Post-Login Action adds Lifeline task scopes for `https://lifeline-api` tokens when the connector does not request them explicitly
 - the user completed a fresh consent flow after permissions changed
 
 ## Related canonical documents

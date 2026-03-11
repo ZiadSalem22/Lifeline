@@ -777,6 +777,7 @@ test('lifeline-mcp rejects OAuth bearer tokens with the wrong audience', async (
     assert.equal(response.status, 401);
     const payload = await response.json();
     assert.equal(payload.error.data.code, 'invalid_oauth_token');
+    assert.match(payload.error.message, /audience does not match the Lifeline API/i);
   } finally {
     await closeServer(server);
     await closeServer(jwks.server);

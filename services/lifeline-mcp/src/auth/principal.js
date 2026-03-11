@@ -58,6 +58,6 @@ export function assertPrincipalScopes(principal, requiredScopes = []) {
   if (normalizedRequiredScopes.length === 0) return;
 
   if (!hasRequiredScope(principal, normalizedRequiredScopes)) {
-    throw new ScopeError(`API key is missing required scope: ${normalizedRequiredScopes.join(' or ')}.`);
+    throw new ScopeError(`Authenticated principal is missing required scope: ${normalizedRequiredScopes.join(' or ')}.`);
   }
 }
