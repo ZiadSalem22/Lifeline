@@ -38,6 +38,8 @@ function normalizeTaskForInternalMcp(todo) {
     nextRecurrenceDue: todo.nextRecurrenceDue || null,
     originalId: todo.originalId || null,
     archived: !!todo.archived,
+    createdAt: todo.created_at || todo.createdAt || null,
+    updatedAt: todo.updated_at || todo.updatedAt || null,
   };
 }
 

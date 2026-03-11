@@ -3,9 +3,11 @@ const { normalizeDateOnly, normalizeTaskForInternalMcp, normalizeTaskListForInte
 const {
   ISO_DATE_TOKEN_PATTERN,
   compareTasksForUpcoming,
+  doesTaskOccurInRange,
   doesTaskOccurOnDate,
   isTaskEligibleForUpcoming,
   resolveDateToken,
+  resolveWindowToken,
 } = require('./taskDateFilters');
 const { parsePositiveInteger, resolveTaskForUser } = require('./taskResolution');
 
@@ -91,6 +93,7 @@ function parseSearchFilters(query = {}) {
     startDate,
     endDate,
     flagged: parseBooleanQueryValue(query.flagged, 'flagged'),
+    includeArchived: parseBooleanQueryValue(query.includeArchived, 'includeArchived') || false,
     minDuration,
     maxDuration,
     sortBy,
@@ -101,7 +104,7 @@ function parseSearchFilters(query = {}) {
   };
 }
 
-function createInternalTaskReadHandlers({ todoRepository, searchTodos, listTodos, getNow = () => new Date() }) {
+function createInternalTaskReadHandlers({ todoRepository, searchTodos, listTodos, findSimilarTasks, getNow = () => new Date() }) {
   if (!todoRepository || !searchTodos || !listTodos) {
     throw new Error('todoRepository, searchTodos, and listTodos are required for internal MCP task read handlers');
   }
@@ -242,6 +245,59 @@ function createInternalTaskReadHandlers({ todoRepository, searchTodos, listTodos
           exported_at: new Date().toISOString(),
           todos: normalizeTaskListForInternalMcp(tasks),
           stats: { totalTodos: total, completedCount, completionRate },
+        });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async listTasksByWindow(req, res, next) {
+      try {
+        const windowToken = req.params.windowToken;
+        const includeCompleted = req.query.includeCompleted === 'true';
+        const window = resolveWindowToken(windowToken, getNow());
+        const tasks = await listTodos.execute(req.mcpPrincipal.lifelineUserId);
+        let matched = tasks.filter((task) => doesTaskOccurInRange(task, window.start, window.end));
+
+        if (!includeCompleted) {
+          matched = matched.filter((task) => !task.isCompleted);
+        }
+
+        // Also include overdue active tasks for overdue window
+        if (windowToken === 'overdue') {
+          matched = matched.filter((task) => !task.isCompleted);
+        }
+
+        return res.json({
+          windowToken,
+          resolvedStart: window.start,
+          resolvedEnd: window.end,
+          tasks: normalizeTaskListForInternalMcp(matched),
+          count: matched.length,
+        });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async findSimilarTasksHandler(req, res, next) {
+      try {
+        if (!findSimilarTasks) {
+          return res.status(501).json({ status: 'error', message: 'Similarity search not available.' });
+        }
+        const userId = req.mcpPrincipal.lifelineUserId;
+        const title = String(req.query.title || '').trim();
+        if (!title) {
+          return res.status(400).json({ status: 'error', message: 'title query parameter is required.' });
+        }
+        const limit = parseOptionalPositiveInteger(req.query.limit, 'limit') || 5;
+        const threshold = req.query.threshold ? parseFloat(req.query.threshold) : 0.3;
+
+        const tasks = await findSimilarTasks.execute(userId, { title, limit, threshold });
+        return res.json({
+          query: title,
+          tasks: normalizeTaskListForInternalMcp(tasks),
+          count: tasks.length,
         });
       } catch (error) {
         return next(error);

@@ -89,7 +89,13 @@ export function formatSingleTaskPreview(task) {
     lines.push(`Tags: ${task.tags.map((t) => t.name).join(', ')}`);
   }
   if (Array.isArray(task.subtasks) && task.subtasks.length > 0) {
-    lines.push(`Subtasks: ${task.subtasks.length}`);
+    const completed = task.subtasks.filter((s) => s.isCompleted).length;
+    lines.push(`Subtasks: ${completed}/${task.subtasks.length} completed`);
+    for (const st of task.subtasks) {
+      const check = st.isCompleted ? '[x]' : '[ ]';
+      const sid = st.subtaskId ? ` (${st.subtaskId})` : '';
+      lines.push(`  ${check} ${st.title || '(untitled)'}${sid}`);
+    }
   }
   const recHint = formatRecurrenceHint(task.recurrence);
   if (recHint) lines.push(`Recurrence: ${recHint}`);

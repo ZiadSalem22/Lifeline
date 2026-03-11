@@ -18,6 +18,9 @@ const { createInternalMcpAuthRouter } = require('./authRouter');
 const { createInternalMcpTagRouter } = require('./tagRouter');
 const { createInternalMcpTaskReadRouter } = require('./taskReadRouter');
 const { createInternalMcpTaskWriteRouter } = require('./taskWriteRouter');
+const { createInternalMcpSubtaskRouter } = require('./subtaskRouter');
+const { SubtaskOperations } = require('../../application/SubtaskOperations');
+const { FindSimilarTasks } = require('../../application/FindSimilarTasks');
 
 function createInternalMcpRouter(dependencies = {}) {
   const router = express.Router();
@@ -36,6 +39,7 @@ function createInternalMcpRouter(dependencies = {}) {
     || new ResolveMcpOAuthPrincipal({ userRepository });
   const searchTodos = dependencies.searchTodos || new SearchTodos(todoRepository);
   const listTodos = dependencies.listTodos || new ListTodos(todoRepository);
+  const findSimilarTasks = dependencies.findSimilarTasks || new FindSimilarTasks(todoRepository);
   const tagRepository = dependencies.tagRepository || new TypeORMTagRepository();
   const createTag = dependencies.createTag || new CreateTag(tagRepository);
   const listTags = dependencies.listTags || new ListTags(tagRepository);
@@ -61,6 +65,7 @@ function createInternalMcpRouter(dependencies = {}) {
     todoRepository,
     searchTodos,
     listTodos,
+    findSimilarTasks,
     getNow: dependencies.getNow,
   }));
 
@@ -70,6 +75,12 @@ function createInternalMcpRouter(dependencies = {}) {
     updateTodo,
     deleteTodo,
     setTodoCompletion,
+  }));
+
+  const subtaskOperations = dependencies.subtaskOperations || new SubtaskOperations(todoRepository);
+  router.use('/tasks/:taskId/subtasks', createInternalMcpSubtaskRouter({
+    todoRepository,
+    subtaskOperations,
   }));
 
   router.use('/tags', createInternalMcpTagRouter({

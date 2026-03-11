@@ -10,6 +10,8 @@ Current backend documents:
 - [mcp-authentication-and-principal-resolution.md](mcp-authentication-and-principal-resolution.md)
 - [todo-services-and-use-cases.md](todo-services-and-use-cases.md)
 - [tag-search-stats-and-data-transfer-services.md](tag-search-stats-and-data-transfer-services.md)
+- [subtask-operations.md](subtask-operations.md)
+- [similarity-search.md](similarity-search.md)
 
 Use this section for:
 

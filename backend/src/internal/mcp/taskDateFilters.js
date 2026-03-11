@@ -1,8 +1,9 @@
-const { addDays, format } = require('date-fns');
+const { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } = require('date-fns');
 const { ValidationError } = require('../../utils/errors');
 const { normalizeDateOnly } = require('./taskPayloads');
 
 const ISO_DATE_TOKEN_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const YYYY_MM_PATTERN = /^\d{4}-\d{2}$/;
 
 function formatDateToken(date) {
   return format(date, 'yyyy-MM-dd');
@@ -22,6 +23,76 @@ function resolveDateToken(dateToken, now = new Date()) {
   }
 
   throw new ValidationError('Invalid date token. Use today, tomorrow, or YYYY-MM-DD.');
+}
+
+/**
+ * Resolves a window token to { start, end } date strings.
+ * Supported tokens: this_week, next_week, this_month, next_month, overdue, YYYY-MM.
+ * @param {string} windowToken
+ * @param {Date} now
+ * @param {{ startDayOfWeek?: number }} options - startDayOfWeek: 0=Sun..6=Sat
+ * @returns {{ start: string, end: string }}
+ */
+function resolveWindowToken(windowToken, now = new Date(), options = {}) {
+  const weekStartsOn = typeof options.startDayOfWeek === 'number' ? options.startDayOfWeek : 0;
+
+  if (windowToken === 'this_week') {
+    return {
+      start: formatDateToken(startOfWeek(now, { weekStartsOn })),
+      end: formatDateToken(endOfWeek(now, { weekStartsOn })),
+    };
+  }
+
+  if (windowToken === 'next_week') {
+    const nextWeekDay = addDays(now, 7);
+    return {
+      start: formatDateToken(startOfWeek(nextWeekDay, { weekStartsOn })),
+      end: formatDateToken(endOfWeek(nextWeekDay, { weekStartsOn })),
+    };
+  }
+
+  if (windowToken === 'this_month') {
+    return {
+      start: formatDateToken(startOfMonth(now)),
+      end: formatDateToken(endOfMonth(now)),
+    };
+  }
+
+  if (windowToken === 'next_month') {
+    const nextMonthDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return {
+      start: formatDateToken(startOfMonth(nextMonthDay)),
+      end: formatDateToken(endOfMonth(nextMonthDay)),
+    };
+  }
+
+  if (windowToken === 'overdue') {
+    return {
+      start: '2000-01-01',
+      end: formatDateToken(addDays(now, -1)),
+    };
+  }
+
+  if (YYYY_MM_PATTERN.test(String(windowToken || ''))) {
+    const [year, month] = windowToken.split('-').map(Number);
+    const monthDate = new Date(year, month - 1, 1);
+    return {
+      start: formatDateToken(startOfMonth(monthDate)),
+      end: formatDateToken(endOfMonth(monthDate)),
+    };
+  }
+
+  throw new ValidationError('Invalid window token. Use this_week, next_week, this_month, next_month, overdue, or YYYY-MM.');
+}
+
+/**
+ * Tests whether a task occurs within the given date range [start, end] inclusive.
+ * Considers date-range recurrence spans.
+ */
+function doesTaskOccurInRange(todo, rangeStart, rangeEnd) {
+  const span = getTaskDateSpan(todo);
+  if (!span) return false;
+  return span.start <= rangeEnd && span.end >= rangeStart;
 }
 
 function getTaskDateSpan(todo) {
@@ -82,10 +153,13 @@ function compareTasksForUpcoming(a, b, fromDate) {
 
 module.exports = {
   ISO_DATE_TOKEN_PATTERN,
+  YYYY_MM_PATTERN,
   compareTasksForUpcoming,
+  doesTaskOccurInRange,
   doesTaskOccurOnDate,
   getTaskDateSpan,
   getUpcomingSortDate,
   isTaskEligibleForUpcoming,
   resolveDateToken,
+  resolveWindowToken,
 };

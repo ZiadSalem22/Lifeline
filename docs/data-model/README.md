@@ -9,6 +9,7 @@ Current canonical documents:
 - [users-profiles-and-settings.md](users-profiles-and-settings.md)
 - [todos-tags-and-relationships.md](todos-tags-and-relationships.md)
 - [recurrence-subtasks-and-task-numbering.md](recurrence-subtasks-and-task-numbering.md)
+- [subtask-contract.md](subtask-contract.md)
 - [migrations-and-historical-schema-context.md](migrations-and-historical-schema-context.md)
 
 Primary implementation truth for this domain lives under:

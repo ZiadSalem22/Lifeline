@@ -125,6 +125,7 @@ describe('internal MCP task read routes', () => {
       startDate: '2026-03-01',
       endDate: '2026-03-10',
       flagged: true,
+      includeArchived: false,
       minDuration: 15,
       maxDuration: 45,
       sortBy: 'priority',
