@@ -588,6 +588,7 @@ test('lifeline-mcp exposes statistics, tags, batch, and export tools end-to-end'
     const tagsResult = await client.callTool({ name: 'list_tags', arguments: {} });
     assert.ok(Array.isArray(tagsResult.structuredContent.tags));
     assert.equal(tagsResult.structuredContent.tags[0].name, 'Inbox');
+    assert.match(tagsResult.content[0].text, /\[id: tag-1\]/);
 
     // create_tag
     const createTagResult = await client.callTool({
@@ -611,6 +612,13 @@ test('lifeline-mcp exposes statistics, tags, batch, and export tools end-to-end'
       arguments: { id: createdTag.id },
     });
     assert.equal(deleteTagResult.isError, undefined);
+
+    const taskWithNamedTags = await client.callTool({
+      name: 'update_task',
+      arguments: { taskNumber: 1, tags: ['Inbox'] },
+    });
+    assert.equal(taskWithNamedTags.isError, undefined);
+    assert.equal(taskWithNamedTags.structuredContent.task.tags[0].id, 'tag-1');
 
     // Create extra tasks for batch operations
     await client.callTool({ name: 'create_task', arguments: { title: 'Batch A' } });

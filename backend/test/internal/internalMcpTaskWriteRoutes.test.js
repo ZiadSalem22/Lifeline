@@ -4,6 +4,7 @@ const { CreateTodoForInternalMcp } = require('../../src/application/CreateTodoFo
 const SetTodoCompletion = require('../../src/application/SetTodoCompletion');
 const { errorHandler } = require('../../src/middleware/errorHandler');
 const { createInternalMcpRouter } = require('../../src/internal/mcp/router');
+const { formatDateOnly } = require('../../src/internal/mcp/taskDueDate');
 const {
   INTERNAL_MCP_SHARED_SECRET_HEADER,
   MCP_PRINCIPAL_HEADERS,
@@ -53,6 +54,7 @@ function makeApp({
   userRepository,
   createTodo,
   createTodoForInternalMcp,
+  listTags,
   updateTodo,
   deleteTodo,
   setTodoCompletion,
@@ -74,6 +76,7 @@ function makeApp({
       execute: jest.fn(async () => createTask()),
     },
     createTodoForInternalMcp: createTodoForInternalMcp,
+    listTags: listTags,
     updateTodo: updateTodo || {
       execute: jest.fn(async () => createTask()),
     },
@@ -96,12 +99,15 @@ function makeApp({
 
 describe('internal MCP task write routes', () => {
   const originalSecret = process.env.MCP_INTERNAL_SHARED_SECRET;
+  const frozenNow = new Date('2026-03-21T12:00:00.000Z');
 
   beforeEach(() => {
     process.env.MCP_INTERNAL_SHARED_SECRET = 'shared-secret';
+    jest.useFakeTimers().setSystemTime(frozenNow);
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     if (typeof originalSecret === 'undefined') {
       delete process.env.MCP_INTERNAL_SHARED_SECRET;
     } else {
@@ -199,6 +205,96 @@ describe('internal MCP task write routes', () => {
     expect(res.body.task.taskNumber).toBe(22);
   });
 
+  it('defaults create dueDate to today when MCP omits it', async () => {
+    const todoRepository = {
+      countByUser: jest.fn(async () => 0),
+      findById: jest.fn(),
+      findByTaskNumber: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+    };
+    const userRepository = {
+      findById: jest.fn(async () => ({ id: 'user-1', role: 'paid' })),
+    };
+    const createTodo = {
+      execute: jest.fn(async () => createTask({ dueDate: formatDateOnly(frozenNow) })),
+    };
+    const createTodoForInternalMcp = new CreateTodoForInternalMcp({ userRepository, todoRepository, createTodo });
+
+    const app = makeApp({ todoRepository, userRepository, createTodo, createTodoForInternalMcp });
+    await withInternalAuth(
+      request(app)
+        .post('/internal/mcp/tasks')
+        .send({ title: 'Default due date task' }),
+    ).expect(201);
+
+    expect(createTodo.execute).toHaveBeenCalledWith(
+      'user-1',
+      'Default due date task',
+      '2026-03-21',
+      [],
+      undefined,
+      undefined,
+      'medium',
+      null,
+      [],
+      '',
+      null,
+    );
+  });
+
+  it('defaults update dueDate to today when an unscheduled MCP task is updated without one', async () => {
+    const todoRepository = {
+      countByUser: jest.fn(async () => 0),
+      findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7, dueDate: null }) : null)),
+      findByTaskNumber: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+    };
+    const updateTodo = {
+      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, title: updates.title, dueDate: updates.dueDate })),
+    };
+
+    const app = makeApp({ todoRepository, updateTodo });
+    const res = await withInternalAuth(
+      request(app)
+        .patch('/internal/mcp/tasks/task-7')
+        .send({ title: 'Updated title' }),
+    ).expect(200);
+
+    expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
+      title: 'Updated title',
+      dueDate: '2026-03-21',
+    });
+    expect(res.body.task.dueDate).toBe('2026-03-21');
+  });
+
+  it('keeps an existing dueDate on update when MCP omits the field', async () => {
+    const todoRepository = {
+      countByUser: jest.fn(async () => 0),
+      findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7, dueDate: '2026-03-30' }) : null)),
+      findByTaskNumber: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+    };
+    const updateTodo = {
+      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, title: updates.title, dueDate: updates.dueDate })),
+    };
+
+    const app = makeApp({ todoRepository, updateTodo });
+    const res = await withInternalAuth(
+      request(app)
+        .patch('/internal/mcp/tasks/task-7')
+        .send({ title: 'Updated title' }),
+    ).expect(200);
+
+    expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
+      title: 'Updated title',
+      dueDate: '2026-03-30',
+    });
+    expect(res.body.task.dueDate).toBe('2026-03-30');
+  });
+
   it('rejects create when the free-tier task cap is reached', async () => {
     const todoRepository = {
       countByUser: jest.fn(async () => 200),
@@ -250,10 +346,76 @@ describe('internal MCP task write routes', () => {
     expect(todoRepository.findById).toHaveBeenCalledWith('task-7', 'user-1');
     expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
       title: 'Updated title',
+      dueDate: '2026-03-07',
       priority: 'low',
     });
     expect(res.body.task.title).toBe('Updated title');
     expect(res.body.task.priority).toBe('low');
+  });
+
+  it('resolves update tags from MCP tag names before validation', async () => {
+    const todoRepository = {
+      countByUser: jest.fn(async () => 0),
+      findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7 }) : null)),
+      findByTaskNumber: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+    };
+    const listTags = {
+      execute: jest.fn(async () => [
+        createTag({ id: 'tag-personal', name: 'Personal', color: '#10B981', isDefault: true }),
+        createTag({ id: 'tag-health', name: 'Health', color: '#EF4444', isDefault: true }),
+      ]),
+    };
+    const updateTodo = {
+      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, tags: updates.tags, dueDate: updates.dueDate })),
+    };
+
+    const app = makeApp({ todoRepository, listTags, updateTodo });
+    const res = await withInternalAuth(
+      request(app)
+        .patch('/internal/mcp/tasks/task-7')
+        .send({ tags: ['Personal', { name: 'Health' }] }),
+    ).expect(200);
+
+    expect(listTags.execute).toHaveBeenCalledWith('user-1');
+    expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
+      dueDate: '2026-03-07',
+      tags: [
+        expect.objectContaining({ id: 'tag-personal', name: 'Personal', color: '#10B981' }),
+        expect.objectContaining({ id: 'tag-health', name: 'Health', color: '#EF4444' }),
+      ],
+    });
+    expect(res.body.task.tags).toEqual([
+      expect.objectContaining({ id: 'tag-personal', name: 'Personal', color: '#10B981' }),
+      expect.objectContaining({ id: 'tag-health', name: 'Health', color: '#EF4444' }),
+    ]);
+  });
+
+  it('rejects unknown MCP tag names with a clear validation error', async () => {
+    const todoRepository = {
+      countByUser: jest.fn(async () => 0),
+      findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7 }) : null)),
+      findByTaskNumber: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+    };
+    const listTags = {
+      execute: jest.fn(async () => [createTag({ id: 'tag-personal', name: 'Personal', color: '#10B981', isDefault: true })]),
+    };
+    const updateTodo = {
+      execute: jest.fn(async () => createTask()),
+    };
+
+    const app = makeApp({ todoRepository, listTags, updateTodo });
+    const res = await withInternalAuth(
+      request(app)
+        .patch('/internal/mcp/tasks/task-7')
+        .send({ tags: ['Missing Tag'] }),
+    ).expect(400);
+
+    expect(updateTodo.execute).not.toHaveBeenCalled();
+    expect(res.body.message).toMatch(/Tag "Missing Tag" was not found/i);
   });
 
   it('rejects unsupported internal update fields explicitly', async () => {

@@ -32,4 +32,9 @@ describe('validateTodo middleware', () => {
     const app = appWith(validateTodoUpdate);
     await request(app).post('/create').send({ description: 'x'.repeat(2001) }).expect(400);
   });
+
+  it('accepts date-only dueDate on update', async () => {
+    const app = appWith(validateTodoUpdate);
+    await request(app).post('/create').send({ dueDate: '2026-03-21' }).expect(200);
+  });
 });

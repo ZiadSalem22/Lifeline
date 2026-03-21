@@ -14,11 +14,16 @@ import { resolveTaskIdForMutation } from './taskSelectors.js';
 // Shared Zod schemas
 // ---------------------------------------------------------------------------
 
-const tagSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  name: z.string().min(1),
-  color: z.string().min(1),
-}).passthrough();
+const tagReferenceSchema = z.union([
+  z.string().trim().min(1),
+  z.object({
+    id: z.union([z.string(), z.number()]).optional(),
+    name: z.string().trim().min(1).optional(),
+    color: z.string().trim().min(1).optional(),
+  }).passthrough().refine((value) => value.id !== undefined || value.name, {
+    message: 'Provide tag id or name.',
+  }),
+]);
 
 const recurrenceSchema = z.union([
   z.object({}).passthrough(),
@@ -56,7 +61,7 @@ const createTaskSchema = z.object({
   description: z.string().max(2000).optional().nullable(),
   dueDate: z.string().optional().nullable(),
   dueTime: z.string().optional().nullable(),
-  tags: z.array(tagSchema).optional(),
+  tags: z.array(tagReferenceSchema).optional(),
   isFlagged: z.boolean().optional(),
   duration: z.coerce.number().int().min(0).max(1440).optional(),
   priority: z.enum(['high', 'medium', 'low']).optional(),
@@ -69,7 +74,7 @@ const updateTaskSchema = baseSelectorSchema.extend({
   description: z.string().max(2000).optional().nullable(),
   dueDate: z.string().optional().nullable(),
   dueTime: z.string().optional().nullable(),
-  tags: z.array(tagSchema).optional(),
+  tags: z.array(tagReferenceSchema).optional(),
   isFlagged: z.boolean().optional(),
   duration: z.coerce.number().int().min(0).max(1440).optional(),
   priority: z.enum(['high', 'medium', 'low']).optional(),
@@ -262,7 +267,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
       if (tagList.length === 0) return createToolSuccessResult(result, 'No tags found.');
       const lines = [`${tagList.length} tag(s):`];
       for (const tag of tagList) {
-        lines.push(`  ${tag.name} (${tag.color})${tag.isDefault ? ' [default]' : ''}`);
+        lines.push(`  ${tag.name} [id: ${tag.id}] (${tag.color})${tag.isDefault ? ' [default]' : ''}`);
       }
       return createToolSuccessResult(result, lines.join('\n'));
     }),
@@ -335,7 +340,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'create_task',
     {
       description:
-        'Create a new Lifeline task. Required: title. Optional: description, dueDate (YYYY-MM-DD), dueTime, tags [{id, name, color}], isFlagged, duration (minutes 0-1440), priority (high/medium/low), subtasks [{title}] (subtaskId and position are auto-assigned), recurrence. Recurrence shapes: { mode: "daily", startDate, endDate } for daily instances; { mode: "dateRange", startDate, endDate } for a spanning task; { mode: "specificDays", days: ["monday","wednesday"], startDate, endDate } for selected days. Recurrence cannot be changed after creation.',
+        'Create a new Lifeline task. Required: title. Optional: description, dueDate (YYYY-MM-DD), dueTime, tags (tag names like ["Personal"] or tag objects with id/name/color from list_tags), isFlagged, duration (minutes 0-1440), priority (high/medium/low), subtasks [{title}] (subtaskId and position are auto-assigned), recurrence. Recurrence shapes: { mode: "daily", startDate, endDate } for daily instances; { mode: "dateRange", startDate, endDate } for a spanning task; { mode: "specificDays", days: ["monday","wednesday"], startDate, endDate } for selected days. Recurrence cannot be changed after creation.',
       inputSchema: createTaskSchema,
       annotations: {
         readOnlyHint: false,
@@ -355,7 +360,7 @@ export function registerTaskTools(server, { principal, backendClient }) {
     'update_task',
     {
       description:
-        'Update a Lifeline task. Identify by taskNumber (preferred) or id. Mutable fields: title, description, dueDate, dueTime, tags, isFlagged, duration, priority, subtasks (whole-array replacement). Recurrence cannot be changed after creation. Archived tasks must be restored first.',
+        'Update a Lifeline task. Identify by taskNumber (preferred) or id. Mutable fields: title, description, dueDate, dueTime, tags, isFlagged, duration, priority, subtasks (whole-array replacement). Tags may be passed as names or as tag objects from list_tags. Recurrence cannot be changed after creation. Archived tasks must be restored first.',
       inputSchema: updateTaskSchema,
       annotations: {
         readOnlyHint: false,

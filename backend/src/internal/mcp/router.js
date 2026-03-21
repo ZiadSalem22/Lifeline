@@ -71,6 +71,7 @@ function createInternalMcpRouter(dependencies = {}) {
 
   router.use('/tasks', createInternalMcpTaskWriteRouter({
     todoRepository,
+    listTags,
     createTodoForInternalMcp,
     updateTodo,
     deleteTodo,

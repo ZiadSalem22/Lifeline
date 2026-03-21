@@ -1,6 +1,7 @@
 const { ValidationError } = require('../../utils/errors');
 const { normalizeTaskForInternalMcp } = require('./taskPayloads');
 const { resolveTaskForUser } = require('./taskResolution');
+const { normalizeMcpUpdateDueDate } = require('./taskDueDate');
 
 const MUTABLE_UPDATE_FIELDS = Object.freeze([
   'title',
@@ -90,7 +91,7 @@ function createInternalTaskWriteHandlers({
         }
 
         assertNoUnsupportedTodoUpdateFields(req.body);
-        const updates = pickAllowedTodoUpdates(req.body);
+        const updates = pickAllowedTodoUpdates(normalizeMcpUpdateDueDate(req.body, existingTask));
         const task = await updateTodo.execute(userId, existingTask.id, updates);
 
         return res.json({
