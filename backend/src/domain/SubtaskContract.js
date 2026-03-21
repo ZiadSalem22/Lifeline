@@ -17,12 +17,15 @@ function normalizeSubtask(raw, position) {
     throw new Error(`Subtask title is required and must be at most ${MAX_TITLE_LENGTH} characters.`);
   }
 
+  const subtaskId = typeof raw.subtaskId === 'string' && raw.subtaskId.length > 0 ? raw.subtaskId : randomUUID();
+  const id = raw.id !== undefined ? raw.id : subtaskId;
+
   return {
-    subtaskId: typeof raw.subtaskId === 'string' && raw.subtaskId.length > 0 ? raw.subtaskId : randomUUID(),
+    subtaskId,
     title,
     isCompleted: typeof raw.isCompleted === 'boolean' ? raw.isCompleted : false,
     position,
-    ...(raw.id !== undefined ? { id: raw.id } : {}),
+    id,
   };
 }
 

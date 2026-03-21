@@ -243,7 +243,7 @@ describe('internal MCP task write routes', () => {
     );
   });
 
-  it('defaults update dueDate to today when an unscheduled MCP task is updated without one', async () => {
+  it('does not inject dueDate when MCP updates omit it', async () => {
     const todoRepository = {
       countByUser: jest.fn(async () => 0),
       findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7, dueDate: null }) : null)),
@@ -264,12 +264,11 @@ describe('internal MCP task write routes', () => {
 
     expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
       title: 'Updated title',
-      dueDate: '2026-03-21',
     });
-    expect(res.body.task.dueDate).toBe('2026-03-21');
+    expect(res.body.task.dueDate).toBeNull();
   });
 
-  it('keeps an existing dueDate on update when MCP omits the field', async () => {
+  it('keeps an existing dueDate on update because omitted fields are not modified', async () => {
     const todoRepository = {
       countByUser: jest.fn(async () => 0),
       findById: jest.fn(async (id, userId) => (id === 'task-7' && userId === 'user-1' ? createTask({ id, taskNumber: 7, dueDate: '2026-03-30' }) : null)),
@@ -278,7 +277,7 @@ describe('internal MCP task write routes', () => {
       delete: jest.fn(),
     };
     const updateTodo = {
-      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, title: updates.title, dueDate: updates.dueDate })),
+      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, title: updates.title, dueDate: '2026-03-30' })),
     };
 
     const app = makeApp({ todoRepository, updateTodo });
@@ -290,7 +289,6 @@ describe('internal MCP task write routes', () => {
 
     expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
       title: 'Updated title',
-      dueDate: '2026-03-30',
     });
     expect(res.body.task.dueDate).toBe('2026-03-30');
   });
@@ -346,7 +344,6 @@ describe('internal MCP task write routes', () => {
     expect(todoRepository.findById).toHaveBeenCalledWith('task-7', 'user-1');
     expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
       title: 'Updated title',
-      dueDate: '2026-03-07',
       priority: 'low',
     });
     expect(res.body.task.title).toBe('Updated title');
@@ -368,7 +365,7 @@ describe('internal MCP task write routes', () => {
       ]),
     };
     const updateTodo = {
-      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, tags: updates.tags, dueDate: updates.dueDate })),
+      execute: jest.fn(async (_userId, id, updates) => createTask({ id, taskNumber: 7, tags: updates.tags, dueDate: '2026-03-07' })),
     };
 
     const app = makeApp({ todoRepository, listTags, updateTodo });
@@ -380,10 +377,21 @@ describe('internal MCP task write routes', () => {
 
     expect(listTags.execute).toHaveBeenCalledWith('user-1');
     expect(updateTodo.execute).toHaveBeenCalledWith('user-1', 'task-7', {
-      dueDate: '2026-03-07',
       tags: [
-        expect.objectContaining({ id: 'tag-personal', name: 'Personal', color: '#10B981' }),
-        expect.objectContaining({ id: 'tag-health', name: 'Health', color: '#EF4444' }),
+        {
+          id: 'tag-personal',
+          name: 'Personal',
+          color: '#10B981',
+          userId: null,
+          isDefault: true,
+        },
+        {
+          id: 'tag-health',
+          name: 'Health',
+          color: '#EF4444',
+          userId: null,
+          isDefault: true,
+        },
       ],
     });
     expect(res.body.task.tags).toEqual([

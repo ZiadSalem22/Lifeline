@@ -34,9 +34,9 @@ describe('SubtaskContract', () => {
       expect(result.id).toBe(42);
     });
 
-    it('does not include id key when not present', () => {
+    it('copies subtaskId into id when id is not present', () => {
       const result = normalizeSubtask({ title: 'Task' }, 1);
-      expect(Object.prototype.hasOwnProperty.call(result, 'id')).toBe(false);
+      expect(result.id).toBe(result.subtaskId);
     });
 
     it('trims whitespace from title', () => {
@@ -93,6 +93,8 @@ describe('SubtaskContract', () => {
       const input = [{ title: 'A' }, { title: 'B' }];
       const result = normalizeSubtasks(input);
       expect(result[0].subtaskId).not.toBe(result[1].subtaskId);
+      expect(result[0].id).toBe(result[0].subtaskId);
+      expect(result[1].id).toBe(result[1].subtaskId);
     });
 
     it('throws when array exceeds max size', () => {

@@ -84,22 +84,14 @@ function normalizeMcpUpdateDueDate(payload = {}, existingTask = null, now = new 
     : undefined;
 
   if (hasDueDate) {
-    if (resolvedDueDate === '') {
-      return {
-        ...payload,
-        dueDate: existingTask?.dueDate || formatDateOnly(now),
-      };
-    }
-
     return {
       ...payload,
-      dueDate: resolvedDueDate,
+      dueDate: resolvedDueDate === '' ? null : resolvedDueDate,
     };
   }
 
   return {
     ...payload,
-    dueDate: existingTask?.dueDate || formatDateOnly(now),
   };
 }
 
