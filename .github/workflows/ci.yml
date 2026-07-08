@@ -36,6 +36,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # Build the shared package first so its emitted types (dist/*.d.ts) are
+      # available to the type-aware lint, typecheck, and tests in the other
+      # workspaces. Without this, @lifeline/shared imports resolve to `any`.
+      - run: npm run build -w @lifeline/shared
       - run: npm run lint
       - run: npm run format
       - run: npm run typecheck
