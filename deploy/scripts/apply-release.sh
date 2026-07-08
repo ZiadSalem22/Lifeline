@@ -2,12 +2,18 @@
 
 set -Eeuo pipefail
 
+# Applies a release of the Lifeline monorepo on the VPS. The app is a single
+# container that serves the API, the built web SPA, and the embedded MCP
+# endpoint (POST /mcp); Postgres is the only other service. Images are built on
+# the host; the `current` symlink is flipped before build and rolled back on any
+# failure. The app runs the idempotent baseline migration on startup, adopting
+# the existing database without data loss.
+
 ROOT_DIR="/opt/lifeline"
 RELEASES_DIR="${ROOT_DIR}/releases"
 CURRENT_LINK="${ROOT_DIR}/current"
 PROJECT_NAME="lifeline"
 APP_CONTAINER="lifeline-app"
-MCP_CONTAINER="lifeline-mcp"
 DB_CONTAINER="lifeline-postgres"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 
@@ -36,15 +42,12 @@ set +a
 
 APP_PORT="${APP_PORT:-3020}"
 APP_ORIGIN="${APP_ORIGIN:-https://lifeline.a2z-us.com}"
-MCP_PORT="${MCP_PORT:-3030}"
-MCP_PUBLIC_BASE_URL="${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}"
 COMPOSE_FILE_PATH="${release_dir}/compose.production.yaml"
 
-PUBLIC_HEALTH_URL="${APP_ORIGIN%/}/api/health/db"
-PUBLIC_INFO_URL="${APP_ORIGIN%/}/api/public/info"
-INTERNAL_HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health/db"
-INTERNAL_READY_URL="http://127.0.0.1:${APP_PORT}/api/health/ready"
-MCP_INTERNAL_HEALTH_URL="http://127.0.0.1:${MCP_PORT}/health"
+# Health endpoints of the rebuilt app (readiness includes a DB ping).
+INTERNAL_READY_URL="http://127.0.0.1:${APP_PORT}/health/ready"
+PUBLIC_LIVE_URL="${APP_ORIGIN%/}/health/live"
+PUBLIC_INFO_URL="${APP_ORIGIN%/}/api/v1/info"
 
 compose_cmd=(docker compose -p "${PROJECT_NAME}" --env-file "${shared_env_file}" -f "${COMPOSE_FILE_PATH}")
 
@@ -82,9 +85,6 @@ rollback() {
 
   echo "--- ${DB_CONTAINER} logs ---" >&2
   docker logs --tail 200 "${DB_CONTAINER}" >&2 || true
-
-  echo "--- ${MCP_CONTAINER} logs ---" >&2
-  docker logs --tail 200 "${MCP_CONTAINER}" >&2 || true
 
   exit "${exit_code}"
 }
@@ -126,63 +126,12 @@ wait_for_container_healthy() {
   return 1
 }
 
-capture_mcp_runtime_state() {
-  echo "--- ${MCP_CONTAINER} docker inspect ---" >&2
-  docker inspect --format '{{json .State}}' "${MCP_CONTAINER}" >&2 || true
-
-  echo "--- ${MCP_CONTAINER} port binding ---" >&2
-  docker port "${MCP_CONTAINER}" "${MCP_PORT}" >&2 || true
-
-  echo "--- host listener on ${MCP_PORT} ---" >&2
-  ss -ltnp "( sport = :${MCP_PORT} )" >&2 || true
-}
-
-wait_for_mcp_loopback() {
-  local timeout_seconds="$1"
-  local elapsed=0
-
-  while (( elapsed < timeout_seconds )); do
-    if curl --fail --silent --show-error --location "${MCP_INTERNAL_HEALTH_URL}" > /dev/null; then
-      return 0
-    fi
-
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-
-  echo "Timed out waiting for MCP loopback health URL: ${MCP_INTERNAL_HEALTH_URL}" >&2
-  capture_mcp_runtime_state
-  return 1
-}
-
 start_core_services() {
+  # --remove-orphans retires the old standalone lifeline-mcp container from the
+  # previous (3-service) design; the MCP server is now embedded in the app.
   pushd "${release_dir}" > /dev/null
   "${compose_cmd[@]}" up -d --build --remove-orphans "${DB_CONTAINER}" "${APP_CONTAINER}"
   popd > /dev/null
-}
-
-recreate_mcp_service() {
-  pushd "${release_dir}" > /dev/null
-  "${compose_cmd[@]}" up -d --build --no-deps --force-recreate "${MCP_CONTAINER}"
-  popd > /dev/null
-}
-
-wait_for_mcp_backend_path() {
-  local container_name="$1"
-  local timeout_seconds="$2"
-  local elapsed=0
-
-  while (( elapsed < timeout_seconds )); do
-    if docker exec "${container_name}" node -e 'fetch(process.env.LIFELINE_BACKEND_BASE_URL + "/internal/mcp/health", { headers: { "x-lifeline-internal-service-secret": process.env.MCP_INTERNAL_SHARED_SECRET } }).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))'; then
-      return 0
-    fi
-
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-
-  echo "MCP container ${container_name} could not reach the backend internal MCP adapter path." >&2
-  return 1
 }
 
 prune_old_releases() {
@@ -216,22 +165,12 @@ start_core_services
 
 wait_for_container_healthy "${DB_CONTAINER}" 180
 wait_for_container_healthy "${APP_CONTAINER}" 240
-recreate_mcp_service
-wait_for_container_healthy "${MCP_CONTAINER}" 180
-wait_for_url "${INTERNAL_HEALTH_URL}" 120
 wait_for_url "${INTERNAL_READY_URL}" 120
-wait_for_url "${PUBLIC_HEALTH_URL}" 120
+wait_for_url "${PUBLIC_LIVE_URL}" 120
 wait_for_url "${PUBLIC_INFO_URL}" 120
-wait_for_mcp_loopback 120
-wait_for_mcp_backend_path "${MCP_CONTAINER}" 120
 
 if ! docker port "${APP_CONTAINER}" 3000 | grep -qx "127.0.0.1:${APP_PORT}"; then
   echo "Container port binding is no longer limited to 127.0.0.1:${APP_PORT}" >&2
-  exit 1
-fi
-
-if ! docker port "${MCP_CONTAINER}" "${MCP_PORT}" | grep -qx "127.0.0.1:${MCP_PORT}"; then
-  echo "MCP container port binding is no longer limited to 127.0.0.1:${MCP_PORT}" >&2
   exit 1
 fi
 

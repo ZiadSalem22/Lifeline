@@ -6,7 +6,24 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/*.gen.ts'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/*.gen.ts',
+      // Legacy JS app dirs retained for one cutover cycle — not part of the
+      // TypeScript monorepo; removed at the follow-up cleanup.
+      'backend/**',
+      'client/**',
+      'client-next/**',
+      'services/**',
+      'database/**',
+      'db/**',
+      'deploy/**',
+      'docs/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

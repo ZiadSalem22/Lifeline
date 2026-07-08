@@ -94,77 +94,6 @@ jobs:
           set -euo pipefail
           scp -P "${DEPLOY_PORT:-22}" "$RUNNER_TEMP/${{ steps.release.outputs.archive_name }}" "${DEPLOY_USER}@${DEPLOY_HOST}:${RELEASES_ROOT}/${{ steps.release.outputs.archive_name }}"
 
-      - name: Reserve MCP loopback port on VPS
-        run: |
-          set -euo pipefail
-          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SHARED_ENV_FILE='${SHARED_ENV_FILE}' bash -s" <<'EOF'
-          set -euo pipefail
-
-          run_root() {
-            if command -v sudo >/dev/null 2>&1; then
-              sudo "$@"
-            elif [[ "$(id -u)" -eq 0 ]]; then
-              "$@"
-            else
-              echo "This deployment step needs root privileges for: $*" >&2
-              exit 1
-            fi
-          }
-
-          port="3030"
-
-          if [[ -f "${SHARED_ENV_FILE}" ]]; then
-            # shellcheck disable=SC1090
-            set -a
-            source "${SHARED_ENV_FILE}"
-            set +a
-            port="${MCP_PORT:-3030}"
-          fi
-
-          if ! run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            exit 0
-          fi
-
-          echo "Port ${port} is already in use; inspecting current listener..."
-          listener_report="$(run_root ss -ltnp "( sport = :${port} )" || true)"
-          printf '%s\n' "${listener_report}"
-
-          blocking_container="$(docker ps --format '{{.Names}}\t{{.Ports}}' | awk -F'\t' '$2 ~ /127\.0\.0\.1:'"${port}"'->/ { print $1; exit }')"
-          if [[ -n "${blocking_container}" && "${blocking_container}" != "lifeline-mcp" ]]; then
-            echo "Stopping Docker container that is occupying MCP port ${port}: ${blocking_container}"
-            docker rm -f "${blocking_container}"
-          fi
-
-          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            blocking_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
-            if [[ -n "${blocking_pids}" ]]; then
-              echo "Stopping stale host listener(s) on MCP port ${port}: ${blocking_pids}"
-              run_root kill ${blocking_pids}
-              sleep 2
-            fi
-          fi
-
-          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            listener_report="$(run_root ss -ltnp "( sport = :${port} )" || true)"
-            respawned_pids="$(printf '%s\n' "${listener_report}" | awk -F'pid=' 'NR > 1 && /pid=/ { split($2, parts, /[,)]/); print parts[1] }' | sort -u)"
-            for pid in ${respawned_pids}; do
-              unit_name="$(run_root cat "/proc/${pid}/cgroup" 2>/dev/null | sed -n 's#^.*/\([^/]*\.service\)$#\1#p' | head -n 1)"
-              if [[ -n "${unit_name}" ]]; then
-                echo "Stopping supervising systemd unit for MCP port ${port}: ${unit_name}"
-                run_root systemctl stop "${unit_name}"
-              fi
-            done
-            sleep 2
-          fi
-
-          if run_root ss -ltn "( sport = :${port} )" | grep -q LISTEN; then
-            echo "Port ${port} is still occupied after cleanup; refusing to continue." >&2
-            run_root ss -ltnp "( sport = :${port} )" || true
-            exit 1
-          fi
-          EOF
-
       - name: Apply release on VPS
         env:
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
@@ -228,11 +157,15 @@ jobs:
           run_root systemctl reload nginx
           EOF
 
-      - name: Verify public MCP health on VPS
+      - name: Verify public health on VPS
         run: |
           set -euo pipefail
+          # The MCP subdomain now proxies to the embedded-MCP app; hitting the
+          # app's liveness endpoint through it confirms both the nginx repoint
+          # and the app being up. Also verify the main app origin.
           ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "curl --fail --silent --show-error --location 'https://mcp.lifeline.a2z-us.com/health' > /dev/null"
+            "curl --fail --silent --show-error --location 'https://mcp.lifeline.a2z-us.com/health/live' > /dev/null && \
+             curl --fail --silent --show-error --location 'https://lifeline.a2z-us.com/health/live' > /dev/null"
 
       - name: Capture failure diagnostics
         if: failure()
@@ -247,6 +180,4 @@ jobs:
             docker logs --tail 200 lifeline-app || true
             echo "--- lifeline-postgres logs ---"
             docker logs --tail 200 lifeline-postgres || true
-            echo "--- lifeline-mcp logs ---"
-            docker logs --tail 200 lifeline-mcp || true
           '

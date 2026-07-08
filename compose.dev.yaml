@@ -1,4 +1,4 @@
-# Dev-only infrastructure for the codebase/ monorepo.
+# Dev-only infrastructure for the Lifeline monorepo.
 # Postgres matches production (postgres:16-alpine). Host port 15432 to avoid
 # clashing with other local stacks (5432/5433 are taken on this machine);
 # set in apps/server/.env:

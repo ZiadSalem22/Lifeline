@@ -1,37 +1,36 @@
+# Build context for the root Dockerfile (the new TypeScript monorepo).
+# Keep the context lean: exclude VCS, dev artifacts, and the legacy app dirs
+# that linger for one cutover cycle but are NOT part of the new image.
+
 .git
 .github
 .vscode
 .agent
+.claude
 
 **/node_modules
+**/dist
 **/coverage
 **/.nyc_output
+**/.vite
 **/.cache
 
-backend/.env
-backend/.env.local
-backend/.env.local.bak
-client/.env
-client/.env.local
-
-backend/logs
-backend/database
-backend/db
-backend/migration-artifacts
-backend/test
-backend/tests
-backend/todos_v4.db
-backend/*.db
-
-client/dist
-client/tests
-
-database/phase3/runs
-db
+**/.env
+**/.env.*
+!**/.env.example
 
 *.log
 *.tmp
-*.md
-!README.md
-!PHASE4_PLAN.md
-!PHASE4_IMPLEMENTATION_REPORT.md
+
+# Compose files are not needed inside the image build context
+compose*.yaml
+
+# Legacy app + ops dirs (retired at the follow-up cleanup; excluded from the build)
+backend/
+client/
+client-next/
+services/
+database/
+db/
+deploy/
+docs/

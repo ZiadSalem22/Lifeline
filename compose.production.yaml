@@ -1,3 +1,14 @@
+# Production compose for the clean-room codebase.
+#
+# Replaces the old root compose.production.yaml at deploy swap. Two services
+# instead of three — the MCP server is embedded in the app (POST /mcp), so the
+# standalone lifeline-mcp container, its shared secret, and the backend base URL
+# are gone.
+#
+# DATA SURVIVAL: the postgres service keeps the SAME image, container name,
+# credentials, and named volume (lifeline-postgres-data) as the old stack, so it
+# binds to the existing production data. The app runs the idempotent baseline
+# migration on start (adopts the live schema without destructive changes).
 services:
   lifeline-postgres:
     image: postgres:16-alpine
@@ -12,7 +23,7 @@ services:
     volumes:
       - lifeline-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-lifeline}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-lifeline}']
       interval: 5s
       timeout: 5s
       retries: 20
@@ -24,12 +35,10 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BUILD_VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/}
-        BUILD_LOCAL_MODE: ${VITE_AUTH_DISABLED:-0}
-        BUILD_VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
-        BUILD_VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
-        BUILD_VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
-        BUILD_VITE_AUTH0_SCOPE: ${VITE_AUTH0_SCOPE:-openid profile email offline_access}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/}
+        VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
+        VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
+        VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
     restart: unless-stopped
     mem_limit: 2g
     memswap_limit: 2g
@@ -42,81 +51,39 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      PGHOST: lifeline-postgres
-      PGPORT: 5432
-      PGUSER: ${POSTGRES_USER:-postgres}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      PGDATABASE: ${POSTGRES_DB:-lifeline}
-      PGSSL: ${PGSSL:-0}
-      PGSSL_ALLOW_SELF_SIGNED: ${PGSSL_ALLOW_SELF_SIGNED:-1}
-      DB_WAIT_TIMEOUT_MS: ${DB_WAIT_TIMEOUT_MS:-60000}
-      DB_WAIT_INTERVAL_MS: ${DB_WAIT_INTERVAL_MS:-2000}
-      TYPEORM_LOGGING: ${TYPEORM_LOGGING:-0}
+      # Built from the same POSTGRES_* the db service uses; override DATABASE_URL
+      # directly in the shared env file if the DB lives elsewhere.
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@lifeline-postgres:5432/${POSTGRES_DB:-lifeline}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Auth0 (same tenant/vars as before). AUTH_DISABLED must be 0 in prod.
       AUTH_DISABLED: ${AUTH_DISABLED:-0}
       AUTH_LOCAL_USER_ID: ${AUTH_LOCAL_USER_ID:-guest-local}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
       AUTH0_AUDIENCE_ALT: ${AUTH0_AUDIENCE_ALT:-}
+      AUTH_TIMEOUT_MS: ${AUTH_TIMEOUT_MS:-10000}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://lifeline.a2z-us.com}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://lifeline.a2z-us.com}
-      APP_ORIGIN: ${APP_ORIGIN:-https://lifeline.a2z-us.com}
-      MCP_INTERNAL_SHARED_SECRET: ${MCP_INTERNAL_SHARED_SECRET:-}
+      # API key hashing pepper — REQUIRED non-empty in production.
       MCP_API_KEY_PEPPER: ${MCP_API_KEY_PEPPER:-}
-    ports:
-      - "127.0.0.1:${APP_PORT:-3020}:3000"
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health/db').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-
-  lifeline-mcp:
-    container_name: lifeline-mcp
-    build:
-      context: ./services/lifeline-mcp
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    mem_limit: 512m
-    memswap_limit: 512m
-    dns:
-      - 1.1.1.1
-      - 8.8.4.4
-    depends_on:
-      lifeline-app:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      MCP_PORT: ${MCP_PORT:-3030}
-      MCP_BIND_HOST: ${MCP_BIND_HOST:-0.0.0.0}
+      # Embedded MCP OAuth metadata (optional; falls back to AUTH0_* when unset).
       MCP_PUBLIC_BASE_URL: ${MCP_PUBLIC_BASE_URL:-https://mcp.lifeline.a2z-us.com}
-      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp.lifeline.a2z-us.com,127.0.0.1,localhost}
-      LIFELINE_BACKEND_BASE_URL: ${LIFELINE_BACKEND_BASE_URL:-http://lifeline-app:3000}
-      MCP_INTERNAL_SHARED_SECRET: ${MCP_INTERNAL_SHARED_SECRET:-}
-      MCP_REQUEST_TIMEOUT_MS: ${MCP_REQUEST_TIMEOUT_MS:-5000}
-      MCP_LOG_LEVEL: ${MCP_LOG_LEVEL:-info}
-      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
-      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
-      AUTH0_AUDIENCE_ALT: ${AUTH0_AUDIENCE_ALT:-}
-      AUTH0_ISSUER: ${AUTH0_ISSUER:-}
       MCP_AUTH0_DOMAIN: ${MCP_AUTH0_DOMAIN:-}
       MCP_AUTH0_AUDIENCE: ${MCP_AUTH0_AUDIENCE:-}
       MCP_AUTH0_AUDIENCE_ALT: ${MCP_AUTH0_AUDIENCE_ALT:-}
       MCP_AUTH0_ISSUER: ${MCP_AUTH0_ISSUER:-}
       MCP_AUTH0_SUPPORTED_SCOPES: ${MCP_AUTH0_SUPPORTED_SCOPES:-tasks:read,tasks:write}
-      MCP_AUTH0_REGISTRATION_ENDPOINT: ${MCP_AUTH0_REGISTRATION_ENDPOINT:-}
-      MCP_AUTH0_REVOCATION_ENDPOINT: ${MCP_AUTH0_REVOCATION_ENDPOINT:-}
-      MCP_AUTH0_RESOURCE_NAME: ${MCP_AUTH0_RESOURCE_NAME:-Lifeline MCP}
-      MCP_AUTH0_SERVICE_DOCUMENTATION_URL: ${MCP_AUTH0_SERVICE_DOCUMENTATION_URL:-}
     ports:
-      - "127.0.0.1:${MCP_PORT:-3030}:${MCP_PORT:-3030}"
+      - '127.0.0.1:${APP_PORT:-3020}:3000'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${MCP_PORT:-3030}/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000/health/ready'').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 15s
+      start_period: 20s
 
 volumes:
   lifeline-postgres-data:

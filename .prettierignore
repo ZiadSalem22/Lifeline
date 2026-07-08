@@ -1,0 +1,37 @@
+dist
+coverage
+node_modules
+package-lock.json
+*.gen.ts
+openapi.json
+.dockerignore
+.gitignore
+.prettierignore
+
+# Legacy app + ops/docs dirs retained for one cutover cycle (removed at cleanup)
+backend
+client
+client-next
+services
+database
+db
+deploy
+docs
+
+# Legacy governance + root cruft (describe the old structure; cleaned up next cycle)
+.github/instructions
+.github/prompts
+.github/skills
+.github/agents
+.github/teams
+.github/workflows-governance
+.github/ISSUE_TEMPLATE
+.github/copilot-instructions.md
+.github/pull_request_template.md
+.agent
+.config
+.venv
+compose.yaml
+compose.env.example
+compose.production.env.example
+LICENSE
