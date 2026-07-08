@@ -1,0 +1,104 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpPrincipal } from './auth.js';
+import type { McpToolService } from './service.js';
+import { registerTaskTools } from './tools.js';
+
+/**
+ * Per-request McpServer factory, ported from the old
+ * `services/lifeline-mcp/src/mcp/serverFactory.js`. The server identity and
+ * instructions are preserved verbatim (same external surface); only the
+ * plumbing changed — tools now call use-cases in-process.
+ */
+
+export const MCP_SERVER_NAME = 'lifeline-mcp';
+export const MCP_SERVER_VERSION = '0.1.0';
+
+export interface BuildMcpServerDeps {
+  principal: McpPrincipal;
+  service: McpToolService;
+}
+
+export function buildMcpServer({ principal, service }: BuildMcpServerDeps): McpServer {
+  const server = new McpServer(
+    {
+      name: MCP_SERVER_NAME,
+      version: MCP_SERVER_VERSION,
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+      instructions: [
+        'Lifeline MCP provides task management tools over the Lifeline backend.',
+        '',
+        '## Tool quick reference',
+        '',
+        'Discovery & navigation (compact previews):',
+        '  search_tasks — text search, filters (tags, priority, status, date range, flagged, duration)',
+        '  list_today — tasks due today',
+        '  list_upcoming — upcoming tasks by date',
+        '  list_tasks — tasks in a date window (this_week, next_week, this_month, next_month, overdue, YYYY-MM)',
+        '  get_task — full detail for one task by taskNumber (always use for deep inspection)',
+        '  get_statistics — overview counts (active, completed, overdue, flagged)',
+        '  find_similar_tasks — fuzzy title match for duplicate detection or reusing past task structure',
+        '  export_tasks — full JSON snapshot for backup or bulk review',
+        '',
+        'Task creation & mutation:',
+        '  create_task — create a new task (title required; optional: description, dueDate YYYY-MM-DD, dueTime, tags [{id,name,color}], isFlagged, duration 0-1440 min, priority high/medium/low, subtasks [{title}], recurrence)',
+        '  update_task — modify mutable fields (title, description, dueDate, dueTime, tags, isFlagged, duration, priority, subtasks). Recurrence cannot be changed after creation.',
+        '  complete_task / uncomplete_task — toggle task completion',
+        '',
+        'Subtask operations (require parent taskNumber/id + subtaskId UUID):',
+        '  add_subtask — add a subtask by title',
+        '  complete_subtask / uncomplete_subtask — toggle subtask completion',
+        '  update_subtask — rename or change completion of a subtask',
+        '  remove_subtask — permanently remove a subtask',
+        '',
+        'Lifecycle (archive-first):',
+        '  archive_task — remove task from active set (safe, reversible)',
+        '  restore_task — bring archived task back to active set',
+        '  delete_task — deprecated alias for archive_task',
+        '',
+        'Batch (up to 50 tasks per call):',
+        '  batch_complete / batch_uncomplete / batch_archive / batch_restore',
+        '',
+        'Tags:',
+        '  list_tags / create_tag / update_tag / delete_tag',
+        '',
+        '## Planning queries',
+        'Use list_tasks with window tokens for natural date queries:',
+        "  this_week / next_week — week boundaries respect user's start-day-of-week setting",
+        '  this_month / next_month — calendar month',
+        '  overdue — incomplete active tasks past due',
+        '  YYYY-MM — specific month (e.g. 2026-03)',
+        'Use list_today for today, list_upcoming for a date-sorted forward view.',
+        '',
+        '## Subtask workflow',
+        '1. Call get_task to see all subtasks with their subtaskId UUIDs and positions.',
+        '2. Target subtasks by subtaskId (UUID) in subsequent calls.',
+        '3. For ordinal requests ("the first subtask"), look up the subtask at that position via get_task, then use its subtaskId.',
+        '',
+        '## History-aware task creation',
+        'Before creating a task that sounds like something the user has done before, optionally call find_similar_tasks:',
+        "  High similarity (score >= 0.8): reuse the prior task's structure (subtasks, tags, duration, priority). Tell the user what you're reusing.",
+        '  Medium similarity (0.5-0.79): show the match and ask: "I found a similar past task. Should I use its structure?"',
+        '  Low similarity or no match: create from your best judgment.',
+        'History lookup is optional — skip for simple or clearly unique tasks.',
+        '',
+        '## Lifecycle rules',
+        '- Prefer archive_task over delete_task for removing tasks.',
+        '- Archived tasks cannot be updated, completed, or uncompleted — restore them first with restore_task.',
+        '- get_task always resolves archived tasks (response includes archived:true/false).',
+        '- search_tasks excludes archived tasks by default; use get_task by taskNumber to find a specific archived task.',
+        '',
+        '## Safety',
+        '- Always call get_task before destructive operations when context is unclear.',
+        '- Batch operations are limited to 50 items.',
+        "- All operations are user-scoped — you can only see and modify the current user's tasks.",
+      ].join('\n'),
+    },
+  );
+
+  registerTaskTools(server, { principal, service });
+  return server;
+}
