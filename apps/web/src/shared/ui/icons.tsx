@@ -8,15 +8,22 @@ import type { SVGProps } from 'react';
 export type IconProps = SVGProps<SVGSVGElement>;
 
 export function LogoIcon(props: IconProps) {
-  // "Check-beat": a checkmark whose upstroke continues into a heartbeat pulse —
-  // it is a to-do app AND a lifeline. Single-stroke currentColor so the sidebar
-  // mark adapts to any theme; the green-accent variant lives in the favicon.
-  // Path: check valley (8,18) → tip (11,12) → pulse peak (14,4) → dip → baseline.
+  // "L-beat" monogram: an "L" whose foot runs out as a heartbeat pulse. The
+  // vertical + foot stub take currentColor (so the mark adapts to the theme —
+  // dark on light, light on dark); the pulse takes the theme accent (green in
+  // the default theme). Lifeline = a heartbeat that never flatlines.
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
       <path
-        d="M3 13L8 18L11 12L14 4L17 17L19 12H21"
+        d="M7 4V17H10"
         stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 17L13 11L15 21L17 17H20"
+        stroke="var(--color-accent, #00ff88)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
