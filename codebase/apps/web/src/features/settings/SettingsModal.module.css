@@ -1,0 +1,419 @@
+/** Settings modal — port of the old Settings.module.css tabbed layout. */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  min-width: min(560px, 80vw);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  background: var(--color-surface-light);
+  flex-wrap: wrap;
+}
+
+.tab {
+  flex: 1 1 auto;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-8);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tab:focus-visible,
+.iconButton:focus-visible,
+.themeCard:focus-visible,
+.dangerButton:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tabActive {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.sectionSubtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.82rem;
+}
+
+.message {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-10);
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+/* ── tags tab ────────────────────────────────────────────────────────────── */
+
+.tagForm {
+  display: flex;
+  gap: var(--gap-sm);
+  align-items: center;
+}
+
+.textInput {
+  flex: 1 1 auto;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface-light);
+  outline: none;
+}
+
+.textInput:focus {
+  border-color: var(--color-primary);
+}
+
+.colorInput {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-surface-light);
+  cursor: pointer;
+}
+
+.primaryButton {
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-10);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+  transition: background-color var(--transition-fast);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.tagList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tagItem {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface-light);
+}
+
+.tagSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.tagName {
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+}
+
+.defaultBadge {
+  padding: 1px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tagActions {
+  display: inline-flex;
+  gap: var(--space-4);
+}
+
+.iconButton {
+  display: inline-flex;
+  padding: var(--space-6);
+  border-radius: var(--radius-8);
+  color: var(--color-text-muted);
+}
+
+.iconButton:hover {
+  color: var(--color-primary);
+  background: var(--color-surface-hover);
+}
+
+.dangerIcon:hover {
+  color: var(--color-danger);
+}
+
+.emptyTags {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--space-24);
+  color: var(--color-text-muted);
+}
+
+.emptyTags p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* ── appearance tab ──────────────────────────────────────────────────────── */
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-sm);
+}
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface-light);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.themeCard:hover {
+  border-color: var(--color-border-hover);
+}
+
+.themeCardActive {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.swatchRow {
+  display: inline-flex;
+  gap: var(--space-4);
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+}
+
+.themeName {
+  font-size: 0.75rem;
+  color: var(--color-text);
+}
+
+.select {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface-light);
+  color: var(--color-text);
+  outline: none;
+  cursor: pointer;
+}
+
+.select:focus {
+  border-color: var(--color-primary);
+}
+
+.fontSizeValue {
+  margin-left: var(--space-6);
+  color: var(--color-primary);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+
+/* ── import/export tab ───────────────────────────────────────────────────── */
+
+.ioBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-bottom: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ioTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.ioRow {
+  display: flex;
+  gap: var(--gap-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.helper {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.hiddenFile {
+  display: none;
+}
+
+.dangerBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+}
+
+.dangerTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.dangerText {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-danger);
+}
+
+.dangerButton {
+  align-self: flex-start;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-10);
+  background: transparent;
+  color: var(--color-danger);
+  font-weight: 600;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.dangerButton:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+/* ── about + footer ──────────────────────────────────────────────────────── */
+
+.about {
+  text-align: center;
+  padding: var(--space-16) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.aboutName {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.copyright {
+  margin: var(--space-16) 0 0;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.footerHint {
+  margin: 0;
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--color-surface-light);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 640px) {
+  .body {
+    min-width: 0;
+  }
+
+  .themeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
