@@ -163,3 +163,33 @@ describe('createApp production SPA serving (WEB_DIST_DIR)', () => {
     expect(response.text).not.toContain('Lifeline SPA');
   });
 });
+
+describe('createApp CSP lets the SPA reach Auth0', () => {
+  const env = parseEnv({
+    NODE_ENV: 'test',
+    AUTH_DISABLED: '1',
+    AUTH0_DOMAIN: 'https://tenant.us.auth0.com/',
+    AUTH0_AUDIENCE: 'https://lifeline-api',
+  });
+  const app = createApp(buildContainer(env, pino({ enabled: false }), { pool: failingPool }));
+
+  it('emits a connect-src + frame-src that include the Auth0 tenant', async () => {
+    // Regression (prod login was dead): with no explicit connect-src the policy
+    // fell back to default-src 'self', so the browser BLOCKED the OAuth token
+    // exchange fetch to https://<tenant>.auth0.com/oauth/token. Login returned
+    // from Auth0 with a code that was never exchanged → the app stayed guest.
+    const response = await request(app).get('/api/v1/info');
+    const csp = response.headers['content-security-policy'] ?? '';
+    expect(csp).toMatch(/connect-src[^;]*'self'/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/tenant\.us\.auth0\.com/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/tenant\.us\.auth0\.com/);
+  });
+
+  it('allows Google Fonts and https avatar images so the UI renders as designed', async () => {
+    const response = await request(app).get('/api/v1/info');
+    const csp = response.headers['content-security-policy'] ?? '';
+    expect(csp).toMatch(/style-src[^;]*https:\/\/fonts\.googleapis\.com/);
+    expect(csp).toMatch(/font-src[^;]*https:\/\/fonts\.gstatic\.com/);
+    expect(csp).toMatch(/img-src[^;]*https:/);
+  });
+});

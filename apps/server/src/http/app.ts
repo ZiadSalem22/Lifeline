@@ -67,15 +67,29 @@ export function createApp(container: Container): Express {
 
   app.use(requestId());
   app.use(httpLogger(logger));
+  // CSP covers BOTH the API surface and the single-container web SPA. The SPA
+  // (React + @auth0/auth0-react) talks to Auth0 directly from the browser: the
+  // OAuth authorization-code exchange and silent token refresh are `fetch`
+  // calls to https://<tenant>.auth0.com. Without an explicit `connect-src`
+  // those fall back to `default-src 'self'` and the browser BLOCKS them, so
+  // login silently dies right after the redirect — the code comes back but is
+  // never exchanged, the transaction is discarded, and the app drops to guest.
+  // We also allow Google Fonts (stylesheet + font files) and https avatar
+  // images so the UI renders as designed. `/api/docs` still needs inline
+  // script/style. Everything else stays pinned to 'self'.
+  const auth0Origin = env.AUTH0_DOMAIN ? `https://${env.AUTH0_DOMAIN}` : null;
+  const auth0Sources = auth0Origin ? [auth0Origin] : [];
   app.use(
     helmet({
-      // Minimal CSP: the self-contained /api/docs page needs inline script/style;
-      // everything else the API serves is JSON.
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
           'script-src': ["'self'", "'unsafe-inline'"],
-          'style-src': ["'self'", "'unsafe-inline'"],
+          'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
+          'img-src': ["'self'", 'data:', 'https:'],
+          'connect-src': ["'self'", ...auth0Sources],
+          'frame-src': ["'self'", ...auth0Sources],
         },
       },
     }),
