@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, setTokenSupplier } from '../../shared/api/client';
@@ -53,18 +53,30 @@ function isGuestFallbackError(error: unknown): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const adapter = useAuthAdapter();
 
-  // The api client asks the adapter for a token on every request.
+  // The api client asks for a token on every request. We register the supplier
+  // ONCE and have it read the adapter from a live ref, so it always reflects the
+  // current auth state. Registering it in a [adapter]-effect instead caused a
+  // race: right after login the identity query fires GET /me BEFORE the effect
+  // swapped in the new (authenticated) closure, so the request went out with no
+  // Authorization header → 401 → the app fell back to guest mode ("Hello Guest").
+  const adapterRef = useRef(adapter);
+  // Layout effect runs before the passive effects that start the identity/todos
+  // queries, so the ref is current by the time any request reads the token.
+  useLayoutEffect(() => {
+    adapterRef.current = adapter;
+  });
   useEffect(() => {
     setTokenSupplier(async () => {
-      if (!adapter.isAuthenticated) return null;
+      const current = adapterRef.current;
+      if (!current.isAuthenticated) return null;
       try {
-        return await adapter.getToken();
+        return await current.getToken();
       } catch {
         return null;
       }
     });
     return () => setTokenSupplier(null);
-  }, [adapter]);
+  }, []);
 
   const enabled = !adapter.isLoading && adapter.isAuthenticated;
 
