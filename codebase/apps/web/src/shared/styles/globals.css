@@ -1,0 +1,240 @@
+/**
+ * Global element styles — ported from the old client base.css/globals.css.
+ * Theme + design tokens live in tokens.css (imported first in main.tsx).
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  background: var(--color-bg);
+  color: var(--color-text);
+  overflow-x: hidden;
+  transition: background-color var(--transition-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-heading);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  filter: saturate(0.9);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Date input styling for dark themes: keep light theme defaults untouched */
+[data-theme='dark'] input[type='date'],
+[data-theme='blue-dark'] input[type='date'] {
+  background: var(--color-surface-light);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+[data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator,
+[data-theme='blue-dark'] input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1) hue-rotate(180deg) saturate(0.6);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 125, 130, 0.35);
+  border-radius: 999px;
+  border: 1px solid rgba(120, 125, 130, 0.25);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 125, 130, 0.55);
+}
+
+/* ── Animations (old base.css keyframes + utility classes) ─────────────────── */
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+.fade-in-scale-up {
+  animation: fadeInScaleUp 0.3s ease-out forwards;
+}
+
+.fade-in-slide-down {
+  animation: fadeInSlideDown 0.3s ease-out forwards;
+}
+
+.scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+/* TaskCard enter/exit transitions (consumed by the task list in phase 9) */
+.task-card-enter-exit {
+  transition:
+    opacity 0.1s ease-out,
+    transform 0.15s ease-out;
+}
+
+.task-card-enter-exit.entering {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.task-card-enter-exit.entered {
+  opacity: 1;
+  transform: translateY(0px);
+}
+
+.task-card-enter-exit.exiting {
+  opacity: 0;
+  transform: translateX(-100px);
+  height: 0;
+}
+
+/* ── Safe-area utilities (old globals.css) ─────────────────────────────────── */
+
+.safe-area-padded {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-y {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}

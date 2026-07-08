@@ -1,0 +1,103 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding: var(--space-10);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-8);
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.navBtn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.navBtn:focus-visible,
+.tile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.week,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.weekDay {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: var(--space-2) 0;
+}
+
+.empty {
+  aspect-ratio: 1;
+}
+
+.tile {
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-8);
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  color: var(--color-text);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.tile:hover {
+  background: var(--color-surface-hover);
+  transform: scale(1.05);
+}
+
+.tile:active {
+  transform: scale(0.95);
+}
+
+.tileToday {
+  color: var(--color-primary);
+  font-weight: 700;
+  border-color: var(--color-border-hover);
+}
+
+.tileSelected {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--search-focus, var(--shadow-primary));
+}
