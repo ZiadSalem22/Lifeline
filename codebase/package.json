@@ -1,0 +1,35 @@
+{
+  "name": "lifeline",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Lifeline — production-ready todo platform (clean-room monorepo)",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspace @lifeline/shared && npm run build --workspace @lifeline/server && npm run build --workspace @lifeline/web",
+    "dev:server": "npm run dev --workspace @lifeline/server",
+    "dev:web": "npm run dev --workspace @lifeline/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0",
+    "vitest": "^4.1.10"
+  }
+}
