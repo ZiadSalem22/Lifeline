@@ -9,14 +9,15 @@ export type IconProps = SVGProps<SVGSVGElement>;
 
 export function LogoIcon(props: IconProps) {
   // "L-beat" monogram: an "L" whose foot runs out as a heartbeat pulse. The
-  // vertical + foot stub take currentColor (so the mark adapts to the theme —
-  // dark on light, light on dark); the pulse takes the theme accent (green in
-  // the default theme). Lifeline = a heartbeat that never flatlines.
+  // vertical + foot stub take --color-text — the neutral foreground, so the L
+  // matches the wordmark (light on dark, dark on light) rather than the green
+  // --color-primary the sidebar applies; the pulse takes the theme accent
+  // (green in the default theme). Lifeline = a heartbeat that never flatlines.
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
       <path
         d="M7 4V17H10"
-        stroke="currentColor"
+        stroke="var(--color-text, currentColor)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
