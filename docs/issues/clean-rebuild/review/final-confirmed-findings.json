@@ -1,0 +1,137 @@
+[
+  {
+    "file": "codebase/apps/server/src/application/data-transfer/import-data.ts",
+    "line": 133,
+    "severity": "high",
+    "dimension": "server-correctness",
+    "summary": "Import pre-validation misses subtask title length, so normalizeSubtasks can throw mid write-loop, producing a partial import — in replace mode this is permanent data loss after the purge.",
+    "failureScenario": "POST /api/v1/import with mode='replace' and a payload where todos[5].subtasks[0].title is 501+ chars: deleteAllByUser and deleteCustomByUser run (line 125-126), todos 0-4 are written, then toImportTodo → normalizeImportedSubtasks (line 212/72) → normalizeSubtasks throws DomainValidationError ('title must be at most 500 characters') on row 5. Request returns 400, the user's entire previous dataset is gone, and only 5 rows were imported. This contradicts both the file's own claim that 'everything is pre-validated before any write' (lines 22-24, the pre-validation at 116-122 only checks todo titles) and contract 02-api-contract-v1.md line 47 ('transactional').",
+    "suggestedFix": "Build all ImportTodoData rows (running toImportTodo/normalizeImportedSubtasks) BEFORE the replace purge and the write loop, so every DomainValidationError fires pre-write; or wrap purge+writes in one DB transaction as the contract specifies."
+  },
+  {
+    "file": "codebase/packages/shared/src/todo.ts",
+    "line": 121,
+    "severity": "medium",
+    "dimension": "server-correctness",
+    "summary": "listTodosQuerySchema uses z.coerce.boolean() for `flagged` (line 121) and `includeArchived` (line 127); in zod 4 that is Boolean(input), so the query strings 'false' and '0' coerce to true and invert the filter.",
+    "failureScenario": "GET /api/v1/todos?flagged=false (any non-web API client, e.g. an MCP integration or curl) returns ONLY flagged todos — DrizzleTodoRepository.listConditions pushes eq(isFlagged, true). GET /api/v1/todos?includeArchived=false returns archived rows even though the caller explicitly asked to exclude them, violating the contract's 'archived excluded by default' filter semantics (02-api-contract-v1.md line 30). Only the literal empty string coerces to false.",
+    "suggestedFix": "Replace z.coerce.boolean() with an explicit string-boolean parser, e.g. z.enum(['true','false','1','0']).transform(v => v === 'true' || v === '1').optional() (or z.stringbool()), for flagged and includeArchived."
+  },
+  {
+    "file": "codebase/apps/server/src/application/todos/create-todo.ts",
+    "line": 39,
+    "severity": "medium",
+    "dimension": "server-correctness",
+    "summary": "Free-tier active-todo cap is checked via countActiveByUser OUTSIDE the advisory-locked create transaction, so concurrent creates (especially multi-row recurrence expansions) can cross the 200 cap.",
+    "failureScenario": "Free user with 150 active todos fires two concurrent POST /api/v1/todos each expanding a daily recurrence to 40 rows: both requests read activeCount=150, both pass assertActiveTodoCapacity(150+40 ≤ 200), and createManyInternal's pg_advisory_xact_lock (todo-repository.ts:476) only serializes the inserts — the user ends with 230 active todos, silently exceeding LIMITS.freeTierActiveTodosMax. The lock fixes task-number races but not the cap check, which runs before the transaction begins.",
+    "suggestedFix": "Move the countActiveByUser + assertActiveTodoCapacity check inside createManyInternal's transaction after acquiring the per-user advisory lock (pass role/adding through NewTodoData or a create option), so count-then-insert is atomic per user."
+  },
+  {
+    "file": "codebase/apps/server/src/domain/recurrence.ts",
+    "line": 90,
+    "severity": "low",
+    "dimension": "server-correctness",
+    "summary": "expandRange's loop only stops on dates.length < MAX_OCCURRENCES when days actually match, so a specificDays rule with an empty selectedDays array and a huge date range iterates the entire range day-by-day before falling back.",
+    "failureScenario": "POST /api/v1/todos with recurrence {mode:'specificDays', startDate:'0001-01-01', endDate:'9999-12-31', selectedDays:[]} passes zod validation (recurrenceModernSchema allows an empty selectedDays array and dateOnlySchema allows any 4-digit year), then expandRange iterates ~3.65 million days (a Date allocation + setUTCDate each) with zero matches, blocking Node's event loop for seconds per request; repeated requests degrade the whole server.",
+    "suggestedFix": "Bound the loop by iterations as well as matches (e.g. also stop after MAX_OCCURRENCES*7 cursor steps, or short-circuit when selected.size === 0), and/or have the schema require selectedDays non-empty for mode 'specificDays'."
+  },
+  {
+    "file": "codebase/apps/server/src/application/data-transfer/import-data.ts",
+    "line": 124,
+    "severity": "high",
+    "dimension": "server-data-layer",
+    "summary": "Replace-mode import purges all user todos and custom tags outside any transaction, then writes rows in separate per-todo transactions, so a mid-loop failure permanently destroys the user's data — violating decision #10 and the API contract's 'transactional' guarantee.",
+    "failureScenario": "POST /api/v1/import {mode:'replace'} with a file where one todo has duration: 5000000000 (normalizeDuration has no int4 cap) or a title/description containing \u0000 (passes the title pre-validation, rejected by Postgres text). deleteAllByUser (line 125) and deleteCustomByUser (line 126) have already committed; the loop at line 132-135 then throws 22003/22021 on the bad row → 500 returned, all pre-existing todos/tags gone, only the rows before the bad one imported. Contract 02-api-contract-v1.md line 47 says import is 'transactional' and 05-decisions.md #10 says 'v1 wraps import in one transaction'; the code comment (lines 21-24) acknowledges the deviation but the pre-validation does not cover these user-triggerable failures.",
+    "suggestedFix": "Wrap the whole execute() body (purge + tag map + all upsertImported calls) in one db.transaction by threading a transaction-bound executor through ImportTodoWriter/TagRepository (the repos already accept an Executor type internally), keeping the existing per-user advisory lock inside that transaction."
+  },
+  {
+    "file": "codebase/apps/server/src/application/data-transfer/import-data.ts",
+    "line": 62,
+    "severity": "medium",
+    "dimension": "server-data-layer",
+    "summary": "normalizeDuration floors but never caps the value to the int4 range, so any imported duration > 2147483647 makes the todos INSERT fail with 22003 mid-import.",
+    "failureScenario": "Merge-mode import of a file containing {title:'x', duration: 1e12}: pre-validation passes (only titles checked), upsertImported throws 'integer out of range' → request 500s with a partial import (importedCount lost, earlier rows committed). In replace mode this is the trigger for the high-severity data-loss finding above.",
+    "suggestedFix": "Clamp in normalizeDuration: return Math.min(Math.floor(numeric), 2_147_483_647); optionally also strip \u0000 from title/description strings in toImportTodo."
+  },
+  {
+    "file": "codebase/apps/server/src/infrastructure/repositories/user-repository.ts",
+    "line": 64,
+    "severity": "medium",
+    "dimension": "server-data-layer",
+    "summary": "ensureFromClaims upserts with conflict target users.id only, so a unique violation on ux_users_email_not_null (or ux_users_auth0_sub) is unhandled and turns into a 500 on every authenticated request for the affected identity.",
+    "failureScenario": "The same person has two Auth0 identities with the same email (e.g. google-oauth2|... and auth0|..., unlinked). First identity creates the user row with that email. Every request from the second identity runs the auth middleware (auth.ts:98) → INSERT hits the partial unique index ux_users_email_not_null before the ON CONFLICT(id) arbiter applies → 23505 propagates uncaught → 500; the second login method is permanently broken. (Old app had the same index and per-request upsert, so this is inherited, not a regression — but it is a broken-login flow.)",
+    "suggestedFix": "Catch isUniqueViolation in ensureFromClaims and retry the upsert with email omitted/nulled (or surface a 409 with a clear 'email already in use by another account' message), mirroring updateEmail's handling."
+  },
+  {
+    "file": "codebase/apps/server/src/infrastructure/db/client.ts",
+    "line": 8,
+    "severity": "medium",
+    "dimension": "server-http-security",
+    "summary": "The pg.Pool is created without an 'error' listener and none is attached in container.ts or main.ts, so an error emitted by an idle pooled client crashes the whole Node process (unhandled 'error' event).",
+    "failureScenario": "Postgres restarts (or a network blip drops a TCP connection) while the pool holds an idle client. node-postgres emits 'error' on the Pool; with no listener, Node throws an uncaught exception and the API process dies, dropping every in-flight request — despite the careful SIGTERM/SIGINT graceful-shutdown handling in main.ts.",
+    "suggestedFix": "In createPool (or buildContainer), attach `pool.on('error', (err) => logger.error({ err }, 'Idle pg client error'))` so backend disconnects are logged instead of fatal."
+  },
+  {
+    "file": "codebase/apps/web/src/features/todos/components/Composer.tsx",
+    "line": 170,
+    "severity": "high",
+    "dimension": "web-correctness",
+    "summary": "Tasks added on the Today/Tomorrow views (the default '/' route) are created with dueDate=null and immediately vanish from the day view.",
+    "failureScenario": "DashboardPage passes effectiveDate={day} where day is the raw route token ('today' on '/'). Line 170 only accepts effectiveDate when it matches /^\\d{4}-\\d{2}-\\d{2}$/, so with no explicit date picked the fallback is '' -> dueDate:null. The server keeps null as null (inputs.ts normalizeDueDate) and matchesDay() requires todo.dueDate === resolved day, so the new task never appears in any /day view — user types a title on the home view, hits Add Task, the composer closes and the task seems lost (only findable via search). The old app resolved 'today'/'tomorrow' to concrete dates before submit (old App.jsx:229-237). Same line also feeds RecurrenceSelector baseDate (line 486), leaving the recurrence start date blank on token views.",
+    "suggestedFix": "Resolve the token before use: const dayStr = resolveDayString(effectiveDate) (from lib/day-filter) and use it as the dueDate/baseDate fallback when it matches the date regex; keep '' -> null only for genuinely non-date tokens."
+  },
+  {
+    "file": "codebase/apps/web/src/shared/guest/guest-api.ts",
+    "line": 135,
+    "severity": "medium",
+    "dimension": "web-correctness",
+    "summary": "readTodos() casts pre-rebuild guest_todos straight to Todo[] with no normalization, and legacy subtasks have no subtaskId — toggling one subtask flips ALL subtasks of the todo.",
+    "failureScenario": "The old client stored guest subtasks as {id: Date.now().toString(), title, isCompleted} (old App.jsx:1299, guestApi.js) — no subtaskId, no position — and todos with no order/archived/originalId. An existing guest user upgrades: TaskCard's SubtaskRow toggle maps todo.subtasks with item.subtaskId === subtask.subtaskId (TaskCard.tsx:321); undefined === undefined matches every row, so checking one subtask optimistically completes all of them, and guest updateTodo persists the all-flipped array (re-keyed with fresh random UUIDs). React also renders duplicate undefined keys, and sortTodos' a.order - b.order comparator yields NaN when legacy rows (order undefined) mix with new rows (day-filter.ts:80).",
+    "suggestedFix": "Normalize legacy rows in readTodos(): backfill subtaskId (from legacy id or crypto.randomUUID()), position, order:0, archived:false, originalId:null before returning; write the migrated array back once."
+  },
+  {
+    "file": "codebase/apps/web/src/app/pages/DashboardPage.tsx",
+    "line": 131,
+    "severity": "medium",
+    "dimension": "web-correctness",
+    "summary": "Inline task-edit Save silently does nothing when the server rejects the PATCH — no onError handling and no error UI, while the editor accepts values the server 400s.",
+    "failureScenario": "TaskCardEditor's duration hour input is unbounded (TaskCard.tsx:199-203; 30h -> 1800 min > durationMaxMinutes 1440) and the description textarea has no 2000-char limit. handleSaveEdit calls updateTodo.mutate with only an onSuccess callback; on a 400 problem response the mutation errors, onSuccess never fires, the edit pane stays open and nothing is displayed — the user clicks Save repeatedly with zero feedback. The composer, by contrast, catches and shows the error banner. Guest mode diverges further: guestApi.updateTodo accepts the same out-of-range values, so data validity depends on auth state.",
+    "suggestedFix": "Add an onError that surfaces error.message near the Save button (or pass mutation error into TaskCardEditor), and clamp duration/description in the editor to the shared LIMITS."
+  },
+  {
+    "file": "codebase/apps/web/src/features/settings/export-import-lib.ts",
+    "line": 116,
+    "severity": "low",
+    "dimension": "web-correctness",
+    "summary": "Guest JSON import hardcodes recurrence: null, so a guest backup/restore silently strips all recurrence rules (the server import preserves them).",
+    "failureScenario": "Guest user exports (buildGuestExport keeps recurrence in the raw rows), wipes data, then imports the same file: normalizeTodo drops recurrence on every todo. dateRange span tasks lose their span — coversDay() no longer matches, so a task that covered July 1-31 now appears only on its dueDate day — and completing formerly recurring todos no longer spawns the next occurrence. Server-side import (import-data.ts:201-214) preserves recurrence, so the same file round-trips correctly only for logged-in users.",
+    "suggestedFix": "Carry recurrence through normalizeTodo (validate with recurrenceSchema.safeParse and keep it when valid, else null)."
+  },
+  {
+    "file": "codebase/apps/web/src/shared/guest/guest-api.ts",
+    "line": 237,
+    "severity": "low",
+    "dimension": "web-correctness",
+    "summary": "Guest recurrence expansion has no occurrence cap, unlike the server's MAX_OCCURRENCES=366, so a wide daily range writes tens of thousands of rows to localStorage.",
+    "failureScenario": "In guest mode, set a Daily recurrence with start 2026-01-01 and end 2126-01-01 (RecurrenceSelector imposes no range bound): expandDates loops ~36,500 iterations, createTodo pushes that many Todo objects and JSON.stringifies them into guest_todos — multi-second UI freeze and likely QuotaExceededError mid-write, after which the day view renders thousands of duplicate cards. The rebuilt server deliberately caps the same input at 366 rows (domain/recurrence.ts MAX_OCCURRENCES), so guest and server produce wildly different results for the same recurrence.",
+    "suggestedFix": "Apply the same 366-date cap in guest expandDates (break when dates.length >= 366), mirroring the server."
+  },
+  {
+    "file": "codebase/apps/web/src/features/statistics/stats-lib.ts",
+    "line": 21,
+    "severity": "high",
+    "dimension": "contract-fidelity",
+    "summary": "The Statistics page's default \"All\" tab sends the sentinel range 1970-01-01..2100-12-31 to GET /stats, and the server's range branch zero-fills one group entry PER DAY of that range, returning ~47,800 groups (~2.4 MB) which the client then renders as an SVG line chart ~1.1 million px wide with ~48k circle nodes.",
+    "failureScenario": "Logged-in (server-mode) user opens the Statistics page. StatisticsView.tsx:44-59 initializes period='all' with range=ALL_RANGE and immediately queries /stats?startDate=1970-01-01&endDate=2100-12-31. get-stats.ts groupByDayInRange (apps/server/src/application/stats/get-stats.ts:111-115, invoked at :157) loops day-by-day over 131 years producing ~47,848 zero-filled group objects; LineChart (charts.tsx:85, width = points.length * 24) then renders them all, freezing or severely janking the tab. Guest mode's computeGuestStats returns sparse groups for the same tab, so the two modes also disagree.",
+    "suggestedFix": "Map the \"All\" tab to the server's period branch instead of the sentinel range (e.g. GET /stats?period=day, which totals over ALL non-archived todos and emits only days with data — the documented v1 equivalent of the old parameter-less 'all'), or have the server emit sparse groups / cap the zero-fill span for wide ranges."
+  },
+  {
+    "file": "codebase/packages/shared/src/todo.ts",
+    "line": 121,
+    "severity": "medium",
+    "dimension": "contract-fidelity",
+    "summary": "listTodosQuerySchema uses z.coerce.boolean() for `flagged` (line 121) and `includeArchived` (line 127), and in zod v4 Boolean('false') === true, so the query values \"false\" and \"0\" are parsed as TRUE — inverting the documented boolean filters.",
+    "failureScenario": "Verified with the repo's installed zod: z.coerce.boolean().parse('false') === true. Any API consumer following the OpenAPI document (which advertises these as booleans) who calls GET /api/v1/todos?includeArchived=false receives archived todos INCLUDED (todo-repository.ts:509 only excludes archived when the parsed value is not true), and ?flagged=false returns only flagged todos (todo-repository.ts:548 filters isFlagged = true). The web client only dodges this because buildTodosQueryString (apps/web/src/features/todos/data/api.ts:37) silently drops false values.",
+    "suggestedFix": "Replace z.coerce.boolean() with an explicit string-boolean parser (e.g. z.stringbool() in zod v4, or z.enum(['true','false']).transform(v => v === 'true')) for both query params."
+  }
+]
