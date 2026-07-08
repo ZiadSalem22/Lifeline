@@ -1,0 +1,132 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  min-width: 0;
+}
+
+.modes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.modeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.modeOption {
+  display: flex;
+  gap: var(--gap-md);
+  align-items: center;
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-10);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-light);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.modeActive {
+  border-color: var(--color-primary);
+  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+}
+
+.modeOption:focus-within,
+.dayButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.modeLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 0 0 auto;
+}
+
+.modeDesc {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  line-height: 1.1;
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.modeDetail {
+  font-size: 0.74rem;
+  color: var(--color-text);
+  padding: var(--space-6) var(--space-10);
+  margin: 0 0 0 36px;
+  border-left: 3px solid var(--color-border);
+  line-height: 1.25;
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--gap-md);
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dateField label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.dateField input {
+  width: 100%;
+  padding: var(--space-10);
+  border-radius: var(--radius-10);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-light);
+  color: var(--color-text);
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: var(--gap-sm);
+}
+
+.dayButton {
+  padding: var(--space-10);
+  border-radius: var(--radius-10);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.dayActive {
+  border-color: var(--color-primary);
+  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap-md);
+}
+
+.footerRight {
+  display: flex;
+  gap: var(--gap-sm);
+}
