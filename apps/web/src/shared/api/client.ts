@@ -22,7 +22,15 @@ export function setTokenSupplier(supplier: TokenSupplier | null): void {
   tokenSupplier = supplier ?? nullSupplier;
 }
 
-export const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1`;
+/**
+ * Base URL for the v1 API. VITE_API_BASE_URL may be '' (same-origin), '/'
+ * (same-origin, the common production value), or a full origin like
+ * 'http://localhost:3000'. Trailing slashes are stripped so we never emit a
+ * protocol-relative '//api/v1' (which the browser would resolve to the host
+ * 'api' and fail with a DNS/connection error).
+ */
+const rawApiBase = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE_URL = `${rawApiBase.replace(/\/+$/, '')}/api/v1`;
 
 /** RFC 7807 problem+json aware error. `problem` is null for non-problem bodies. */
 export class ApiError extends Error {
