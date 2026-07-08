@@ -1,0 +1,55 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+.nameInput {
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-8);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-light);
+  color: var(--color-text);
+  font-size: 1rem;
+  outline: none;
+}
+
+.nameInput:focus {
+  border-color: var(--color-primary);
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.colorRow label {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.colorInput {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.colorValue {
+  font-size: 0.95rem;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap-md);
+}

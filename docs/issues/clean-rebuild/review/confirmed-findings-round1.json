@@ -1,0 +1,50 @@
+[
+  {
+    "file": "codebase/apps/server/src/application/data-transfer/import-data.ts",
+    "line": 133,
+    "severity": "high",
+    "summary": "Import pre-validation misses subtask title length, so normalizeSubtasks can throw mid write-loop, producing a partial import — in replace mode this is permanent data loss after the purge.",
+    "failureScenario": "POST /api/v1/import with mode='replace' and a payload where todos[5].subtasks[0].title is 501+ chars: deleteAllByUser and deleteCustomByUser run (line 125-126), todos 0-4 are written, then toImportTodo → normalizeImportedSubtasks (line 212/72) → normalizeSubtasks throws DomainValidationError ('title must be at most 500 characters') on row 5. Request returns 400, the user's entire previous dataset is gone, and only 5 rows were imported. This contradicts both the file's own claim that 'everything is pre-validated before any write' (lines 22-24, the pre-validation at 116-122 only checks todo titles) and contract 02-api-contract-v1.md line 47 ('transactional').",
+    "suggestedFix": "Build all ImportTodoData rows (running toImportTodo/normalizeImportedSubtasks) BEFORE the replace purge and the write loop, so every DomainValidationError fires pre-write; or wrap purge+writes in one DB transaction as the contract specifies."
+  },
+  {
+    "file": "codebase/packages/shared/src/todo.ts",
+    "line": 121,
+    "severity": "medium",
+    "summary": "listTodosQuerySchema uses z.coerce.boolean() for `flagged` (line 121) and `includeArchived` (line 127); in zod 4 that is Boolean(input), so the query strings 'false' and '0' coerce to true and invert the filter.",
+    "failureScenario": "GET /api/v1/todos?flagged=false (any non-web API client, e.g. an MCP integration or curl) returns ONLY flagged todos — DrizzleTodoRepository.listConditions pushes eq(isFlagged, true). GET /api/v1/todos?includeArchived=false returns archived rows even though the caller explicitly asked to exclude them, violating the contract's 'archived excluded by default' filter semantics (02-api-contract-v1.md line 30). Only the literal empty string coerces to false.",
+    "suggestedFix": "Replace z.coerce.boolean() with an explicit string-boolean parser, e.g. z.enum(['true','false','1','0']).transform(v => v === 'true' || v === '1').optional() (or z.stringbool()), for flagged and includeArchived."
+  },
+  {
+    "file": "codebase/apps/server/src/application/todos/create-todo.ts",
+    "line": 39,
+    "severity": "medium",
+    "summary": "Free-tier active-todo cap is checked via countActiveByUser OUTSIDE the advisory-locked create transaction, so concurrent creates (especially multi-row recurrence expansions) can cross the 200 cap.",
+    "failureScenario": "Free user with 150 active todos fires two concurrent POST /api/v1/todos each expanding a daily recurrence to 40 rows: both requests read activeCount=150, both pass assertActiveTodoCapacity(150+40 ≤ 200), and createManyInternal's pg_advisory_xact_lock (todo-repository.ts:476) only serializes the inserts — the user ends with 230 active todos, silently exceeding LIMITS.freeTierActiveTodosMax. The lock fixes task-number races but not the cap check, which runs before the transaction begins.",
+    "suggestedFix": "Move the countActiveByUser + assertActiveTodoCapacity check inside createManyInternal's transaction after acquiring the per-user advisory lock (pass role/adding through NewTodoData or a create option), so count-then-insert is atomic per user."
+  },
+  {
+    "file": "codebase/apps/server/src/domain/recurrence.ts",
+    "line": 90,
+    "severity": "low",
+    "summary": "expandRange's loop only stops on dates.length < MAX_OCCURRENCES when days actually match, so a specificDays rule with an empty selectedDays array and a huge date range iterates the entire range day-by-day before falling back.",
+    "failureScenario": "POST /api/v1/todos with recurrence {mode:'specificDays', startDate:'0001-01-01', endDate:'9999-12-31', selectedDays:[]} passes zod validation (recurrenceModernSchema allows an empty selectedDays array and dateOnlySchema allows any 4-digit year), then expandRange iterates ~3.65 million days (a Date allocation + setUTCDate each) with zero matches, blocking Node's event loop for seconds per request; repeated requests degrade the whole server.",
+    "suggestedFix": "Bound the loop by iterations as well as matches (e.g. also stop after MAX_OCCURRENCES*7 cursor steps, or short-circuit when selected.size === 0), and/or have the schema require selectedDays non-empty for mode 'specificDays'."
+  },
+  {
+    "file": "codebase/apps/server/src/application/data-transfer/import-data.ts",
+    "line": 124,
+    "severity": "high",
+    "summary": "Replace-mode import purges all user todos and custom tags outside any transaction, then writes rows in separate per-todo transactions, so a mid-loop failure permanently destroys the user's data — violating decision #10 and the API contract's 'transactional' guarantee.",
+    "failureScenario": "POST /api/v1/import {mode:'replace'} with a file where one todo has duration: 5000000000 (normalizeDuration has no int4 cap) or a title/description containing \u0000 (passes the title pre-validation, rejected by Postgres text). deleteAllByUser (line 125) and deleteCustomByUser (line 126) have already committed; the loop at line 132-135 then throws 22003/22021 on the bad row → 500 returned, all pre-existing todos/tags gone, only the rows before the bad one imported. Contract 02-api-contract-v1.md line 47 says import is 'transactional' and 05-decisions.md #10 says 'v1 wraps import in one transaction'; the code comment (lines 21-24) acknowledges the deviation but the pre-validation does not cover these user-triggerable failures.",
+    "suggestedFix": "Wrap the whole execute() body (purge + tag map + all upsertImported calls) in one db.transaction by threading a transaction-bound executor through ImportTodoWriter/TagRepository (the repos already accept an Executor type internally), keeping the existing per-user advisory lock inside that transaction."
+  },
+  {
+    "file": "codebase/apps/server/src/infrastructure/db/client.ts",
+    "line": 8,
+    "severity": "medium",
+    "summary": "The pg.Pool is created without an 'error' listener and none is attached in container.ts or main.ts, so an error emitted by an idle pooled client crashes the whole Node process (unhandled 'error' event).",
+    "failureScenario": "Postgres restarts (or a network blip drops a TCP connection) while the pool holds an idle client. node-postgres emits 'error' on the Pool; with no listener, Node throws an uncaught exception and the API process dies, dropping every in-flight request — despite the careful SIGTERM/SIGINT graceful-shutdown handling in main.ts.",
+    "suggestedFix": "In createPool (or buildContainer), attach `pool.on('error', (err) => logger.error({ err }, 'Idle pg client error'))` so backend disconnects are logged instead of fatal."
+  }
+]

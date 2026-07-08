@@ -1,0 +1,171 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  padding: var(--space-16) var(--space-12);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+.overlay {
+  display: none;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 0 var(--space-4);
+}
+
+.logoMark {
+  display: inline-flex;
+  color: var(--color-primary);
+}
+
+.logoText {
+  font-family: var(--font-family-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mobileClose {
+  display: none;
+  margin-left: auto;
+  color: var(--color-text-muted);
+}
+
+.quickNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-8);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.navLink:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.navLink:focus-visible,
+.dayNavBtn:focus-visible,
+.mobileClose:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.navLinkActive {
+  background: var(--color-surface-light);
+  color: var(--color-primary);
+}
+
+.utilityRow {
+  display: flex;
+  gap: var(--gap-sm);
+  padding: 0 var(--space-4);
+}
+
+.calendarWrap {
+  min-height: 0;
+}
+
+.dayNavRow {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.dayNavBtn {
+  flex: 1;
+  padding: var(--space-6) 0;
+  border-radius: var(--radius-8);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-light);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.dayNavBtn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.dayNavToday {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.footer {
+  padding: var(--space-8) var(--space-4) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.version {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* Off-canvas below the --md breakpoint (768px) */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 900;
+    width: min(calc(var(--sidebar-width) + 40px), 90vw);
+    transform: translateX(-100%);
+    transition: transform var(--transition-base);
+    box-shadow: 0 0 40px var(--shadow-dark);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 899;
+    background: var(--shadow-dark);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .overlayOpen {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobileClose {
+    display: inline-flex;
+  }
+}

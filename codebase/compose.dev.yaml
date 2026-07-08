@@ -1,0 +1,25 @@
+# Dev-only infrastructure for the codebase/ monorepo.
+# Postgres matches production (postgres:16-alpine). Host port 15432 to avoid
+# clashing with other local stacks (5432/5433 are taken on this machine);
+# set in apps/server/.env:
+#   DATABASE_URL=postgres://lifeline:lifeline@localhost:15432/lifeline
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lifeline-dev-db
+    environment:
+      POSTGRES_DB: lifeline
+      POSTGRES_USER: lifeline
+      POSTGRES_PASSWORD: lifeline
+    ports:
+      - '127.0.0.1:15432:5432'
+    volumes:
+      - lifeline_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lifeline -d lifeline']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  lifeline_dev_pgdata:

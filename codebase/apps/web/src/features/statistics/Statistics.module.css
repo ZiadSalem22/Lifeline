@@ -1,0 +1,300 @@
+/** Statistics — visual port of the old Statistics.module.css. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xl);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.iconBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-heading);
+  letter-spacing: -0.02em;
+}
+
+/* ── toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.toggleGroup {
+  display: inline-flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  background: var(--color-surface);
+  align-self: flex-start;
+}
+
+.toggle {
+  padding: var(--space-6) var(--space-16);
+  border-radius: var(--radius-8);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.toggle:hover {
+  color: var(--color-text);
+}
+
+.toggle:focus-visible,
+.chip:focus-visible,
+.linkButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.toggleActive {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.pickerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+  flex-wrap: wrap;
+}
+
+.pickerLabel {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.input {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-10);
+  background: var(--color-surface-light);
+  color: var(--color-text);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+}
+
+.chipRow {
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.chip {
+  padding: var(--space-4) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.linkButton {
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-size: 0.8rem;
+  padding: 0;
+}
+
+.weekStartOptions {
+  margin-left: var(--space-8);
+  display: inline-flex;
+  gap: var(--space-6);
+}
+
+.allHint {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-24);
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── metrics ─────────────────────────────────────────────────────────────── */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xl);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--gap-md);
+}
+
+.metric {
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background: var(--color-surface);
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-6);
+}
+
+.metricValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: var(--font-family-heading);
+  color: var(--color-text);
+}
+
+/* ── chart sections ──────────────────────────────────────────────────────── */
+
+.sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--gap-lg);
+}
+
+.sectionCard {
+  padding: var(--space-20);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.donutWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lineWrap {
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+}
+
+.lineChart {
+  display: block;
+}
+
+.chartEmpty {
+  padding: var(--space-16);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ── top tags ────────────────────────────────────────────────────────────── */
+
+.tagRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.tagSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.tagName {
+  flex: 0 0 90px;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagBar {
+  flex: 1 1 auto;
+}
+
+.progressWrap {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-light);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--transition-base);
+}
+
+.tagCount {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}

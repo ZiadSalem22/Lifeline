@@ -1,0 +1,18 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+.heading {
+  font-size: var(--font-size-heading);
+  letter-spacing: -0.02em;
+}
+
+.placeholder {
+  padding: var(--space-24);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
