@@ -25,12 +25,8 @@
 # Compose files are not needed inside the image build context
 compose*.yaml
 
-# Legacy app + ops dirs (retired at the follow-up cleanup; excluded from the build)
-backend/
-client/
-client-next/
-services/
-database/
-db/
+# Ops + docs: shipped to the VPS via `git archive` but NOT needed inside the
+# image, so they stay out of the build context. deploy/ is load-bearing on the
+# VPS (apply-release.sh + the nginx vhost) — exclude it here, never delete it.
 deploy/
 docs/

@@ -8,17 +8,11 @@ openapi.json
 .gitignore
 .prettierignore
 
-# Legacy app + ops/docs dirs retained for one cutover cycle (removed at cleanup)
-backend
-client
-client-next
-services
-database
-db
+# Ops + docs are not prettier-formatted. deploy/ is load-bearing — do not delete.
 deploy
 docs
 
-# Legacy governance + root cruft (describe the old structure; cleaned up next cycle)
+# Governance docs still describe the pre-rebuild layout; excluded from formatting
 .github/instructions
 .github/prompts
 .github/skills
@@ -31,7 +25,4 @@ docs
 .agent
 .config
 .venv
-compose.yaml
-compose.env.example
-compose.production.env.example
 LICENSE
