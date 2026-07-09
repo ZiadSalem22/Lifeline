@@ -326,14 +326,17 @@ export function useTodoByNumber() {
   );
 }
 
-const SIMILAR_DEBOUNCE_MS = 450;
-const SIMILAR_MIN_LENGTH = 3;
+const SIMILAR_DEBOUNCE_MS = 250;
+const SIMILAR_MIN_LENGTH = 2;
+const SUGGESTION_LIMIT = 6;
 
 /**
- * Debounced similar-task hint for the composer (GET /todos/similar — the old
- * MCP-only feature, now public REST). Server mode only; kept subtle. Results
- * are keyed by the title they answered so stale responses are derived away
- * instead of cleared with effect-time setState.
+ * Debounced task suggestions for the composer's "reuse a previous task" flow.
+ * Server mode queries GET /todos/similar (pg_trgm fuzzy match); guest mode
+ * filters the local workspace by title. Either way it returns FULL Todos so the
+ * composer can load one as a template (title, notes, tags, subtasks, duration,
+ * priority). Results are keyed by the title they answered so stale responses
+ * are derived away instead of cleared with effect-time setState.
  */
 export function useSimilar(title: string) {
   const { guestMode } = useAuth();
@@ -341,24 +344,42 @@ export function useSimilar(title: string) {
 
   useEffect(() => {
     const trimmed = title.trim();
-    if (guestMode || trimmed.length < SIMILAR_MIN_LENGTH) return;
+    if (trimmed.length < SIMILAR_MIN_LENGTH) return;
+    let cancelled = false;
     const timer = setTimeout(() => {
-      getSimilarSafely(trimmed)
-        .then((items) => setSimilar({ key: trimmed, items }))
-        .catch(() => setSimilar({ key: trimmed, items: [] }));
+      const load = guestMode ? guestSuggestions(trimmed) : getSimilarSafely(trimmed);
+      load
+        .then((items) => {
+          if (!cancelled) setSimilar({ key: trimmed, items });
+        })
+        .catch(() => {
+          if (!cancelled) setSimilar({ key: trimmed, items: [] });
+        });
     }, SIMILAR_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [title, guestMode]);
 
   const trimmed = title.trim();
-  return !guestMode && trimmed.length >= SIMILAR_MIN_LENGTH && similar.key === trimmed
-    ? similar.items
-    : [];
+  return trimmed.length >= SIMILAR_MIN_LENGTH && similar.key === trimmed ? similar.items : [];
 }
 
 async function getSimilarSafely(title: string): Promise<Todo[]> {
-  const result = await todosApi.getSimilarTodos(title, 3);
+  const result = await todosApi.getSimilarTodos(title, SUGGESTION_LIMIT);
   return result.items;
+}
+
+/** Guest-mode suggestions: substring match over the local workspace, prefix-first. */
+async function guestSuggestions(title: string): Promise<Todo[]> {
+  const needle = title.toLowerCase();
+  const todos = await guestApi.fetchTodos();
+  const rank = (todo: Todo) => (todo.title.toLowerCase().startsWith(needle) ? 0 : 1);
+  return todos
+    .filter((todo) => todo.title.toLowerCase().includes(needle))
+    .sort((a, b) => rank(a) - rank(b))
+    .slice(0, SUGGESTION_LIMIT);
 }
 
 /* ── tag mutations (guest-aware — decision 05 fix for the Settings manager) ── */

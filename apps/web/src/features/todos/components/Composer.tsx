@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { CreateTodoInput, Priority, Recurrence, Tag } from '@lifeline/shared';
+import type { CreateTodoInput, Priority, Recurrence, Tag, Todo } from '@lifeline/shared';
 import { FlagIcon } from '../../../shared/ui/icons';
 import { useCreateTag, useCreateTodo, useSimilar, useTodoByNumber } from '../data/hooks';
 import { resolveDayString } from '../lib/day-filter';
@@ -58,6 +58,8 @@ export function Composer({ open, allTags, effectiveDate, onRequestClose }: Compo
   const [loadNumber, setLoadNumber] = useState('');
   const [loadError, setLoadError] = useState('');
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
 
   const createTodo = useCreateTodo();
   const createTag = useCreateTag();
@@ -124,6 +126,33 @@ export function Composer({ open, allTags, effectiveDate, onRequestClose }: Compo
     setNewSubtask('');
   };
 
+  // Populate the whole composer from an existing task — used by both the
+  // load-by-number bar and the type-ahead suggestion dropdown. Copies title,
+  // notes, tags, subtasks, duration and priority; a template is a NEW task, so
+  // date/time/recurrence are explicitly reset (never inherited).
+  const applyTemplate = (todo: Todo) => {
+    setTitle(todo.title);
+    setDescription(todo.description ?? '');
+    setTagIds(todo.tags.map((tag) => tag.id));
+    setIsFlagged(todo.isFlagged);
+    setPriority(todo.priority);
+    setSubtasks(
+      todo.subtasks.map((subtask) => ({
+        key: subtask.subtaskId,
+        title: subtask.title,
+        isCompleted: subtask.isCompleted,
+      })),
+    );
+    setHours(Math.floor(todo.duration / 60));
+    setMinutes(todo.duration % 60);
+    setDueTime('');
+    setScheduleDate('');
+    setRecurrence(null);
+    if (todo.tags.length > 0) setShowTagPicker(true);
+    setShowSuggestions(false);
+    setHighlight(-1);
+  };
+
   const loadTemplate = async () => {
     setLoadError('');
     const parsed = Number.parseInt(loadNumber, 10);
@@ -138,25 +167,7 @@ export function Composer({ open, allTags, effectiveDate, onRequestClose }: Compo
         setLoadError('No task found with that number.');
         return;
       }
-      setTitle(todo.title);
-      setDescription(todo.description ?? '');
-      setTagIds(todo.tags.map((tag) => tag.id));
-      setIsFlagged(todo.isFlagged);
-      setPriority(todo.priority);
-      setSubtasks(
-        todo.subtasks.map((subtask) => ({
-          key: subtask.subtaskId,
-          title: subtask.title,
-          isCompleted: subtask.isCompleted,
-        })),
-      );
-      setHours(Math.floor(todo.duration / 60));
-      setMinutes(todo.duration % 60);
-      // Template = new task: explicitly RESET date, time, and recurrence.
-      setDueTime('');
-      setScheduleDate('');
-      setRecurrence(null);
-      if (todo.tags.length > 0) setShowTagPicker(true);
+      applyTemplate(todo);
     } catch (loadFailure) {
       setLoadError(loadFailure instanceof Error ? loadFailure.message : 'Failed to load task');
     } finally {
@@ -245,25 +256,89 @@ export function Composer({ open, allTags, effectiveDate, onRequestClose }: Compo
 
       <div className={styles.divider} />
 
-      <input
-        type="text"
-        className={styles.titleInput}
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder="Title — What do you want to accomplish?"
-        aria-label="Task title"
-      />
-
-      {similar.length > 0 && (
-        <p className={styles.similarHint}>
-          Similar:{' '}
-          {similar.map((todo, index) => (
-            <span key={todo.id}>
-              {index > 0 && ', '}#{todo.taskNumber} {todo.title}
-            </span>
-          ))}
-        </p>
-      )}
+      <div className={styles.titleField}>
+        <input
+          type="text"
+          className={styles.titleInput}
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            setShowSuggestions(true);
+            setHighlight(-1);
+          }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setShowSuggestions(false)}
+          onKeyDown={(event) => {
+            if (!showSuggestions || similar.length === 0) return;
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setHighlight((current) => (current + 1) % similar.length);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setHighlight((current) => (current <= 0 ? similar.length - 1 : current - 1));
+            } else if (event.key === 'Enter' && highlight >= 0) {
+              const picked = similar[highlight];
+              if (picked) {
+                event.preventDefault();
+                applyTemplate(picked);
+              }
+            } else if (event.key === 'Escape') {
+              // Close the dropdown first; don't let it bubble to the composer's
+              // Escape-to-close handler on document.
+              event.stopPropagation();
+              setShowSuggestions(false);
+              setHighlight(-1);
+            }
+          }}
+          placeholder="Title — What do you want to accomplish?"
+          aria-label="Task title"
+          role="combobox"
+          aria-expanded={showSuggestions && similar.length > 0}
+          aria-autocomplete="list"
+          autoComplete="off"
+        />
+        {showSuggestions && similar.length > 0 && (
+          <div className={styles.suggestions}>
+            <div className={styles.suggestionsHead}>Reuse a previous task</div>
+            <ul role="listbox" aria-label="Previous tasks">
+              {similar.map((todo, index) => (
+                <li key={todo.id} role="option" aria-selected={index === highlight}>
+                  <button
+                    type="button"
+                    className={
+                      index === highlight
+                        ? `${styles.suggestion} ${styles.suggestionActive}`
+                        : styles.suggestion
+                    }
+                    // onMouseDown (not onClick) + preventDefault so the input
+                    // does not blur-and-hide the list before the click lands.
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      applyTemplate(todo);
+                    }}
+                    onMouseEnter={() => setHighlight(index)}
+                  >
+                    <span className={styles.suggestionNum}>#{todo.taskNumber}</span>
+                    <span className={styles.suggestionTitle}>{todo.title}</span>
+                    {(todo.tags.length > 0 || todo.subtasks.length > 0) && (
+                      <span className={styles.suggestionMeta}>
+                        {[
+                          todo.tags.length > 0 &&
+                            `${todo.tags.length} tag${todo.tags.length > 1 ? 's' : ''}`,
+                          todo.subtasks.length > 0 &&
+                            `${todo.subtasks.length} subtask${todo.subtasks.length > 1 ? 's' : ''}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       <textarea
         className={styles.descriptionInput}
