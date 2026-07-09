@@ -128,7 +128,7 @@ describe('Composer template loading', () => {
     renderComposer('2026-07-06');
 
     await user.type(screen.getByLabelText('Load task by number'), '7');
-    await user.click(screen.getByRole('button', { name: 'Load' }));
+    await user.click(screen.getByRole('button', { name: 'Keep progress' }));
 
     await waitFor(() => expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report'));
     expect(screen.getByLabelText('Task description')).toHaveValue('summarize wins');
@@ -148,12 +148,40 @@ describe('Composer template loading', () => {
     expect(input?.subtasks).toEqual([{ title: 'Collect data', isCompleted: true }]);
   });
 
+  it('loads a #number as a Fresh copy — subtasks reset to unchecked', async () => {
+    const user = userEvent.setup();
+    seedGuestTodos([
+      makeTodo({
+        taskNumber: 7,
+        title: 'Weekly report',
+        duration: 30,
+        subtasks: [{ subtaskId: 's-1', title: 'Collect data', isCompleted: true, position: 1 }],
+      }),
+    ]);
+    const createSpy = vi.spyOn(guestApi, 'createTodo');
+    renderComposer('2026-07-06');
+
+    await user.type(screen.getByLabelText('Load task by number'), '7');
+    await user.click(screen.getByRole('button', { name: 'Fresh copy' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report'));
+    // Loaded subtask is unchecked in the editor...
+    expect(screen.getByLabelText('Toggle subtask Collect data')).not.toBeChecked();
+
+    await user.click(screen.getByRole('button', { name: 'Add Task' }));
+    await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1));
+    // ...and persisted unchecked.
+    expect(createSpy.mock.calls[0]?.[0]?.subtasks).toEqual([
+      { title: 'Collect data', isCompleted: false },
+    ]);
+  });
+
   it('shows an error for unknown task numbers', async () => {
     const user = userEvent.setup();
     seedGuestTodos([]);
     renderComposer();
     await user.type(screen.getByLabelText('Load task by number'), '99');
-    await user.click(screen.getByRole('button', { name: 'Load' }));
+    await user.click(screen.getByRole('button', { name: 'Fresh copy' }));
     expect(await screen.findByText('No task found with that number.')).toBeInTheDocument();
   });
 });

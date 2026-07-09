@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/harness';
 import { makeTodo } from '../../../test/test-utils';
 import { Composer } from './Composer';
 
 /**
- * The composer's type-ahead "reuse a previous task" flow. Suggestions are a
- * pure client-side filter over the passed allTodos list, so this drives the
- * real component with a couple of todos and asserts the dropdown + template load.
+ * The composer's type-ahead "reuse a previous task" flow + the Fresh-copy vs
+ * Keep-progress choice. Suggestions are a pure client-side filter over the
+ * passed allTodos list. Queries for the suggestion buttons are scoped to the
+ * listbox with within(), because the #number Load bar exposes identically
+ * labelled "Fresh copy"/"Keep progress" buttons too.
  */
 
 beforeEach(() => {
@@ -19,44 +21,74 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function renderComposer(allTodos: ReturnType<typeof makeTodo>[]) {
+  renderWithProviders(
+    <Composer
+      open
+      allTags={[]}
+      allTodos={allTodos}
+      effectiveDate="2026-07-06"
+      onRequestClose={vi.fn()}
+    />,
+  );
+}
+
+const weeklyWithDoneSubtask = makeTodo({
+  taskNumber: 12,
+  title: 'Weekly report review',
+  description: 'summarize wins',
+  duration: 45,
+  priority: 'high',
+  subtasks: [{ subtaskId: 's-1', title: 'Collect data', isCompleted: true, position: 1 }],
+});
+
 describe('Composer type-ahead suggestions', () => {
-  it('suggests matching previous tasks as you type and loads one as a template on click', async () => {
+  it('offers Fresh copy + Keep progress for a task with completed subtasks; Fresh copy unchecks them', async () => {
     const user = userEvent.setup();
-    const allTodos = [
-      makeTodo({
-        taskNumber: 12,
-        title: 'Weekly report review',
-        description: 'summarize wins',
-        duration: 45,
-        priority: 'high',
-        subtasks: [{ subtaskId: 's-1', title: 'Collect data', isCompleted: false, position: 1 }],
-      }),
-      makeTodo({ taskNumber: 13, title: 'Buy groceries' }),
-    ];
-    renderWithProviders(
-      <Composer
-        open
-        allTags={[]}
-        allTodos={allTodos}
-        effectiveDate="2026-07-06"
-        onRequestClose={vi.fn()}
-      />,
-    );
+    renderComposer([weeklyWithDoneSubtask, makeTodo({ taskNumber: 13, title: 'Buy groceries' })]);
 
     await user.type(screen.getByLabelText('Task title'), 'Weekly');
 
-    // The dropdown surfaces only the title-matching task, and clicking it loads
-    // the FULL task as a template (title, notes, duration, subtasks).
-    const option = await screen.findByRole('button', { name: /Weekly report review/ });
-    expect(screen.queryByText('Buy groceries')).not.toBeInTheDocument();
-    await user.click(option);
+    // Only the title-matching task appears.
+    const listbox = await screen.findByRole('listbox');
+    expect(within(listbox).getByText('Weekly report review')).toBeInTheDocument();
+    expect(within(listbox).queryByText('Buy groceries')).not.toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report review'),
-    );
+    // A task with a ticked subtask exposes both actions.
+    const fresh = within(listbox).getByRole('button', { name: 'Fresh copy' });
+    expect(within(listbox).getByRole('button', { name: 'Keep progress' })).toBeInTheDocument();
+
+    await user.click(fresh);
+
+    // Full template loaded; the subtask carried over but RESET to unchecked.
+    expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report review');
     expect(screen.getByLabelText('Task description')).toHaveValue('summarize wins');
-    expect(screen.getByLabelText('Duration minutes')).toHaveValue('45');
-    // The dropdown closes once a suggestion is applied.
+    expect(screen.getByLabelText('Toggle subtask Collect data')).not.toBeChecked();
     expect(screen.queryByText('Reuse a previous task')).not.toBeInTheDocument();
+  });
+
+  it('Keep progress carries the subtask completion over', async () => {
+    const user = userEvent.setup();
+    renderComposer([weeklyWithDoneSubtask]);
+
+    await user.type(screen.getByLabelText('Task title'), 'Weekly');
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('button', { name: 'Keep progress' }));
+
+    expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report review');
+    expect(screen.getByLabelText('Toggle subtask Collect data')).toBeChecked();
+  });
+
+  it('shows a single Copy button when the task has no completed subtasks', async () => {
+    const user = userEvent.setup();
+    renderComposer([makeTodo({ taskNumber: 20, title: 'Buy groceries' })]);
+
+    await user.type(screen.getByLabelText('Task title'), 'Buy');
+    const listbox = await screen.findByRole('listbox');
+    expect(within(listbox).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('button', { name: 'Fresh copy' })).not.toBeInTheDocument();
+    expect(
+      within(listbox).queryByRole('button', { name: 'Keep progress' }),
+    ).not.toBeInTheDocument();
   });
 });

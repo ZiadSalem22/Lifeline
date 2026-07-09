@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type { CreateTodoInput, Priority, Recurrence, Tag, Todo } from '@lifeline/shared';
 import { FlagIcon } from '../../../shared/ui/icons';
 import { useCreateTag, useCreateTodo, useSimilar, useTodoByNumber } from '../data/hooks';
@@ -137,8 +137,10 @@ export function Composer({
   // Populate the whole composer from an existing task — used by both the
   // load-by-number bar and the type-ahead suggestion dropdown. Copies title,
   // notes, tags, subtasks, duration and priority; a template is a NEW task, so
-  // date/time/recurrence are explicitly reset (never inherited).
-  const applyTemplate = (todo: Todo) => {
+  // date/time/recurrence are explicitly reset (never inherited). keepProgress
+  // decides the subtasks: true ("Keep progress") carries their checked state
+  // over verbatim; false ("Fresh copy") resets every subtask to unchecked.
+  const applyTemplate = (todo: Todo, keepProgress: boolean) => {
     setTitle(todo.title);
     setDescription(todo.description ?? '');
     setTagIds(todo.tags.map((tag) => tag.id));
@@ -148,7 +150,7 @@ export function Composer({
       todo.subtasks.map((subtask) => ({
         key: subtask.subtaskId,
         title: subtask.title,
-        isCompleted: subtask.isCompleted,
+        isCompleted: keepProgress ? subtask.isCompleted : false,
       })),
     );
     setHours(Math.floor(todo.duration / 60));
@@ -161,7 +163,7 @@ export function Composer({
     setHighlight(-1);
   };
 
-  const loadTemplate = async () => {
+  const loadTemplate = async (keepProgress: boolean) => {
     setLoadError('');
     const parsed = Number.parseInt(loadNumber, 10);
     if (!loadNumber || Number.isNaN(parsed)) {
@@ -175,7 +177,7 @@ export function Composer({
         setLoadError('No task found with that number.');
         return;
       }
-      applyTemplate(todo);
+      applyTemplate(todo, keepProgress);
     } catch (loadFailure) {
       setLoadError(loadFailure instanceof Error ? loadFailure.message : 'Failed to load task');
     } finally {
@@ -244,10 +246,20 @@ export function Composer({
         <button
           type="button"
           className={styles.templateLoad}
-          onClick={() => void loadTemplate()}
+          onClick={() => void loadTemplate(false)}
           disabled={loadingTemplate}
+          title="Load as a new task with subtasks unchecked"
         >
-          {loadingTemplate ? 'Loading…' : 'Load'}
+          {loadingTemplate ? 'Loading…' : 'Fresh copy'}
+        </button>
+        <button
+          type="button"
+          className={styles.templateLoad}
+          onClick={() => void loadTemplate(true)}
+          disabled={loadingTemplate}
+          title="Load as a new task keeping subtask progress"
+        >
+          Keep progress
         </button>
         <button type="button" className={styles.templateClear} onClick={resetAll}>
           Clear Template
@@ -288,7 +300,8 @@ export function Composer({
               const picked = similar[highlight];
               if (picked) {
                 event.preventDefault();
-                applyTemplate(picked);
+                // Enter defaults to a fresh copy (the common case).
+                applyTemplate(picked, false);
               }
             } else if (event.key === 'Escape') {
               // Close the dropdown first; don't let it bubble to the composer's
@@ -309,40 +322,78 @@ export function Composer({
           <div className={styles.suggestions}>
             <div className={styles.suggestionsHead}>Reuse a previous task</div>
             <ul role="listbox" aria-label="Previous tasks">
-              {similar.map((todo, index) => (
-                <li key={todo.id} role="option" aria-selected={index === highlight}>
-                  <button
-                    type="button"
+              {similar.map((todo, index) => {
+                // The Fresh/Keep choice only differs when a subtask is ticked;
+                // otherwise a single "Copy" keeps the row uncluttered.
+                const hasProgress = todo.subtasks.some((subtask) => subtask.isCompleted);
+                // onMouseDown (not onClick) + preventDefault so the title input
+                // does not blur-and-hide the list before the action lands.
+                const pick =
+                  (keepProgress: boolean) => (event: ReactMouseEvent<HTMLButtonElement>) => {
+                    event.preventDefault();
+                    applyTemplate(todo, keepProgress);
+                  };
+                return (
+                  <li
+                    key={todo.id}
+                    role="option"
+                    aria-selected={index === highlight}
                     className={
                       index === highlight
                         ? `${styles.suggestion} ${styles.suggestionActive}`
                         : styles.suggestion
                     }
-                    // onMouseDown (not onClick) + preventDefault so the input
-                    // does not blur-and-hide the list before the click lands.
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      applyTemplate(todo);
-                    }}
                     onMouseEnter={() => setHighlight(index)}
                   >
-                    <span className={styles.suggestionNum}>#{todo.taskNumber}</span>
-                    <span className={styles.suggestionTitle}>{todo.title}</span>
-                    {(todo.tags.length > 0 || todo.subtasks.length > 0) && (
-                      <span className={styles.suggestionMeta}>
-                        {[
-                          todo.tags.length > 0 &&
-                            `${todo.tags.length} tag${todo.tags.length > 1 ? 's' : ''}`,
-                          todo.subtasks.length > 0 &&
-                            `${todo.subtasks.length} subtask${todo.subtasks.length > 1 ? 's' : ''}`,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
+                    <span className={styles.suggestionInfo}>
+                      <span className={styles.suggestionNum}>#{todo.taskNumber}</span>
+                      <span className={styles.suggestionTitle}>{todo.title}</span>
+                      {(todo.tags.length > 0 || todo.subtasks.length > 0) && (
+                        <span className={styles.suggestionMeta}>
+                          {[
+                            todo.tags.length > 0 &&
+                              `${todo.tags.length} tag${todo.tags.length > 1 ? 's' : ''}`,
+                            todo.subtasks.length > 0 &&
+                              `${todo.subtasks.length} subtask${todo.subtasks.length > 1 ? 's' : ''}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      )}
+                    </span>
+                    <span className={styles.suggestionActions}>
+                      {hasProgress ? (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.suggestionAction}
+                            onMouseDown={pick(false)}
+                            title="New task with subtasks unchecked"
+                          >
+                            Fresh copy
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.suggestionAction}
+                            onMouseDown={pick(true)}
+                            title="New task keeping subtask progress"
+                          >
+                            Keep progress
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.suggestionAction}
+                          onMouseDown={pick(false)}
+                        >
+                          Copy
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
