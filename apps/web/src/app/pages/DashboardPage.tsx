@@ -337,6 +337,7 @@ export default function DashboardPage() {
       <Composer
         open={composerOpen}
         allTags={allTags}
+        allTodos={todosQuery.data ?? []}
         effectiveDate={day}
         onRequestClose={() => setComposerOpen(false)}
       />

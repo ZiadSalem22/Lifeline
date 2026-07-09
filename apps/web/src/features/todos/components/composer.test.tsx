@@ -19,7 +19,13 @@ afterEach(() => {
 function renderComposer(effectiveDate = '2026-07-06') {
   const onRequestClose = vi.fn();
   const view = renderWithProviders(
-    <Composer open allTags={[]} effectiveDate={effectiveDate} onRequestClose={onRequestClose} />,
+    <Composer
+      open
+      allTags={[]}
+      allTodos={[]}
+      effectiveDate={effectiveDate}
+      onRequestClose={onRequestClose}
+    />,
   );
   return { ...view, onRequestClose };
 }

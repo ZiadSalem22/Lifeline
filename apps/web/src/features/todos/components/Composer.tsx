@@ -21,6 +21,8 @@ import styles from './Composer.module.css';
 export interface ComposerProps {
   open: boolean;
   allTags: readonly Tag[];
+  /** Loaded todo list (dashboard's useAllTodos) that powers type-ahead suggestions. */
+  allTodos: readonly Todo[];
   /** 'today' | 'tomorrow' | 'YYYY-MM-DD' — fallback dueDate when no date picked. */
   effectiveDate: string;
   onRequestClose: () => void;
@@ -35,7 +37,13 @@ interface DraftSubtask {
 const HOUR_OPTIONS = Array.from({ length: 13 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => index * 5);
 
-export function Composer({ open, allTags, effectiveDate, onRequestClose }: ComposerProps) {
+export function Composer({
+  open,
+  allTags,
+  allTodos,
+  effectiveDate,
+  onRequestClose,
+}: ComposerProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const loadInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -64,7 +72,7 @@ export function Composer({ open, allTags, effectiveDate, onRequestClose }: Compo
   const createTodo = useCreateTodo();
   const createTag = useCreateTag();
   const findByNumber = useTodoByNumber();
-  const similar = useSimilar(title);
+  const similar = useSimilar(title, allTodos);
 
   // Autofocus the load-task input when the panel opens (old App.jsx:206-213).
   useEffect(() => {
