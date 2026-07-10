@@ -8,3 +8,4 @@ Current ADRs:
 - [0002-lifeline-mcp-dual-auth-with-auth0.md](0002-lifeline-mcp-dual-auth-with-auth0.md)
 - [0003-subtask-identity-contract.md](0003-subtask-identity-contract.md)
 - [0004-archive-first-lifecycle.md](0004-archive-first-lifecycle.md)
+- [0005-production-cutover-and-post-launch-hardening.md](0005-production-cutover-and-post-launch-hardening.md)
