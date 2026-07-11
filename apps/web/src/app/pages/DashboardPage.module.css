@@ -54,6 +54,47 @@
   font-weight: 500;
 }
 
+/* Tasks ⇄ Daily Plan segmented pill (Statistics toggleGroup pattern). */
+.modeToggle {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  background: var(--color-surface);
+}
+
+.modeToggleBtn {
+  padding: var(--space-6) var(--space-14);
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.modeToggleBtn:hover {
+  color: var(--color-text);
+}
+
+.modeToggleBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.modeToggleBtnActive {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
 .progressRow {
   display: flex;
   align-items: center;

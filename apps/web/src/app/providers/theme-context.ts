@@ -1,6 +1,10 @@
 import { createContext, useContext } from 'react';
 
-/** The nine theme ids from the old client (base.css / ThemeProvider.themes). */
+/**
+ * The nine theme ids from the old client (base.css / ThemeProvider.themes)
+ * plus 'paper' — the black-and-white print look from the Daily Plan design
+ * handoff (Playfair masthead, hard 4px corners in the plan view).
+ */
 export const THEMES = [
   'dark',
   'blue-dark',
@@ -11,6 +15,7 @@ export const THEMES = [
   'blue',
   'midnight',
   'sunset',
+  'paper',
 ] as const;
 export type ThemeId = (typeof THEMES)[number];
 

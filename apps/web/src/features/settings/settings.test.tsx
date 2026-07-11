@@ -76,8 +76,8 @@ describe('SettingsModal appearance tab (wired theme/font/size)', () => {
     renderSettings();
     await user.click(screen.getByRole('tab', { name: 'Appearance' }));
 
-    // 9-theme swatch grid.
-    expect(screen.getAllByRole('button', { name: /^Theme / })).toHaveLength(9);
+    // 10-theme swatch grid (9 originals + paper).
+    expect(screen.getAllByRole('button', { name: /^Theme / })).toHaveLength(10);
     await user.click(screen.getByRole('button', { name: 'Theme Midnight' }));
     expect(document.documentElement.dataset.theme).toBe('midnight');
 

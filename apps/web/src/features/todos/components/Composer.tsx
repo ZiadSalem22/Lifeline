@@ -74,10 +74,16 @@ export function Composer({
   const findByNumber = useTodoByNumber();
   const similar = useSimilar(title, allTodos);
 
-  // Autofocus the load-task input when the panel opens (old App.jsx:206-213).
+  // Autofocus the load-task input when the panel opens (old App.jsx:206-213) —
+  // but never steal focus from a field the user already started typing in
+  // (clicking the title within the 40ms window used to yank focus away).
   useEffect(() => {
     if (!open) return;
-    const timer = setTimeout(() => loadInputRef.current?.focus(), 40);
+    const timer = setTimeout(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && formRef.current?.contains(active)) return;
+      loadInputRef.current?.focus();
+    }, 40);
     return () => clearTimeout(timer);
   }, [open]);
 

@@ -25,6 +25,8 @@ import {
 } from '../../features/todos/lib/day-filter';
 import type { SortOption } from '../../features/todos/lib/day-filter';
 import { formatDuration } from '../../features/todos/lib/format';
+import { DailyPlanView } from '../../features/daily-plan/DailyPlanView';
+import { useHomeViewMode } from '../../features/daily-plan/data/view-mode';
 import { ApiError } from '../../shared/api/client';
 import { SparklesIcon } from '../../shared/ui/icons';
 import { Spinner } from '../../shared/ui/Spinner';
@@ -82,19 +84,29 @@ export default function DashboardPage() {
   const todos = todosQuery.data;
   const allTags = tagsQuery.data ?? [];
 
+  // Tasks ⇄ Daily Plan (persisted; localStorage + settings.layout mirror).
+  const [viewMode, setViewMode] = useHomeViewMode();
+
   // Composer auto-open/close tracks list emptiness (old App.jsx:269-276) —
   // state adjusted during render, guarded by comparison (no set-state-in-effect).
+  // Gated to Tasks mode: the Daily Plan has no composer.
   const isEmpty = todos !== undefined && todos.length === 0;
   const [wasEmpty, setWasEmpty] = useState<boolean | null>(null);
-  if (todos !== undefined && wasEmpty !== isEmpty) {
+  if (viewMode === 'tasks' && todos !== undefined && wasEmpty !== isEmpty) {
     setWasEmpty(isEmpty);
     setComposerOpen(isEmpty);
   }
 
-  // ?taskId deep-link opens that task in edit mode once it is in the list.
+  // ?taskId deep-link opens that task in edit mode once it is in the list
+  // (Tasks mode only — plan mode has no inline editor).
   const taskId = searchParams.get('taskId');
   const [handledTaskId, setHandledTaskId] = useState<string | null>(null);
-  if (taskId && taskId !== handledTaskId && todos?.some((todo) => todo.id === taskId)) {
+  if (
+    viewMode === 'tasks' &&
+    taskId &&
+    taskId !== handledTaskId &&
+    todos?.some((todo) => todo.id === taskId)
+  ) {
     setHandledTaskId(taskId);
     setEditingTodoId(taskId);
   }
@@ -247,9 +259,33 @@ export default function DashboardPage() {
       <div className={`${styles.hero} fade-in-slide-down`}>
         <div className={styles.heroTitleRow}>
           <h1 className={styles.heroTitle}>{title}</h1>
-          {durationString && (
+          {durationString && viewMode === 'tasks' && (
             <span className={`${styles.durationPill} scale-in`}>{durationString}</span>
           )}
+          <div className={styles.modeToggle} role="tablist" aria-label="Home view">
+            {(
+              [
+                ['tasks', 'Tasks'],
+                ['plan', 'Daily Plan'],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === mode}
+                className={[
+                  styles.modeToggleBtn,
+                  viewMode === mode ? styles.modeToggleBtnActive : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => setViewMode(mode)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={styles.progressRow}>
@@ -265,121 +301,133 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className={styles.filtersRow}>
-          {allTags.length > 0 && (
-            <div className={styles.filterChips}>
-              <span className={styles.filterLabel}>Filter:</span>
-              {allTags.map((tag) => {
-                const active = selectedFilterTags.includes(tag.id);
-                return (
+        {viewMode === 'tasks' && (
+          <div className={styles.filtersRow}>
+            {allTags.length > 0 && (
+              <div className={styles.filterChips}>
+                <span className={styles.filterLabel}>Filter:</span>
+                {allTags.map((tag) => {
+                  const active = selectedFilterTags.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className={[styles.filterChip, active ? styles.filterChipActive : undefined]
+                        .filter(Boolean)
+                        .join(' ')}
+                      style={
+                        active
+                          ? {
+                              borderColor: tag.color,
+                              color: tag.color,
+                              background: `${tag.color}20`,
+                            }
+                          : undefined
+                      }
+                      onClick={() => handleToggleFilterTag(tag.id)}
+                      aria-pressed={active}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+                {selectedFilterTags.length > 0 && (
                   <button
-                    key={tag.id}
                     type="button"
-                    className={[styles.filterChip, active ? styles.filterChipActive : undefined]
-                      .filter(Boolean)
-                      .join(' ')}
-                    style={
-                      active
-                        ? { borderColor: tag.color, color: tag.color, background: `${tag.color}20` }
-                        : undefined
-                    }
-                    onClick={() => handleToggleFilterTag(tag.id)}
-                    aria-pressed={active}
+                    className={styles.filterChip}
+                    onClick={() => setSelectedFilterTags([])}
                   >
-                    {tag.name}
+                    Clear
                   </button>
-                );
-              })}
-              {selectedFilterTags.length > 0 && (
-                <button
-                  type="button"
-                  className={styles.filterChip}
-                  onClick={() => setSelectedFilterTags([])}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          <select
-            className={styles.sortSelect}
-            value={sortOption}
-            onChange={(event) => setSortOption(event.target.value as SortOption)}
-            aria-label="Sort tasks"
-          >
-            <option value="date">Sort by Date</option>
-            <option value="priority">Sort by Priority</option>
-            <option value="duration">Sort by Duration</option>
-            <option value="name">Sort by Name</option>
-          </select>
-        </div>
+            <select
+              className={styles.sortSelect}
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value as SortOption)}
+              aria-label="Sort tasks"
+            >
+              <option value="date">Sort by Date</option>
+              <option value="priority">Sort by Priority</option>
+              <option value="duration">Sort by Duration</option>
+              <option value="name">Sort by Name</option>
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* ── composer ─────────────────────────────────────────────────────── */}
       {todosQuery.isError && (
         <div className={styles.errorBanner} role="alert">
           Failed to load tasks. Check your connection and try again.
         </div>
       )}
 
-      {!composerOpen && (
-        <div className={styles.addTaskRow}>
-          <button
-            type="button"
-            className={styles.addTaskButton}
-            onClick={() => setComposerOpen(true)}
-          >
-            + Add Task
-          </button>
-        </div>
-      )}
-      <Composer
-        open={composerOpen}
-        allTags={allTags}
-        allTodos={todosQuery.data ?? []}
-        effectiveDate={day}
-        onRequestClose={() => setComposerOpen(false)}
-      />
-
-      {/* ── task list ────────────────────────────────────────────────────── */}
-      <div className={styles.taskList}>
-        {dayTodos.length === 0 && (
-          <div className={`${styles.emptyState} fade-in-scale-up`}>
-            <div className={styles.emptyIcon}>
-              <SparklesIcon width={48} height={48} />
+      {viewMode === 'plan' ? (
+        <DailyPlanView dayToken={day} todos={todos ?? []} />
+      ) : (
+        <>
+          {/* ── composer ─────────────────────────────────────────────────── */}
+          {!composerOpen && (
+            <div className={styles.addTaskRow}>
+              <button
+                type="button"
+                className={styles.addTaskButton}
+                onClick={() => setComposerOpen(true)}
+              >
+                + Add Task
+              </button>
             </div>
-            <h3 className={styles.emptyTitle}>All clear!</h3>
-            <p className={styles.emptyText}>No tasks for {title.toLowerCase()}</p>
-          </div>
-        )}
-
-        {orderedTodos.map((todo) => (
-          <TaskCard
-            key={todo.id}
-            todo={todo}
+          )}
+          <Composer
+            open={composerOpen}
             allTags={allTags}
-            isEditing={editingTodoId === todo.id}
-            isExpanded={expandedTodoId === todo.id}
-            selectedFilterTags={selectedFilterTags}
-            onToggle={handleToggle}
-            onFlag={handleFlag}
-            onDelete={handleDelete}
-            onStartEdit={handleStartEdit}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            editError={editingTodoId === todo.id ? editError : null}
-            onUpdatePriority={handleUpdatePriority}
-            onUpdateSubtasks={handleUpdateSubtasks}
-            onToggleExpand={handleToggleExpand}
-            onToggleFilterTag={handleToggleFilterTag}
-            onGoToDay={handleGoToDay}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            allTodos={todosQuery.data ?? []}
+            effectiveDate={day}
+            onRequestClose={() => setComposerOpen(false)}
           />
-        ))}
-      </div>
+
+          {/* ── task list ────────────────────────────────────────────────── */}
+          <div className={styles.taskList}>
+            {dayTodos.length === 0 && (
+              <div className={`${styles.emptyState} fade-in-scale-up`}>
+                <div className={styles.emptyIcon}>
+                  <SparklesIcon width={48} height={48} />
+                </div>
+                <h3 className={styles.emptyTitle}>All clear!</h3>
+                <p className={styles.emptyText}>No tasks for {title.toLowerCase()}</p>
+              </div>
+            )}
+
+            {orderedTodos.map((todo) => (
+              <TaskCard
+                key={todo.id}
+                todo={todo}
+                allTags={allTags}
+                isEditing={editingTodoId === todo.id}
+                isExpanded={expandedTodoId === todo.id}
+                selectedFilterTags={selectedFilterTags}
+                onToggle={handleToggle}
+                onFlag={handleFlag}
+                onDelete={handleDelete}
+                onStartEdit={handleStartEdit}
+                onSaveEdit={handleSaveEdit}
+                onCancelEdit={handleCancelEdit}
+                editError={editingTodoId === todo.id ? editError : null}
+                onUpdatePriority={handleUpdatePriority}
+                onUpdateSubtasks={handleUpdateSubtasks}
+                onToggleExpand={handleToggleExpand}
+                onToggleFilterTag={handleToggleFilterTag}
+                onGoToDay={handleGoToDay}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

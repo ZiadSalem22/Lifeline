@@ -1,0 +1,106 @@
+import {
+  dailyPlanDataSchema,
+  dailyPlanSettingsSchema,
+  defaultDailyPlanSettings,
+  emptyDailyPlanData,
+  type DailyPlanData,
+  type DailyPlanDay,
+  type DailyPlanSettings,
+} from '@lifeline/shared';
+import { api } from '../../../shared/api/client';
+import { weekDatesOf } from '../lib/plan-model';
+
+/**
+ * Daily Plan data access — one interface, two adapters:
+ * - server mode: /api/v1/daily-plan (synced across devices);
+ * - guest mode: localStorage rows (`daily_plan:<date>` / `daily_plan_settings`),
+ *   mirroring the guest-api idiom (injected storage, try/catch reads,
+ *   schema-normalized self-heal on read).
+ */
+export interface PlanApi {
+  fetchRange(start: string, end: string): Promise<DailyPlanDay[]>;
+  putDay(date: string, data: DailyPlanData): Promise<DailyPlanDay>;
+  fetchSettings(): Promise<DailyPlanSettings>;
+  putSettings(data: DailyPlanSettings): Promise<DailyPlanSettings>;
+}
+
+export const serverPlanApi: PlanApi = {
+  async fetchRange(start, end) {
+    const res = await api.get<{ items: DailyPlanDay[] }>(`/daily-plan?start=${start}&end=${end}`);
+    return res.items;
+  },
+  putDay(date, data) {
+    return api.put<DailyPlanDay>(`/daily-plan/${date}`, { data });
+  },
+  fetchSettings() {
+    return api.get<DailyPlanSettings>('/daily-plan/settings');
+  },
+  putSettings(data) {
+    return api.put<DailyPlanSettings>('/daily-plan/settings', { data });
+  },
+};
+
+export const PLAN_DAY_KEY_PREFIX = 'daily_plan:';
+export const PLAN_SETTINGS_KEY = 'daily_plan_settings';
+
+interface PlanStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export function createLocalPlanApi(storage: PlanStorage): PlanApi {
+  function readDay(date: string): DailyPlanData | null {
+    try {
+      const raw = storage.getItem(`${PLAN_DAY_KEY_PREFIX}${date}`);
+      if (raw === null) return null;
+      return dailyPlanDataSchema.parse(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
+
+  return {
+    fetchRange(start, end) {
+      // Guest ranges are always the week view — enumerate via the week of
+      // `start` and filter, so we never scan unbounded key spans.
+      const dates = weekDatesOf(start).filter((d) => d >= start && d <= end);
+      const items: DailyPlanDay[] = [];
+      for (const date of dates) {
+        const data = readDay(date);
+        if (data !== null) items.push({ date, data });
+      }
+      return Promise.resolve(items);
+    },
+    putDay(date, data) {
+      const parsed = dailyPlanDataSchema.parse(data);
+      try {
+        storage.setItem(`${PLAN_DAY_KEY_PREFIX}${date}`, JSON.stringify(parsed));
+      } catch {
+        // storage unavailable — the in-memory cache still has the value
+      }
+      return Promise.resolve({ date, data: parsed });
+    },
+    fetchSettings() {
+      try {
+        const raw = storage.getItem(PLAN_SETTINGS_KEY);
+        if (raw === null) return Promise.resolve(defaultDailyPlanSettings());
+        return Promise.resolve(dailyPlanSettingsSchema.parse(JSON.parse(raw)));
+      } catch {
+        return Promise.resolve(defaultDailyPlanSettings());
+      }
+    },
+    putSettings(data) {
+      const parsed = dailyPlanSettingsSchema.parse(data);
+      try {
+        storage.setItem(PLAN_SETTINGS_KEY, JSON.stringify(parsed));
+      } catch {
+        // storage unavailable
+      }
+      return Promise.resolve(parsed);
+    },
+  };
+}
+
+export const localPlanApi: PlanApi = createLocalPlanApi(window.localStorage);
+
+export { emptyDailyPlanData };

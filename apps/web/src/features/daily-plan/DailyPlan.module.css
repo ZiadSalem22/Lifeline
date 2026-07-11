@@ -1,0 +1,1453 @@
+/*
+ * Daily Plan — all plan-view styles (design handoff: dark neon + paper).
+ * Plan-scoped tokens default from the app theme so all 10 themes look
+ * native; [data-theme='dark'|'paper'] get the handoff's exact values.
+ */
+
+.planRoot {
+  --plan-card: var(--color-surface);
+  --plan-card-border: var(--color-border);
+  --plan-secbar: var(--color-surface-light);
+  --plan-secbar-text: var(--color-primary);
+  --plan-rule: var(--color-border);
+  --plan-surface2: var(--color-surface-light);
+  --plan-hover: var(--color-surface-hover);
+  --plan-primary: var(--color-primary);
+  --plan-primary-ink: var(--color-bg);
+  --plan-muted: var(--color-text-muted);
+  --plan-danger: var(--color-danger);
+  --plan-rad: 12px;
+  --plan-today-band: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  --plan-today-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  --plan-display-font: var(--font-family-heading);
+  /* density (compact) */
+  --colw: 340px;
+  --pad: 14px;
+  --gap: 14px;
+  --fs: 13px;
+
+  font-size: var(--fs);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.planRoot[data-density='roomy'] {
+  --colw: 420px;
+  --pad: 20px;
+  --gap: 20px;
+  --fs: 14px;
+}
+
+:global([data-theme='dark']) .planRoot {
+  --plan-card: #0d0d0d;
+  --plan-card-border: #262626;
+  --plan-secbar: #131313;
+  --plan-secbar-text: #00ff41;
+  --plan-rule: #262626;
+  --plan-surface2: #1a1a1a;
+  --plan-hover: #262626;
+  --plan-primary: #00ff41;
+  --plan-primary-ink: #000;
+  --plan-muted: #999;
+  --plan-danger: #ef4444;
+  --plan-today-band: rgba(0, 255, 65, 0.1);
+  --plan-today-shadow: 0 0 0 1px rgba(0, 255, 65, 0.22), 0 0 16px rgba(0, 255, 65, 0.1);
+}
+
+:global([data-theme='paper']) .planRoot {
+  --plan-card: #fff;
+  --plan-card-border: #141414;
+  --plan-secbar: #141414;
+  --plan-secbar-text: #fff;
+  --plan-rule: #dcdcd4;
+  --plan-surface2: #f0efe8;
+  --plan-hover: #e9e8e0;
+  --plan-primary: #141414;
+  --plan-primary-ink: #fff;
+  --plan-muted: #5c5c56;
+  --plan-danger: #b91c1c;
+  --plan-rad: 4px;
+  --plan-today-band: rgba(20, 20, 20, 0.05);
+  --plan-today-shadow: 0 0 0 1px rgba(20, 20, 20, 0.11), 0 4px 14px rgba(20, 20, 20, 0.1);
+  --plan-display-font: 'Playfair Display', serif;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── masthead ────────────────────────────────────────────────────────────── */
+
+.masthead {
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  padding: clamp(14px, 2.5vw, 22px) clamp(14px, 2.5vw, 26px);
+  margin-bottom: var(--gap);
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.5vw, 28px);
+  flex-wrap: wrap;
+}
+
+.mastheadLeft {
+  flex: 1;
+  min-width: min(260px, 100%);
+}
+
+.mastheadTitle {
+  font-family: var(--plan-display-font);
+  font-size: clamp(28px, 4.5vw, 40px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.mastheadSub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--plan-muted);
+  letter-spacing: 0.22em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ruleLine {
+  flex: 0 1 60px;
+  border-top: 1px solid var(--plan-rule);
+}
+
+.mastheadDate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.dateLabel {
+  font-weight: 600;
+}
+
+.weekChips {
+  display: flex;
+  gap: 5px;
+}
+
+.weekChip {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--plan-muted);
+  border: 1px solid var(--plan-rule);
+  background: transparent;
+}
+
+.weekChipToday {
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  border-color: var(--plan-primary);
+}
+
+.scoreWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scoreRing {
+  transition: stroke-dasharray 0.4s;
+}
+
+.scoreLabel {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--plan-muted);
+  text-transform: uppercase;
+  max-width: 56px;
+  line-height: 1.5;
+}
+
+/* ── hidden bar ──────────────────────────────────────────────────────────── */
+
+.hiddenBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: var(--gap);
+  padding: 10px 14px;
+  border: 1px dashed var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+}
+
+.hiddenBarLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+  font-weight: 700;
+  font-family: var(--font-family-heading);
+}
+
+.hiddenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.hiddenChip:hover {
+  border-color: var(--plan-primary);
+  color: var(--plan-primary);
+}
+
+.showAll {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+  font-weight: 700;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.showAll:hover {
+  color: var(--color-text);
+}
+
+/* ── masonry grid + card frame ───────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--colw), 100%), 1fr));
+  gap: var(--gap);
+  grid-auto-rows: 8px;
+  grid-auto-flow: row dense;
+}
+
+.card {
+  position: relative;
+  height: max-content;
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  overflow: hidden;
+}
+
+.fullCard {
+  position: relative;
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  overflow: hidden;
+  margin-top: var(--gap);
+}
+
+.secbar {
+  background: var(--plan-secbar);
+  color: var(--plan-secbar-text);
+  padding: 8px 14px;
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-right: 84px;
+}
+
+.secbarBadge {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+}
+
+.cardCtl {
+  position: absolute;
+  top: 8px;
+  z-index: 3;
+  color: var(--plan-secbar-text);
+  opacity: 0.55;
+  display: inline-flex;
+  padding: 2px 5px;
+  border-radius: 6px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.cardCtl:hover,
+.cardCtl:focus-visible {
+  opacity: 1;
+  background: rgba(150, 150, 150, 0.28);
+}
+
+.cardCtl:focus-visible {
+  outline: 2px solid var(--plan-secbar-text);
+  outline-offset: 1px;
+}
+
+.ctlGrip {
+  right: 58px;
+  cursor: grab;
+}
+
+.ctlWide {
+  right: 34px;
+}
+
+.ctlWideActive {
+  opacity: 1;
+  background: rgba(150, 150, 150, 0.35);
+}
+
+.ctlHide {
+  right: 10px;
+}
+
+.cardBody {
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── shared row/input primitives ─────────────────────────────────────────── */
+
+.rowRule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--plan-rule);
+  padding: 3px 0;
+}
+
+.inputBare {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 3px 0;
+  font-size: var(--fs);
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.inputBare:focus {
+  outline: none;
+}
+
+.inputDone {
+  text-decoration: line-through;
+  color: var(--plan-muted);
+}
+
+.prompt {
+  font-style: italic;
+  color: var(--plan-muted);
+  margin-bottom: 6px;
+}
+
+.lined {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  resize: none;
+  line-height: 24px;
+  font-family: inherit;
+  font-size: var(--fs);
+  color: var(--color-text);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 23px,
+    var(--plan-rule) 23px,
+    var(--plan-rule) 24px
+  );
+}
+
+.lined:focus {
+  outline: none;
+}
+
+.circle {
+  flex: 0 0 auto;
+  border-radius: 50%;
+  padding: 0;
+  border: 1.6px solid var(--plan-rule);
+  background: transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  cursor: pointer;
+  color: var(--plan-primary-ink);
+}
+
+.circleOn {
+  border-color: var(--plan-primary);
+  background: var(--plan-primary);
+}
+
+.square {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  padding: 0;
+  border: 1.6px solid var(--plan-muted);
+  background: transparent;
+  color: var(--plan-primary-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.squareOn {
+  border-color: var(--plan-primary);
+  background: var(--plan-primary);
+}
+
+.numChip {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  color: var(--plan-muted);
+  font-size: 10px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.pillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pillBtn:hover {
+  border-color: var(--plan-primary);
+  color: var(--plan-primary);
+}
+
+.chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 11.5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.chipActive {
+  border: 1.5px solid var(--plan-primary);
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  font-weight: 700;
+}
+
+.primaryBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  font-weight: 700;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+}
+
+.smallInput {
+  background: var(--plan-surface2);
+  border: 1px solid var(--plan-card-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--color-text);
+  font-family: inherit;
+  min-width: 0;
+}
+
+.smallInput:focus {
+  outline: none;
+  border-color: var(--plan-primary);
+}
+
+.sectionMini {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-family: var(--font-family-heading);
+}
+
+.sectionMiniMuted {
+  composes: sectionMini;
+  color: var(--plan-muted);
+}
+
+.sectionMiniRuled {
+  composes: sectionMini;
+  border-bottom: 1px solid var(--color-text);
+  padding-bottom: 4px;
+}
+
+/* ── schedule ────────────────────────────────────────────────────────────── */
+
+.schedTime {
+  width: 40px;
+  flex: 0 0 auto;
+  color: var(--plan-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── priorities ──────────────────────────────────────────────────────────── */
+
+.prioNum {
+  font-family: var(--plan-display-font);
+  font-weight: 700;
+  font-size: 15px;
+  width: 18px;
+  flex: 0 0 auto;
+}
+
+/* ── habits ──────────────────────────────────────────────────────────────── */
+
+.habitsWrap {
+  position: relative;
+}
+
+.todayBand {
+  position: absolute;
+  top: 0;
+  bottom: 2px;
+  width: 26px;
+  border-radius: 8px;
+  background: var(--plan-today-band);
+  box-shadow: var(--plan-today-shadow);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.habitsInner {
+  position: relative;
+  z-index: 1;
+}
+
+.habitHeadRow {
+  display: grid;
+  grid-template-columns: 1fr repeat(7, 22px);
+  gap: 3px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.habitHead {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--plan-muted);
+}
+
+.habitHeadToday {
+  composes: habitHead;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.habitRow {
+  display: grid;
+  grid-template-columns: 1fr repeat(7, 22px);
+  gap: 3px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.habitRowDivide {
+  border-bottom: 1px solid var(--color-text);
+}
+
+.habitRowSalah {
+  font-weight: 600;
+}
+
+.habitLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habitCell {
+  justify-self: center;
+}
+
+/* ── to-do / tomorrow ────────────────────────────────────────────────────── */
+
+.todoTitle {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todoTitleDone {
+  composes: todoTitle;
+  text-decoration: line-through;
+  color: var(--plan-muted);
+}
+
+.todoSub {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--plan-muted);
+  flex: 0 0 auto;
+}
+
+.tagDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.quickAddRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+/* ── mood / review ───────────────────────────────────────────────────────── */
+
+.moodRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.moodLabel {
+  color: var(--plan-muted);
+}
+
+.dotGroup {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ratingDot {
+  composes: circle;
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── water ───────────────────────────────────────────────────────────────── */
+
+.waterRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: var(--pad);
+}
+
+.cupBtn {
+  padding: 0;
+  line-height: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ── workout ─────────────────────────────────────────────────────────────── */
+
+.gymHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gymTitle {
+  font-family: var(--plan-display-font);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.gymSubtitle {
+  font-size: 10px;
+  color: var(--plan-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gymRest {
+  padding: 12px;
+  border: 1px dashed var(--plan-card-border);
+  border-radius: 8px;
+  color: var(--plan-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.exRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid var(--plan-rule);
+  padding: 5px 0;
+}
+
+.exName {
+  font-weight: 600;
+  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exNameDone {
+  composes: exName;
+  text-decoration: line-through;
+  color: var(--plan-muted);
+}
+
+.kgInput {
+  width: 46px;
+  background: var(--plan-surface2);
+  border: 1px solid var(--plan-card-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  text-align: right;
+  color: var(--color-text);
+}
+
+.kgInput:focus {
+  outline: none;
+  border-color: var(--plan-primary);
+}
+
+.setsLabel {
+  font-size: 10px;
+  color: var(--plan-muted);
+  font-weight: 600;
+}
+
+.overloadHint {
+  margin-left: auto;
+  font-size: 9.5px;
+  color: var(--plan-muted);
+  font-style: italic;
+}
+
+.gymDone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--plan-primary);
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--plan-primary);
+  text-transform: uppercase;
+}
+
+.prRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.prName {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.prVal {
+  width: 80px;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  font-size: 12px;
+  text-align: right;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.prName:focus,
+.prVal:focus {
+  outline: none;
+}
+
+.weekSplitGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 6px;
+}
+
+.weekDay {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  text-align: center;
+  color: var(--plan-muted);
+}
+
+.weekDayToday {
+  composes: weekDay;
+  color: var(--plan-primary);
+}
+
+.weekSelect {
+  width: 100%;
+  background: var(--plan-surface2);
+  border: 1px solid var(--plan-card-border);
+  border-radius: 7px;
+  padding: 5px 4px;
+  font-size: 11px;
+  color: var(--color-text);
+}
+
+.exEditGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px 44px 52px 24px;
+  gap: 5px;
+  align-items: center;
+}
+
+.exEditHead {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+.iconBtn {
+  display: inline-flex;
+  justify-content: center;
+  color: var(--plan-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.iconBtn:hover {
+  color: var(--plan-danger);
+}
+
+/* ── meals ───────────────────────────────────────────────────────────────── */
+
+.logBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 10px;
+}
+
+.pinnedRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 14px 11px;
+}
+
+.presetChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.presetChip:hover {
+  border-color: var(--plan-primary);
+  color: var(--plan-primary);
+}
+
+.presetChipDashed {
+  composes: presetChip;
+  border-style: dashed;
+  color: var(--plan-muted);
+  font-size: 10.5px;
+}
+
+.presetCal {
+  color: var(--plan-muted);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aiStrip {
+  margin: 0 14px 11px;
+  padding: 9px 12px;
+  border: 1px solid var(--plan-rule);
+  border-left: 3px solid var(--plan-primary);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aiStripTyping {
+  margin: 0 14px 11px;
+  padding: 9px 12px;
+  border: 1px solid var(--plan-rule);
+  border-radius: 9px;
+  color: var(--plan-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.aiText {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+.tinyPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border: 1px solid var(--plan-primary);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--plan-primary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tinyPill:hover {
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+}
+
+.tinyPillMuted {
+  composes: tinyPill;
+  border-color: var(--plan-card-border);
+  color: var(--plan-muted);
+}
+
+.tinyPillMuted:hover {
+  background: transparent;
+  color: var(--plan-danger);
+  border-color: var(--plan-danger);
+}
+
+.savedMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--plan-primary);
+}
+
+.diaryWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--plan-rule);
+  border-top: 1px solid var(--plan-rule);
+}
+
+.diaryLeft {
+  flex: 2.4 1 460px;
+  min-width: 0;
+  background: var(--plan-card);
+  padding: var(--pad);
+}
+
+.diaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.slotCard {
+  border: 1px solid var(--plan-rule);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: max-content;
+}
+
+.slotHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.slotSubtotal {
+  font-size: 10px;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.slotAdd {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--plan-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.slotAdd:hover {
+  color: var(--plan-primary);
+  border-color: var(--plan-primary);
+}
+
+.slotEmpty {
+  padding: 8px 0 4px;
+  color: var(--plan-muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.mealItemRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid var(--plan-rule);
+  padding: 4px 0;
+}
+
+.mealName {
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  width: 100%;
+}
+
+.mealName:focus {
+  outline: none;
+}
+
+.mealMacro {
+  font-size: 9px;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mealKcal {
+  width: 46px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  text-align: right;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mealKcal:focus {
+  outline: none;
+}
+
+.kcalUnit {
+  font-size: 9px;
+  color: var(--plan-muted);
+  flex: 0 0 auto;
+}
+
+.diaryRight {
+  flex: 1 1 240px;
+  min-width: 0;
+  background: var(--plan-card);
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.totalsHead {
+  composes: sectionMini;
+  border-bottom: 1px solid var(--color-text);
+  padding-bottom: 6px;
+}
+
+.kcalRingRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kcalLeftBig {
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kcalLeftSub {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+}
+
+.barRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.barLabelRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--plan-muted);
+}
+
+.barTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--plan-surface2);
+  overflow: hidden;
+  display: block;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--plan-primary);
+  transition: width 0.3s;
+}
+
+.fatRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  border-top: 1px solid var(--plan-rule);
+  padding-top: 8px;
+  color: var(--plan-muted);
+}
+
+.fatVal {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ── saved meals modal ───────────────────────────────────────────────────── */
+
+.slotChipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.slotChip {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 11px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slotChipActive {
+  composes: slotChip;
+  border: 1.5px solid var(--plan-primary);
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  font-weight: 700;
+}
+
+.slotHint {
+  font-size: 10px;
+  color: var(--plan-muted);
+  font-style: italic;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.presetCard {
+  border: 1px solid var(--plan-card-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.presetCardTop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.presetLog {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.presetLog:hover {
+  background: var(--plan-surface2);
+}
+
+.presetName {
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.presetMacroLine {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.presetIconBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 8px;
+  border-radius: 7px;
+  color: var(--plan-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.presetIconBtnActive {
+  composes: presetIconBtn;
+  color: var(--plan-primary);
+}
+
+.presetEditor {
+  border-top: 1px solid var(--plan-rule);
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--plan-surface2);
+}
+
+.macroGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.macroLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--plan-muted);
+  font-weight: 700;
+}
+
+.dangerLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--plan-danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.newPresetCard {
+  border: 1px dashed var(--plan-card-border);
+  border-radius: 10px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--plan-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.newPresetCard:hover {
+  color: var(--plan-primary);
+  border-color: var(--plan-primary);
+}
+
+.manualGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+/* ── non-negotiables + motto ─────────────────────────────────────────────── */
+
+.nonnegRow {
+  padding: 16px var(--pad);
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nonnegItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.nonnegBox {
+  composes: square;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.nonnegLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.motto {
+  text-align: center;
+  margin-top: 20px;
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  font-size: 12px;
+  color: var(--plan-muted);
+  text-transform: uppercase;
+}
+
+/* number inputs: hide spinners inside the plan */
+.planRoot input[type='number']::-webkit-inner-spin-button,
+.planRoot input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.planRoot input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

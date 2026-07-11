@@ -144,6 +144,28 @@
   --search-focus: rgba(48, 199, 99, 0.18);
 }
 
+[data-theme='paper'] {
+  /* Black & white "print" look (Daily Plan design handoff). */
+  --color-primary: #141414; /* Ink */
+  --color-primary-dark: #000;
+  --color-primary-light: #3a3a3a;
+  --color-accent: #141414;
+  --color-bg: #f4f2ed; /* Warm paper */
+  --color-surface: #fbfaf7;
+  --color-surface-light: #f0efe8;
+  --color-surface-hover: #e9e8e0;
+  --color-text: #141414;
+  --color-text-muted: #5c5c56;
+  --color-border: #ddd8cc;
+  --color-border-hover: #b9b4a6;
+  --color-danger: #b91c1c;
+  --shadow-primary: rgba(20, 20, 20, 0.25);
+  --shadow-dark: rgba(20, 20, 20, 0.12);
+
+  --color-top-bar-bg: rgba(251, 250, 247, 0.85);
+  --search-focus: rgba(20, 20, 20, 0.12);
+}
+
 [data-theme='clean-beige'] {
   --color-primary: #8b7765; /* Warm taupe */
   --color-primary-dark: #6d5b4d;

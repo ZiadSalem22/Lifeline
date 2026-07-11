@@ -44,6 +44,7 @@ const THEME_SWATCHES: Record<ThemeId, [string, string, string]> = {
   blue: ['#f0f8ff', '#add8e6', '#1e90ff'],
   midnight: ['#191970', '#2c2c84', '#8a2be2'],
   sunset: ['#fffaf0', '#ffe4b5', '#ff8c00'],
+  paper: ['#f4f2ed', '#fbfaf7', '#141414'],
 };
 
 function themeLabel(theme: ThemeId): string {
