@@ -225,6 +225,50 @@ export const todoTags = pgTable(
   ],
 );
 
+export const dailyPlans = pgTable(
+  'daily_plans',
+  {
+    userId: text('user_id').notNull(),
+    /** Date-only key, stored as YYYY-MM-DD text (matches the wire format). */
+    planDate: text('plan_date').notNull(),
+    data: jsonb('data')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ...timestamps,
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.planDate] }),
+    foreignKey({ columns: [t.userId], foreignColumns: [users.id], name: 'fk_daily_plans_user' })
+      .onDelete('cascade')
+      .onUpdate('cascade'),
+    check('chk_daily_plans_date_format', sql`${t.planDate} ~ '^\\d{4}-\\d{2}-\\d{2}$'`),
+    check('chk_daily_plans_data_object', sql`jsonb_typeof(${t.data}) = 'object'`),
+  ],
+);
+
+export const dailyPlanSettings = pgTable(
+  'daily_plan_settings',
+  {
+    userId: text('user_id').primaryKey(),
+    data: jsonb('data')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ...timestamps,
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.userId],
+      foreignColumns: [users.id],
+      name: 'fk_daily_plan_settings_user',
+    })
+      .onDelete('cascade')
+      .onUpdate('cascade'),
+    check('chk_daily_plan_settings_data_object', sql`jsonb_typeof(${t.data}) = 'object'`),
+  ],
+);
+
 export const mcpApiKeys = pgTable(
   'mcp_api_keys',
   {

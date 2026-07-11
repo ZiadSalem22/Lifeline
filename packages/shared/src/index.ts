@@ -7,3 +7,4 @@ export * from './user.js';
 export * from './stats.js';
 export * from './mcp-keys.js';
 export * from './export-import.js';
+export * from './daily-plan.js';

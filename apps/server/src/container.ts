@@ -9,7 +9,9 @@ import { DrizzleSettingsRepository } from './infrastructure/repositories/setting
 import { DrizzleTodoRepository } from './infrastructure/repositories/todo-repository.js';
 import { DrizzleTagRepository } from './infrastructure/repositories/tag-repository.js';
 import { DrizzleMcpKeyRepository } from './infrastructure/repositories/mcp-key-repository.js';
+import { DrizzleDailyPlanRepository } from './infrastructure/repositories/daily-plan-repository.js';
 import type {
+  DailyPlanRepository,
   ImportTodoWriter,
   McpKeyRepository,
   ProfileRepository,
@@ -61,6 +63,7 @@ import { buildExportRouter } from './http/routes/export.js';
 import { buildImportRouter } from './http/routes/import.js';
 import { buildAccountRouter } from './http/routes/account.js';
 import { buildMcpKeysRouter } from './http/routes/mcp-keys.js';
+import { buildDailyPlanRouter } from './http/routes/daily-plan.js';
 import { buildMcpRouter } from './mcp/router.js';
 
 /** A feature router mounted under /api/v1 (after the auth gate). */
@@ -81,6 +84,7 @@ export interface Container {
     todos: TodoRepository & ImportTodoWriter;
     tags: TagRepository;
     mcpKeys: McpKeyRepository;
+    dailyPlans: DailyPlanRepository;
   };
   useCases: {
     getMe: GetMe;
@@ -156,6 +160,7 @@ export function buildContainer(
     todos: new DrizzleTodoRepository(db),
     tags: new DrizzleTagRepository(db),
     mcpKeys: new DrizzleMcpKeyRepository(db),
+    dailyPlans: new DrizzleDailyPlanRepository(db),
   };
 
   const useCases = {
@@ -242,6 +247,10 @@ export function buildContainer(
     {
       path: '/account',
       router: buildAccountRouter({ resetAccount: useCases.resetAccount, registry }),
+    },
+    {
+      path: '/daily-plan',
+      router: buildDailyPlanRouter({ dailyPlans: repos.dailyPlans, registry }),
     },
     {
       path: '/mcp-keys',

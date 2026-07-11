@@ -296,6 +296,29 @@ export interface McpKeyRepository {
 }
 
 // ---------------------------------------------------------------------------
+// Daily Plan — per-(user, date) plan blobs + a per-user settings blob. Both
+// are zod-validated at the route (@lifeline/shared daily-plan schemas), so
+// the repository stores/returns them as opaque JSON objects.
+// ---------------------------------------------------------------------------
+
+export interface DailyPlanDayRecord {
+  planDate: string;
+  data: Record<string, unknown>;
+}
+
+export interface DailyPlanRepository {
+  /** All plan rows for the user in [start, end] (date-only strings), ascending. */
+  getRange(userId: string, start: string, end: string): Promise<DailyPlanDayRecord[]>;
+  upsertDay(
+    userId: string,
+    planDate: string,
+    data: Record<string, unknown>,
+  ): Promise<DailyPlanDayRecord>;
+  getSettings(userId: string): Promise<Record<string, unknown> | null>;
+  upsertSettings(userId: string, data: Record<string, unknown>): Promise<Record<string, unknown>>;
+}
+
+// ---------------------------------------------------------------------------
 // Data transfer (import) — owned by the stats/data-transfer slice. The
 // drizzle implementation belongs with the todo repository (same tables);
 // the integrator maps this interface onto DrizzleTodoRepository.
