@@ -1,4 +1,5 @@
 import { addDays, format } from 'date-fns';
+import type { PlanHabit } from '@lifeline/shared';
 
 /**
  * Static registry + date helpers for the Daily Plan view. The section keys
@@ -50,9 +51,14 @@ export function scheduleHours(startHour = 4, endHour = 24): string[] {
   const start = Math.max(0, Math.min(23, startHour));
   const end = Math.max(start + 1, Math.min(24, endHour));
   const hours: string[] = [];
+  const seen = new Set<string>();
   for (let h = start; h <= end; h += 1) {
     const hh = h % 24;
-    hours.push(`${hh < 10 ? '0' : ''}${hh}:00`);
+    const time = `${hh < 10 ? '0' : ''}${hh}:00`;
+    // start=0 + end=24 both land on '00:00' — one row, not two.
+    if (seen.has(time)) continue;
+    seen.add(time);
+    hours.push(time);
   }
   return hours;
 }
@@ -85,6 +91,47 @@ export function weekIndexOf(dateStr: string): number {
 /** The date string n days before dateStr. */
 export function daysBefore(dateStr: string, n: number): string {
   return format(addDays(parseDateOnly(dateStr), -n), 'yyyy-MM-dd');
+}
+
+/** The date string n days after dateStr. */
+export function daysAfter(dateStr: string, n: number): string {
+  return daysBefore(dateStr, -n);
+}
+
+let habitSeq = 0;
+
+/** Unique habit id — module counter checked against taken ids (both editors). */
+export function newHabitId(existing: PlanHabit[]): string {
+  const taken = new Set(existing.map((h) => h.id));
+  for (;;) {
+    habitSeq += 1;
+    const id = `h${habitSeq}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
+/**
+ * Divider render rule. dividerBelow is tri-state on purpose: once ANY habit
+ * carries the key the user owns dividers (explicit only); while NONE do, the
+ * legacy fallback draws one under the last prayer row.
+ */
+export function dividerBelowAt(habits: PlanHabit[], index: number): boolean {
+  if (habits.some((h) => h.dividerBelow !== undefined)) {
+    return habits[index]?.dividerBelow === true;
+  }
+  return index === habits.map((h) => h.salah).lastIndexOf(true);
+}
+
+/**
+ * Divider edit — freezes the current effective dividers as explicit
+ * true/false on EVERY habit, then applies the change. Unchecking the last
+ * divider therefore means "no divider", not a resurrected prayer fallback.
+ */
+export function withDividerAt(habits: PlanHabit[], index: number, on: boolean): PlanHabit[] {
+  return habits.map((h, i) => ({
+    ...h,
+    dividerBelow: i === index ? on : dividerBelowAt(habits, i),
+  }));
 }
 
 const TEMPLATE_WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;

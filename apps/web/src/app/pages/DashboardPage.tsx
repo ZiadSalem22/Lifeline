@@ -239,6 +239,18 @@ export default function DashboardPage() {
     [navigate],
   );
 
+  // Plan-card task titles deep-link into the Tasks-mode editor. dayStr is the
+  // day the card shows the task on (not todo.dueDate — that can be a span
+  // start or null); re-arming handledTaskId lets the same link fire twice.
+  const handleOpenPlanTask = useCallback(
+    (todo: Todo, dayStr: string) => {
+      setViewMode('tasks');
+      setHandledTaskId(null);
+      void navigate(`/day/${dayStr}?taskId=${todo.id}`);
+    },
+    [navigate, setViewMode],
+  );
+
   if (todosQuery.isLoading) {
     return (
       <div className={styles.loadingWrap}>
@@ -365,7 +377,12 @@ export default function DashboardPage() {
       )}
 
       {viewMode === 'plan' ? (
-        <DailyPlanView dayToken={day} todos={todos ?? []} />
+        <DailyPlanView
+          dayToken={day}
+          todos={todos ?? []}
+          allTags={allTags}
+          onOpenTask={handleOpenPlanTask}
+        />
       ) : (
         <>
           {/* ── composer ─────────────────────────────────────────────────── */}

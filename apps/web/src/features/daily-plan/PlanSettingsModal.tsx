@@ -3,7 +3,7 @@ import type { DailyPlanData, DailyPlanSettings, PlanHabit, TemplateKey } from '@
 import { TEMPLATE_KEYS } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { templateFromDay } from './lib/templates';
-import { templateKeyOf } from './lib/plan-model';
+import { dividerBelowAt, newHabitId, templateKeyOf, withDividerAt } from './lib/plan-model';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -33,16 +33,6 @@ const TEMPLATE_LABELS: Record<TemplateKey, string> = {
   sat: 'Sat',
   sun: 'Sun',
 };
-
-let habitSeq = 0;
-function newHabitId(existing: PlanHabit[]): string {
-  const taken = new Set(existing.map((h) => h.id));
-  for (;;) {
-    habitSeq += 1;
-    const id = `h${habitSeq}`;
-    if (!taken.has(id)) return id;
-  }
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -112,7 +102,6 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
     ? [
         `${Object.keys(template.schedule).length} schedule rows`,
         `${template.priorities.length} priorities`,
-        `${template.quick.length} quick to-dos`,
       ].join(' · ')
     : 'Empty — new days start blank';
 
@@ -165,8 +154,8 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
             )}
           </div>
           <div style={{ fontSize: 11, color: 'var(--plan-muted)', fontStyle: 'italic' }}>
-            Build the day you want once (schedule, priorities, quick to-dos), then save it here.
-            Yesterday&apos;s “Tomorrow Plan” is always added on top.
+            Build the day you want once (schedule, priorities), then save it here. Yesterday&apos;s
+            unfinished items are offered as real tasks by the carry-over bar.
           </div>
         </Section>
 
@@ -185,18 +174,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
                   )
                 }
               />
-              <label
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10,
-                  color: 'var(--plan-muted)',
-                  fontWeight: 700,
-                  letterSpacing: '.08em',
-                }}
-                title="Prayer rows are bold and grouped with a divider"
-              >
+              <label className={styles.habitEditFlag} title="Prayer rows are bold">
                 <input
                   type="checkbox"
                   checked={habit.salah}
@@ -210,6 +188,15 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
                   }
                 />
                 PRAYER
+              </label>
+              <label className={styles.habitEditFlag} title="Rule line under this row">
+                <input
+                  type="checkbox"
+                  checked={dividerBelowAt(settings.habits, i)}
+                  aria-label={`Divider below ${habit.label}`}
+                  onChange={(e) => patchHabits(withDividerAt(settings.habits, i, e.target.checked))}
+                />
+                DIVIDER
               </label>
               <button
                 type="button"

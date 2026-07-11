@@ -1,6 +1,13 @@
+import { useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import type { DailyPlanData, PlanHabit, Todo } from '@lifeline/shared';
-import { WEEK_DAY_NAMES, scheduleHours } from './lib/plan-model';
+import {
+  WEEK_DAY_NAMES,
+  dividerBelowAt,
+  newHabitId,
+  scheduleHours,
+  withDividerAt,
+} from './lib/plan-model';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -48,6 +55,62 @@ export function SquareCheck(props: { on: boolean; label: string; onToggle: () =>
   );
 }
 
+/** One real task as a plan-card row: check, #num, title (opens in Tasks). */
+function TaskRow(props: { todo: Todo; onToggle: () => void; onOpen: (todo: Todo) => void }) {
+  const { todo } = props;
+  const doneSubs = todo.subtasks.filter((s) => s.isCompleted).length;
+  return (
+    <div className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
+      <SquareCheck
+        on={todo.isCompleted}
+        label={`Toggle task ${todo.taskNumber}`}
+        onToggle={props.onToggle}
+      />
+      <span className={styles.numChip}>#{todo.taskNumber}</span>
+      {todo.isCompleted ? (
+        // The Tasks editor refuses completed tasks — plain text, no dead link.
+        <span dir="auto" className={styles.todoTitleDone}>
+          {todo.title}
+        </span>
+      ) : (
+        <button
+          type="button"
+          dir="auto"
+          className={styles.todoTitleBtn}
+          title="Open in Tasks"
+          onClick={() => props.onOpen(todo)}
+        >
+          {todo.title}
+        </button>
+      )}
+      {todo.subtasks.length > 0 && (
+        <span className={styles.todoSub}>
+          {doneSubs}/{todo.subtasks.length}
+        </span>
+      )}
+      {todo.tags[0] && (
+        <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
+      )}
+    </div>
+  );
+}
+
+/** Small right-aligned "+ Add Task" header row shared by the task-aware cards. */
+function AddTaskRow(props: { label: string; onAdd: () => void }) {
+  return (
+    <div className={styles.addTaskRow}>
+      <button
+        type="button"
+        className={styles.addTaskBtn}
+        aria-label={props.label}
+        onClick={props.onAdd}
+      >
+        + ADD TASK
+      </button>
+    </div>
+  );
+}
+
 /* ── Schedule ────────────────────────────────────────────────────────────── */
 
 export interface ScheduleBodyProps {
@@ -57,6 +120,11 @@ export interface ScheduleBodyProps {
   endHour: number;
   /** Personal suggestions for an hour, mined from recent days. */
   suggestionsFor: (hour: string) => string[];
+  /** The day's real tasks — ones with a dueTime appear under their hour row. */
+  todos: Todo[];
+  onToggleTodo: (id: string) => void;
+  onOpenTask: (todo: Todo) => void;
+  onAddTaskAt: (hour: string) => void;
 }
 
 export function ScheduleBody({
@@ -65,29 +133,75 @@ export function ScheduleBody({
   startHour,
   endHour,
   suggestionsFor,
+  todos,
+  onToggleTodo,
+  onOpenTask,
+  onAddTaskAt,
 }: ScheduleBodyProps) {
   return (
     <div className={styles.cardBody}>
       {scheduleHours(startHour, endHour).map((time) => {
         const suggestions = suggestionsFor(time);
+        // '13:30' lands on the '13:00' row; the chip shows the real minutes.
+        const rowTodos = todos.filter((t) => t.dueTime?.startsWith(time.slice(0, 3)));
         return (
-          <div key={time} className={styles.rowRule}>
-            <span className={styles.schedTime}>{time}</span>
-            <input
-              dir="auto"
-              className={styles.inputBare}
-              value={day.schedule[time] ?? ''}
-              aria-label={`Schedule ${time}`}
-              list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
-              onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
-            />
-            {suggestions.length > 0 && (
-              <datalist id={`plan-sched-sug-${time}`}>
-                {suggestions.map((text) => (
-                  <option key={text} value={text} />
-                ))}
-              </datalist>
-            )}
+          <div key={time}>
+            <div className={`${styles.rowRule} ${styles.schedRow}`}>
+              <span className={styles.schedTime}>{time}</span>
+              <input
+                dir="auto"
+                className={styles.inputBare}
+                value={day.schedule[time] ?? ''}
+                aria-label={`Schedule ${time}`}
+                list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
+                onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
+              />
+              {suggestions.length > 0 && (
+                <datalist id={`plan-sched-sug-${time}`}>
+                  {suggestions.map((text) => (
+                    <option key={text} value={text} />
+                  ))}
+                </datalist>
+              )}
+              <button
+                type="button"
+                className={styles.rowAddBtn}
+                aria-label={`Add task at ${time}`}
+                onClick={() => onAddTaskAt(time)}
+              >
+                +
+              </button>
+            </div>
+            {rowTodos.map((todo) => (
+              <div key={todo.id} className={styles.schedChip}>
+                <SquareCheck
+                  on={todo.isCompleted}
+                  label={`Toggle task ${todo.taskNumber}`}
+                  onToggle={() => onToggleTodo(todo.id)}
+                />
+                {todo.isCompleted ? (
+                  <span dir="auto" className={styles.todoTitleDone}>
+                    {todo.title}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    dir="auto"
+                    className={styles.todoTitleBtn}
+                    title="Open in Tasks"
+                    onClick={() => onOpenTask(todo)}
+                  >
+                    {todo.title}
+                  </button>
+                )}
+                {todo.dueTime && !todo.dueTime.endsWith(':00') && (
+                  <span className={styles.chipTime}>{todo.dueTime}</span>
+                )}
+                {todo.tags[0] && (
+                  <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
+                )}
+              </div>
+            ))}
           </div>
         );
       })}
@@ -232,9 +346,21 @@ export interface PrioritiesBodyProps {
   patch: Patch;
   count: number;
   suggestions: string[];
+  /** The day's high-priority real tasks, surfaced above the free slots. */
+  highTodos: Todo[];
+  onToggleTodo: (id: string) => void;
+  onOpenTask: (todo: Todo) => void;
 }
 
-export function PrioritiesBody({ day, patch, count, suggestions }: PrioritiesBodyProps) {
+export function PrioritiesBody({
+  day,
+  patch,
+  count,
+  suggestions,
+  highTodos,
+  onToggleTodo,
+  onOpenTask,
+}: PrioritiesBodyProps) {
   const rows = Array.from({ length: count }, (_, i) => day.priorities[i] ?? { t: '', done: false });
   const write = (i: number, item: { t: string; done: boolean }) => {
     const next = Array.from(
@@ -246,6 +372,19 @@ export function PrioritiesBody({ day, patch, count, suggestions }: PrioritiesBod
   };
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
+      {highTodos.length > 0 && (
+        <>
+          <div className={styles.sectionMiniMuted}>High priority</div>
+          {highTodos.map((todo) => (
+            <TaskRow
+              key={todo.id}
+              todo={todo}
+              onToggle={() => onToggleTodo(todo.id)}
+              onOpen={onOpenTask}
+            />
+          ))}
+        </>
+      )}
       {suggestions.length > 0 && (
         <datalist id="plan-prio-sug">
           {suggestions.map((text) => (
@@ -287,60 +426,202 @@ export interface HabitsBodyProps {
   selectedIdx: number;
   weekLetters: readonly string[];
   onToggle: (date: string, habitId: string, next: boolean) => void;
+  /** On-card editing — functional write of the full habits list. */
+  onEditHabits: (updater: (habits: PlanHabit[]) => PlanHabit[]) => void;
 }
 
 export function HabitsBody(props: HabitsBodyProps) {
-  // Divider sits under the last prayer row (the editor may reorder freely).
-  const lastSalahIndex = props.habits.map((h) => h.salah).lastIndexOf(true);
+  const [editing, setEditing] = useState(false);
   // Band position over the selected day's 22px column (3px gaps, rightmost = index 6).
   const bandRight = (6 - props.selectedIdx) * 25 - 2;
   return (
     <div className={styles.cardBody}>
-      <div className={styles.habitsWrap}>
-        <div className={styles.todayBand} style={{ right: bandRight }} />
-        <div className={styles.habitsInner}>
-          <div className={styles.habitHeadRow}>
-            <span />
-            {props.weekLetters.map((letter, i) => (
-              <span
-                key={i}
-                className={i === props.selectedIdx ? styles.habitHeadToday : styles.habitHead}
-              >
-                {letter}
-              </span>
-            ))}
-          </div>
-          {props.habits.map((habit, hi) => (
-            <div
-              key={habit.id}
-              className={[
-                styles.habitRow,
-                habit.salah ? styles.habitRowSalah : undefined,
-                hi === lastSalahIndex ? styles.habitRowDivide : undefined,
-              ]
-                .filter(Boolean)
-                .join(' ')}
+      <div className={styles.bodyTools}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          aria-label={editing ? 'Done editing habits' : 'Edit habits'}
+          aria-pressed={editing}
+          onClick={() => setEditing((v) => !v)}
+        >
+          {editing ? (
+            'DONE'
+          ) : (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
             >
-              <span dir="auto" className={styles.habitLabel}>
-                {habit.label}
-              </span>
-              {props.weekDates.map((date, di) => {
-                const on = props.daysHabits[date]?.[habit.id] ?? false;
-                return (
-                  <CircleCheck
-                    key={date}
-                    on={on}
-                    size={15}
-                    className={styles.habitCell}
-                    label={`${habit.label} ${WEEK_DAY_NAMES[di] ?? ''}`}
-                    onToggle={() => props.onToggle(date, habit.id, !on)}
-                  />
-                );
-              })}
+              <path d="M17 3l4 4L7 21H3v-4L17 3z" />
+            </svg>
+          )}
+        </button>
+      </div>
+      {editing ? (
+        <>
+          {props.habits.map((habit, i) => (
+            <div key={habit.id} className={styles.habitEditRow}>
+              <input
+                dir="auto"
+                className={styles.smallInput}
+                style={{ flex: 1 }}
+                value={habit.label}
+                aria-label={`Habit ${i + 1} name`}
+                onChange={(e) =>
+                  props.onEditHabits((habits) =>
+                    habits.map((h, j) => (j === i ? { ...h, label: e.target.value } : h)),
+                  )
+                }
+              />
+              <label className={styles.habitEditFlag} title="Prayer rows are bold">
+                <input
+                  type="checkbox"
+                  checked={habit.salah}
+                  aria-label={`${habit.label} is a prayer`}
+                  onChange={(e) =>
+                    props.onEditHabits((habits) =>
+                      habits.map((h, j) => (j === i ? { ...h, salah: e.target.checked } : h)),
+                    )
+                  }
+                />
+                PRAYER
+              </label>
+              <label className={styles.habitEditFlag} title="Rule line under this row">
+                <input
+                  type="checkbox"
+                  checked={dividerBelowAt(props.habits, i)}
+                  aria-label={`Divider below ${habit.label}`}
+                  onChange={(e) =>
+                    props.onEditHabits((habits) => withDividerAt(habits, i, e.target.checked))
+                  }
+                />
+                DIVIDER
+              </label>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                style={{ color: 'var(--plan-muted)' }}
+                aria-label={`Move ${habit.label} up`}
+                disabled={i === 0}
+                onClick={() =>
+                  props.onEditHabits((habits) => {
+                    if (i === 0) return habits;
+                    const next = [...habits];
+                    const [item] = next.splice(i, 1);
+                    if (item) next.splice(i - 1, 0, item);
+                    return next;
+                  })
+                }
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                style={{ color: 'var(--plan-muted)' }}
+                aria-label={`Move ${habit.label} down`}
+                disabled={i === props.habits.length - 1}
+                onClick={() =>
+                  props.onEditHabits((habits) => {
+                    if (i >= habits.length - 1) return habits;
+                    const next = [...habits];
+                    const [item] = next.splice(i, 1);
+                    if (item) next.splice(i + 1, 0, item);
+                    return next;
+                  })
+                }
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                aria-label={`Delete habit ${habit.label}`}
+                onClick={() => props.onEditHabits((habits) => habits.filter((_, j) => j !== i))}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 5l14 14" />
+                  <path d="M19 5L5 19" />
+                </svg>
+              </button>
             </div>
           ))}
+          <button
+            type="button"
+            className={styles.presetChipDashed}
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() =>
+              props.onEditHabits((habits) => [
+                ...habits,
+                { id: newHabitId(habits), label: 'New habit', salah: false },
+              ])
+            }
+          >
+            + Add habit
+          </button>
+        </>
+      ) : (
+        <div className={styles.habitsWrap}>
+          <div className={styles.todayBand} style={{ right: bandRight }} />
+          <div className={styles.habitsInner}>
+            <div className={styles.habitHeadRow}>
+              <span />
+              {props.weekLetters.map((letter, i) => (
+                <span
+                  key={i}
+                  className={i === props.selectedIdx ? styles.habitHeadToday : styles.habitHead}
+                >
+                  {letter}
+                </span>
+              ))}
+            </div>
+            {props.habits.map((habit, hi) => (
+              <div
+                key={habit.id}
+                className={[
+                  styles.habitRow,
+                  habit.salah ? styles.habitRowSalah : undefined,
+                  dividerBelowAt(props.habits, hi) ? styles.habitRowDivide : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <span dir="auto" className={styles.habitLabel}>
+                  {habit.label}
+                </span>
+                {props.weekDates.map((date, di) => {
+                  const on = props.daysHabits[date]?.[habit.id] ?? false;
+                  return (
+                    <CircleCheck
+                      key={date}
+                      on={on}
+                      size={15}
+                      className={styles.habitCell}
+                      label={`${habit.label} ${WEEK_DAY_NAMES[di] ?? ''}`}
+                      onToggle={() => props.onToggle(date, habit.id, !on)}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -352,51 +633,41 @@ export interface TodoBodyProps {
   patch: Patch;
   todos: Todo[];
   onToggleTodo: (id: string) => void;
+  onOpenTask: (todo: Todo) => void;
+  /** Opens the full composer popup preset to this day. */
+  onAddTask: () => void;
   quickDraft: string;
   onQuickDraft: (value: string) => void;
+  /** Creates a REAL task from the draft — owner clears the draft on success. */
+  onQuickAdd: () => void;
+  quickPending: boolean;
+  quickError: string;
   suggestions: string[];
 }
 
 export function TodoBody(props: TodoBodyProps) {
   const { day, patch, todos } = props;
-  const addQuick = () => {
-    const value = props.quickDraft.trim();
-    if (!value) return;
-    patch({ quick: [...day.quick, { t: value, done: false }] });
-    props.onQuickDraft('');
-  };
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      addQuick();
+      if (!props.quickPending) props.onQuickAdd();
     }
   };
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
-      {todos.map((todo) => {
-        const doneSubs = todo.subtasks.filter((s) => s.isCompleted).length;
-        return (
-          <div key={todo.id} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
-            <SquareCheck
-              on={todo.isCompleted}
-              label={`Toggle task ${todo.taskNumber}`}
-              onToggle={() => props.onToggleTodo(todo.id)}
-            />
-            <span className={styles.numChip}>#{todo.taskNumber}</span>
-            <span dir="auto" className={todo.isCompleted ? styles.todoTitleDone : styles.todoTitle}>
-              {todo.title}
-            </span>
-            {todo.subtasks.length > 0 && (
-              <span className={styles.todoSub}>
-                {doneSubs}/{todo.subtasks.length}
-              </span>
-            )}
-            {todo.tags[0] && (
-              <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-            )}
-          </div>
-        );
-      })}
+      <AddTaskRow label="Add task to To-Do List" onAdd={props.onAddTask} />
+      {todos.length === 0 && day.quick.length === 0 && (
+        <div className={styles.emptyHint}>No tasks for this day yet — add one below.</div>
+      )}
+      {todos.map((todo) => (
+        <TaskRow
+          key={todo.id}
+          todo={todo}
+          onToggle={() => props.onToggleTodo(todo.id)}
+          onOpen={props.onOpenTask}
+        />
+      ))}
+      {/* Legacy scratch items from before quick-add created real tasks. */}
       {day.quick.map((q, i) => (
         <div key={`q-${i}`} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
           <SquareCheck
@@ -423,17 +694,28 @@ export function TodoBody(props: TodoBodyProps) {
           dir="auto"
           className={styles.smallInput}
           style={{ flex: 1 }}
-          placeholder="Add a quick to-do…"
-          aria-label="Add a quick to-do"
+          placeholder="Add a quick task…"
+          aria-label="Add a quick task"
+          maxLength={200}
           value={props.quickDraft}
           list={props.suggestions.length > 0 ? 'plan-quick-sug' : undefined}
           onChange={(e) => props.onQuickDraft(e.target.value)}
           onKeyDown={onKey}
         />
-        <button type="button" className={styles.primaryBtn} onClick={addQuick}>
+        <button
+          type="button"
+          className={styles.primaryBtn}
+          disabled={props.quickPending}
+          onClick={props.onQuickAdd}
+        >
           Add
         </button>
       </div>
+      {props.quickError && (
+        <div className={styles.quickError} role="alert">
+          {props.quickError}
+        </div>
+      )}
     </div>
   );
 }
@@ -480,15 +762,26 @@ export function WaterBody({
 
 /* ── Tomorrow Plan ───────────────────────────────────────────────────────── */
 
+export interface TomorrowBodyProps {
+  day: DailyPlanData;
+  patch: Patch;
+  count: number;
+  /** Tomorrow's real tasks — adding here creates tasks due tomorrow. */
+  todos: Todo[];
+  onToggleTodo: (id: string) => void;
+  onOpenTask: (todo: Todo) => void;
+  onAddTask: () => void;
+}
+
 export function TomorrowBody({
   day,
   patch,
   count,
-}: {
-  day: DailyPlanData;
-  patch: Patch;
-  count: number;
-}) {
+  todos,
+  onToggleTodo,
+  onOpenTask,
+  onAddTask,
+}: TomorrowBodyProps) {
   const rows = Array.from({ length: count }, (_, i) => day.tomorrow[i] ?? { t: '', done: false });
   const write = (i: number, item: { t: string; done: boolean }) => {
     const next = Array.from(
@@ -500,6 +793,18 @@ export function TomorrowBody({
   };
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
+      <AddTaskRow label="Add task for tomorrow" onAdd={onAddTask} />
+      {todos.map((todo) => (
+        <TaskRow
+          key={todo.id}
+          todo={todo}
+          onToggle={() => onToggleTodo(todo.id)}
+          onOpen={onOpenTask}
+        />
+      ))}
+      <div className={styles.sectionMiniMuted} style={{ paddingTop: 6 }}>
+        Notes
+      </div>
       {rows.map((item, i) => (
         <div key={i} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
           <SquareCheck

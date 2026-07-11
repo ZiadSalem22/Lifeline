@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
-import type { DailyPlanData, DailyPlanSettings, Todo } from '@lifeline/shared';
+import type { DailyPlanData, DailyPlanSettings, Tag, Todo } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
-import { useToggleComplete } from '../todos/data/hooks';
+import { useCreateTodo, useToggleComplete } from '../todos/data/hooks';
 import {
   useDailyPlanWeek,
   usePlanSettings,
@@ -15,12 +15,13 @@ import {
   PLAN_GRID_KEYS,
   PLAN_SECTIONS,
   WEEK_LETTERS,
+  daysAfter,
   sectionLabel,
   weekIndexOf,
   type PlanSectionKey,
 } from './lib/plan-model';
 import { computeScore } from './lib/score';
-import { applyCarryOver, carryOverFrom, materializeNewDay } from './lib/templates';
+import { carryOverFrom, carryTitles, materializeNewDay } from './lib/templates';
 import {
   prioritySuggestions,
   quickSuggestions,
@@ -30,6 +31,7 @@ import {
 import { Masthead } from './Masthead';
 import { PlanCard } from './PlanCard';
 import { PlanSettingsModal } from './PlanSettingsModal';
+import { ComposerModal } from './ComposerModal';
 import {
   FocusBody,
   GratitudeBody,
@@ -55,14 +57,20 @@ import styles from './DailyPlan.module.css';
  */
 
 type DayPatch = Partial<DailyPlanData> | ((day: DailyPlanData) => Partial<DailyPlanData>);
+type SettingsPatch =
+  Partial<DailyPlanSettings> | ((settings: DailyPlanSettings) => Partial<DailyPlanSettings>);
 
 export interface DailyPlanViewProps {
   /** 'today' | 'tomorrow' | 'YYYY-MM-DD' route token. */
   dayToken: string;
   todos: Todo[];
+  /** Tag list for the Add Task composer popup. */
+  allTags?: Tag[];
+  /** Deep-link a task into the Tasks-mode editor on the given day. */
+  onOpenTask?: (todo: Todo, dayStr: string) => void;
 }
 
-export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
+export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: DailyPlanViewProps) {
   const dateStr = resolveDayString(dayToken);
   const selectedIdx = weekIndexOf(dateStr);
   const { theme, setTheme } = useTheme();
@@ -75,12 +83,9 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
   const { recentDays, yesterday } = useRecentPlanDays(dateStr);
 
   // Day continuity: a date with nothing stored wakes up prefilled from the
-  // weekday template + yesterday's "Tomorrow Plan" (display-only until the
-  // first edit persists it).
-  const materialized = useMemo(
-    () => materializeNewDay(settings, dateStr, yesterday),
-    [settings, dateStr, yesterday],
-  );
+  // weekday template (display-only until the first edit persists it);
+  // yesterday's leftovers arrive through the carry-over bar as real tasks.
+  const materialized = useMemo(() => materializeNewDay(settings, dateStr), [settings, dateStr]);
   const effectiveDays = useMemo(
     () => (days[dateStr] ? days : { ...days, [dateStr]: materialized }),
     [days, dateStr, materialized],
@@ -99,7 +104,7 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
 
   const patchDate = useCallback(
     (date: string, patch: DayPatch) => {
-      const current = daysRef.current[date] ?? materializeNewDay(settingsRef.current, date, null);
+      const current = daysRef.current[date] ?? materializeNewDay(settingsRef.current, date);
       const partial = typeof patch === 'function' ? patch(current) : patch;
       const next = { ...current, ...partial };
       daysRef.current = { ...daysRef.current, [date]: next };
@@ -114,8 +119,10 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
   );
 
   const patchSettings = useCallback(
-    (patch: Partial<DailyPlanSettings>) => {
-      const next = { ...settingsRef.current, ...patch };
+    (patch: SettingsPatch) => {
+      const current = settingsRef.current;
+      const partial = typeof patch === 'function' ? patch(current) : patch;
+      const next = { ...current, ...partial };
       settingsRef.current = next;
       saveSettings(next);
     },
@@ -125,19 +132,86 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
   const day = effectiveDays[dateStr] ?? materialized;
   const dayTodos = filterTodosForDay(todos, dayToken);
   const taskDone = dayTodos.filter((t) => t.isCompleted).length;
+  const tomorrowStr = daysAfter(dateStr, 1);
+  const tomorrowTodos = filterTodosForDay(todos, tomorrowStr);
+  const highTodos = dayTodos.filter((t) => t.priority === 'high');
 
+  const openTask = useCallback(
+    (todo: Todo, dayStr: string) => onOpenTask?.(todo, dayStr),
+    [onOpenTask],
+  );
+
+  // Add Task popup — one composer, re-targeted per card (date, optional hour).
+  const [composerTarget, setComposerTarget] = useState<{
+    open: boolean;
+    date: string;
+    time?: string | undefined;
+  }>({ open: false, date: dateStr });
+  const openComposer = useCallback(
+    (date: string, time?: string) => setComposerTarget({ open: true, date, time }),
+    [],
+  );
+  const closeComposer = useCallback(() => setComposerTarget((t) => ({ ...t, open: false })), []);
+
+  // Quick-add in the To-Do card creates a REAL task due the selected day.
+  const createTodo = useCreateTodo();
   const [quickDraft, setQuickDraft] = useState('');
+  const [quickError, setQuickError] = useState('');
+  const quickAdd = useCallback(() => {
+    const title = quickDraft.trim();
+    if (!title || createTodo.isPending) return;
+    setQuickError('');
+    createTodo.mutate(
+      {
+        title,
+        description: null,
+        dueDate: dateStr,
+        dueTime: null,
+        tags: [],
+        isFlagged: false,
+        duration: 0,
+        priority: 'medium',
+        subtasks: [],
+        recurrence: null,
+      },
+      {
+        // Clear only on success — a failed add keeps the draft to retry.
+        onSuccess: () => setQuickDraft(''),
+        onError: () => setQuickError('Could not add the task. Try again.'),
+      },
+    );
+  }, [quickDraft, createTodo, dateStr]);
+
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  // Carry-bar dismissal is per-day — reset when the selected date changes
-  // (render-time adjustment guarded by comparison, the app's usual pattern).
-  const [carryState, setCarryState] = useState({ date: dateStr, dismissed: false });
-  if (carryState.date !== dateStr) setCarryState({ date: dateStr, dismissed: false });
-  const carryDismissed = carryState.dismissed;
-  const setCarryDismissed = (dismissed: boolean) => setCarryState({ date: dateStr, dismissed });
   const dragKey = useRef<string | null>(null);
 
-  // Carry-over: yesterday's unfinished priorities/quick, one tap to adopt.
+  // Carry-over: yesterday's unfinished priorities / legacy quick / tomorrow
+  // notes, one tap to adopt as REAL tasks. `day.carryHandled` persists the
+  // outcome (Add or Dismiss) so the bar never re-offers after a reload.
   const carry = useMemo(() => carryOverFrom(yesterday), [yesterday]);
+  const addCarryAsTasks = useCallback(() => {
+    const existing = new Set(
+      filterTodosForDay(todos, dateStr).map((t) => t.title.trim().toLowerCase()),
+    );
+    for (const title of carryTitles(carry)) {
+      const key = title.trim().toLowerCase();
+      if (!key || existing.has(key)) continue;
+      existing.add(key);
+      createTodo.mutate({
+        title,
+        description: null,
+        dueDate: dateStr,
+        dueTime: null,
+        tags: [],
+        isFlagged: false,
+        duration: 0,
+        priority: 'medium',
+        subtasks: [],
+        recurrence: null,
+      });
+    }
+    patchDay({ carryHandled: true });
+  }, [carry, todos, createTodo, dateStr, patchDay]);
 
   // Personal suggestion pools from the last 28 days.
   const prioSugs = useMemo(() => prioritySuggestions(recentDays), [recentDays]);
@@ -190,6 +264,15 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
     patchSettings({ secOrder: next });
   };
 
+  // One toggle for tasks from any card (today's and tomorrow's alike).
+  const toggleTask = useCallback(
+    (id: string) => {
+      const task = todos.find((t) => t.id === id);
+      if (task) toggleComplete.mutate({ id, isCompleted: task.isCompleted });
+    },
+    [todos, toggleComplete],
+  );
+
   // Workout completion → gym habit (+ configured real task) sync.
   const onWorkoutCompletion = useCallback(
     (complete: boolean) => {
@@ -228,6 +311,10 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
           startHour={settings.dayStartHour}
           endHour={settings.dayEndHour}
           suggestionsFor={suggestionsForHour}
+          todos={dayTodos}
+          onToggleTodo={toggleTask}
+          onOpenTask={(todo) => openTask(todo, dateStr)}
+          onAddTaskAt={(hour) => openComposer(dateStr, hour)}
         />
       ),
     },
@@ -243,6 +330,9 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
           patch={patchDay}
           count={settings.priorityCount}
           suggestions={prioSugs}
+          highTodos={highTodos}
+          onToggleTodo={toggleTask}
+          onOpenTask={(todo) => openTask(todo, dateStr)}
         />
       ),
     },
@@ -257,6 +347,7 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
           onToggle={(date, habitId, next) =>
             patchDate(date, (d) => ({ habits: { ...d.habits, [habitId]: next } }))
           }
+          onEditHabits={(updater) => patchSettings((s) => ({ habits: updater(s.habits) }))}
         />
       ),
     },
@@ -281,12 +372,14 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
           day={day}
           patch={patchDay}
           todos={dayTodos}
-          onToggleTodo={(id) => {
-            const task = dayTodos.find((t) => t.id === id);
-            if (task) toggleComplete.mutate({ id, isCompleted: task.isCompleted });
-          }}
+          onToggleTodo={toggleTask}
+          onOpenTask={(todo) => openTask(todo, dateStr)}
+          onAddTask={() => openComposer(dateStr)}
           quickDraft={quickDraft}
           onQuickDraft={setQuickDraft}
+          onQuickAdd={quickAdd}
+          quickPending={createTodo.isPending}
+          quickError={quickError}
           suggestions={quickSugs}
         />
       ),
@@ -295,7 +388,19 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
       badge: `${Math.min(day.water, settings.targets.water)} / ${settings.targets.water} cups`,
       body: <WaterBody day={day} patch={patchDay} goal={settings.targets.water} />,
     },
-    tomorrow: { body: <TomorrowBody day={day} patch={patchDay} count={settings.tomorrowCount} /> },
+    tomorrow: {
+      body: (
+        <TomorrowBody
+          day={day}
+          patch={patchDay}
+          count={settings.tomorrowCount}
+          todos={tomorrowTodos}
+          onToggleTodo={toggleTask}
+          onOpenTask={(todo) => openTask(todo, tomorrowStr)}
+          onAddTask={() => openComposer(tomorrowStr)}
+        />
+      ),
+    },
     meals: null,
     nonneg: null,
   };
@@ -363,23 +468,20 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
 
       <Masthead dateStr={dateStr} score={score} subtitle={settings.subtitle} />
 
-      {carry.count > 0 && !carryDismissed && (
+      {carry.count > 0 && !day.carryHandled && (
         <div className={styles.hiddenBar} role="status">
           <span className={styles.hiddenBarLabel}>Yesterday</span>
           <span style={{ fontSize: 12 }}>
             {carry.count} unfinished item{carry.count > 1 ? 's' : ''} from yesterday
           </span>
+          <button type="button" className={styles.hiddenChip} onClick={addCarryAsTasks}>
+            Add as tasks
+          </button>
           <button
             type="button"
-            className={styles.hiddenChip}
-            onClick={() => {
-              patchDay((d) => applyCarryOver(d, carry));
-              setCarryDismissed(true);
-            }}
+            className={styles.showAll}
+            onClick={() => patchDay({ carryHandled: true })}
           >
-            Carry over
-          </button>
-          <button type="button" className={styles.showAll} onClick={() => setCarryDismissed(true)}>
             Dismiss
           </button>
         </div>
@@ -517,6 +619,16 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
         patchSettings={patchSettings}
         day={day}
         dateStr={dateStr}
+      />
+
+      <ComposerModal
+        open={composerTarget.open}
+        allTags={allTags}
+        allTodos={todos}
+        effectiveDate={composerTarget.date}
+        initialDueDate={composerTarget.date}
+        initialDueTime={composerTarget.time}
+        onClose={closeComposer}
       />
     </div>
   );

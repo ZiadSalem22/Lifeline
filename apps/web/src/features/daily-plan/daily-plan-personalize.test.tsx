@@ -76,7 +76,7 @@ describe('customize panel', () => {
 });
 
 describe('day continuity', () => {
-  it('a new day is prefilled from the weekday template + yesterday tomorrow-plan', async () => {
+  it('a new day is prefilled from the weekday template; leftovers become real tasks', async () => {
     // Seed settings with a Thursday template and yesterday's plan row.
     const settings = defaultDailyPlanSettings();
     settings.templates = {
@@ -98,15 +98,30 @@ describe('day continuity', () => {
     // Template schedule + priority prefill (display-only materialization).
     expect(await screen.findByDisplayValue('Gym — Push')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ship personalization')).toBeInTheDocument();
-    // Yesterday's tomorrow-plan item landed as a quick to-do.
-    expect(screen.getByText('Prep gym bag')).toBeInTheDocument();
-    // Unfinished quick item offers a carry-over.
-    expect(screen.getByText(/1 unfinished item from yesterday/)).toBeInTheDocument();
+    // Yesterday's unfinished quick item AND tomorrow-plan note are offered
+    // by the carry bar (nothing lands in day.quick anymore).
+    expect(screen.getByText(/2 unfinished items from yesterday/)).toBeInTheDocument();
+    expect(screen.queryByText('Prep gym bag')).not.toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Carry over' }));
-    expect(await screen.findByText('Call bank')).toBeInTheDocument();
-    expect(screen.queryByText(/unfinished item from yesterday/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add as tasks' }));
+    // Both carried items became REAL guest tasks due the selected day.
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('guest_todos');
+      expect(raw).not.toBeNull();
+      const todos = JSON.parse(raw as string) as { title: string; dueDate: string | null }[];
+      const titles = todos.map((t) => t.title);
+      expect(titles).toContain('Call bank');
+      expect(titles).toContain('Prep gym bag');
+      expect(todos.every((t) => t.dueDate === '2026-07-09')).toBe(true);
+    });
+    expect(screen.queryByText(/unfinished items from yesterday/)).not.toBeInTheDocument();
+    // The outcome persists (carryHandled) — a reload must not re-offer.
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('daily_plan:2026-07-09');
+      expect(raw).not.toBeNull();
+      expect((JSON.parse(raw as string) as { carryHandled: boolean }).carryHandled).toBe(true);
+    });
   });
 });
 

@@ -26,6 +26,16 @@ export interface ComposerProps {
   /** 'today' | 'tomorrow' | 'YYYY-MM-DD' — fallback dueDate when no date picked. */
   effectiveDate: string;
   onRequestClose: () => void;
+  /** Preset due date ('YYYY-MM-DD') re-applied every time the composer opens. */
+  initialDueDate?: string | undefined;
+  /** Preset due time ('HH:mm') re-applied every time the composer opens. */
+  initialDueTime?: string | undefined;
+  /**
+   * When false, the document-level outside-click close is skipped (Escape
+   * still closes) — a wrapping popup owns dismissal instead. Defaults true
+   * (the inline Tasks-mode behavior).
+   */
+  closeOnOutsideClick?: boolean | undefined;
 }
 
 interface DraftSubtask {
@@ -43,6 +53,9 @@ export function Composer({
   allTodos,
   effectiveDate,
   onRequestClose,
+  initialDueDate,
+  initialDueTime,
+  closeOnOutsideClick = true,
 }: ComposerProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const loadInputRef = useRef<HTMLInputElement | null>(null);
@@ -51,8 +64,21 @@ export function Composer({
   const [description, setDescription] = useState('');
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(0);
-  const [dueTime, setDueTime] = useState('');
-  const [scheduleDate, setScheduleDate] = useState('');
+  const [dueTime, setDueTime] = useState(initialDueTime ?? '');
+  const [scheduleDate, setScheduleDate] = useState(initialDueDate ?? '');
+
+  // Re-seed the date/time presets on every open transition (the component
+  // stays mounted between opens), so a popup opened from a different schedule
+  // row picks up that row's hour. Other fields persist — an accidental
+  // Escape + reopen keeps the draft. Render-time adjustment, guarded.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open && (initialDueDate !== undefined || initialDueTime !== undefined)) {
+      setScheduleDate(initialDueDate ?? '');
+      setDueTime(initialDueTime ?? '');
+    }
+  }
   const [priority, setPriority] = useState<Priority>('medium');
   const [isFlagged, setIsFlagged] = useState(false);
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -99,15 +125,19 @@ export function Composer({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onRequestClose();
     };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('touchstart', onDown);
+    // A wrapping popup owns outside-dismissal (scrollbar drags and overlay
+    // scrolls register mousedown and must not nuke the draft).
+    if (closeOnOutsideClick) {
+      document.addEventListener('mousedown', onDown);
+      document.addEventListener('touchstart', onDown);
+    }
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('touchstart', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, modalOpen, onRequestClose]);
+  }, [open, modalOpen, onRequestClose, closeOnOutsideClick]);
 
   if (!open) return null;
 
@@ -116,8 +146,9 @@ export function Composer({
     setDescription('');
     setHours(0);
     setMinutes(0);
-    setDueTime('');
-    setScheduleDate('');
+    // Presets survive a reset — the popup keeps offering the row's date/time.
+    setDueTime(initialDueTime ?? '');
+    setScheduleDate(initialDueDate ?? '');
     setPriority('medium');
     setIsFlagged(false);
     setTagIds([]);
@@ -161,8 +192,8 @@ export function Composer({
     );
     setHours(Math.floor(todo.duration / 60));
     setMinutes(todo.duration % 60);
-    setDueTime('');
-    setScheduleDate('');
+    setDueTime(initialDueTime ?? '');
+    setScheduleDate(initialDueDate ?? '');
     setRecurrence(null);
     if (todo.tags.length > 0) setShowTagPicker(true);
     setShowSuggestions(false);

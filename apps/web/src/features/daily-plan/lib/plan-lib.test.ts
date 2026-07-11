@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { emptyDailyPlanData } from '@lifeline/shared';
+import type { PlanHabit } from '@lifeline/shared';
 import { detectMeal, guessSlot, logSummary, parseFood } from './food-parser';
 import { masonryRowSpan } from './masonry';
-import { scheduleHours, weekDatesOf, weekIndexOf, weekStartOf } from './plan-model';
+import {
+  dividerBelowAt,
+  scheduleHours,
+  weekDatesOf,
+  weekIndexOf,
+  weekStartOf,
+  withDividerAt,
+} from './plan-model';
 import { computeScore } from './score';
 
 describe('food-parser', () => {
@@ -87,6 +95,41 @@ describe('plan-model week math', () => {
       '21:00',
       '22:00',
     ]);
+  });
+
+  it('start 0 → end 24 has ONE 00:00 row, not two (dedupe)', () => {
+    const hours = scheduleHours(0, 24);
+    expect(hours[0]).toBe('00:00');
+    expect(hours.filter((h) => h === '00:00')).toHaveLength(1);
+    expect(new Set(hours).size).toBe(hours.length);
+  });
+});
+
+describe('habit dividers (tri-state)', () => {
+  const habits: PlanHabit[] = [
+    { id: 'fajr', label: 'الفجر', salah: true },
+    { id: 'isha', label: 'العشاء', salah: true },
+    { id: 'gym', label: 'Gym', salah: false },
+  ];
+
+  it('legacy fallback: divider under the last prayer while NO habit has the key', () => {
+    expect(dividerBelowAt(habits, 0)).toBe(false);
+    expect(dividerBelowAt(habits, 1)).toBe(true);
+    expect(dividerBelowAt(habits, 2)).toBe(false);
+  });
+
+  it('withDividerAt freezes explicit flags on every habit', () => {
+    const next = withDividerAt(habits, 2, true);
+    expect(next.map((h) => h.dividerBelow)).toEqual([false, true, true]);
+    // Once any habit carries the key, only explicit flags count.
+    expect(dividerBelowAt(next, 1)).toBe(true);
+    expect(dividerBelowAt(next, 2)).toBe(true);
+  });
+
+  it('unchecking the last divider means NO divider — the prayer fallback stays dead', () => {
+    const none = withDividerAt(habits, 1, false);
+    expect(none.every((h) => h.dividerBelow === false)).toBe(true);
+    expect(none.some((_, i) => dividerBelowAt(none, i))).toBe(false);
   });
 });
 

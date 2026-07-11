@@ -1,0 +1,29 @@
+/** Full-composer popup for the Daily Plan cards (Add Task). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* Same layer as the shared Modal: the composer's Recurrence / CreateTag
+     portals mount later in <body>, so at equal z-index they stack above. */
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--shadow-dark);
+  backdrop-filter: blur(2px);
+}
+
+/* The overlay stays mounted between opens (the Composer keeps its draft);
+   the hidden attribute must beat the flex display above. */
+.overlay[hidden] {
+  display: none;
+}
+
+/* The sheet, not the overlay, scrolls — a scrollbar drag registers its
+   mousedown here and never counts as an outside click. */
+.sheet {
+  width: min(680px, 100%);
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: var(--space-24) var(--space-16) 0;
+}

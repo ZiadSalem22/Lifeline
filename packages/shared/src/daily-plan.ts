@@ -139,6 +139,8 @@ export const dailyPlanDataSchema = z.object({
   ).default({}),
   /** Per-day override of the weekly split ("today's routine" chip). */
   workoutRoutine: planKey.nullable().default(null),
+  /** Carry-over bar handled (added-as-tasks or dismissed) — survives reloads. */
+  carryHandled: z.boolean().default(false),
 });
 export type DailyPlanData = z.infer<typeof dailyPlanDataSchema>;
 
@@ -150,6 +152,15 @@ export const planHabitSchema = z.object({
   // the debounced PUT the instant a field is cleared and revert typing.
   label: z.string().max(PLAN_LIMITS.labelMax).default(''),
   salah: z.boolean().default(false),
+  /**
+   * User-controlled divider under this row. Tri-state on purpose — NO
+   * .default(): when EVERY habit lacks the key the tracker falls back to the
+   * legacy rule (divider after the last salah row); once any editor touches
+   * dividers it writes explicit true/false onto all habits, so unchecking the
+   * last divider means "no divider", not a resurrected legacy one. A default
+   * would erase that distinction on every schema round-trip.
+   */
+  dividerBelow: z.boolean().optional(),
 });
 export type PlanHabit = z.infer<typeof planHabitSchema>;
 
