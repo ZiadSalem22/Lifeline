@@ -36,8 +36,10 @@ export function materializeNewDay(
   if (template) {
     day.schedule = { ...template.schedule };
     const texts = template.priorities.filter(nonEmpty);
-    day.priorities = day.priorities.map((slot, i) => ({
-      t: texts[i] ?? slot.t,
+    // Grow beyond the default 3 slots when the template carries more.
+    const slots = Math.max(day.priorities.length, texts.length);
+    day.priorities = Array.from({ length: slots }, (_, i) => ({
+      t: texts[i] ?? '',
       done: false,
     }));
     day.quick = template.quick.filter(nonEmpty).map((t) => ({ t, done: false }));

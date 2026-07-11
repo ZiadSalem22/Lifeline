@@ -91,9 +91,11 @@ describe('plan-model week math', () => {
 });
 
 describe('computeScore (fair — only counts used, visible sections)', () => {
+  const fifteen = Array.from({ length: 15 }, (_, i) => `h${i}`);
+
   it('counts habits, tasks, quick, USED priorities, non-negs, water', () => {
     const day = emptyDailyPlanData();
-    day.habits = { fajr: true, gym: true };
+    day.habits = { h0: true, h1: true };
     day.quick = [{ t: 'a', done: true }];
     day.priorities[0] = { t: 'p1', done: true }; // slots 2+3 empty → NOT counted
     day.nonnegs = [true, false, false, false, false];
@@ -102,13 +104,29 @@ describe('computeScore (fair — only counts used, visible sections)', () => {
       day,
       taskTotal: 2,
       taskDone: 1,
-      habitCount: 15,
+      habitIds: fifteen,
       waterGoal: 8,
       nonnegCount: 5,
       hidden: {},
     });
     // total = 15 + (2+1) + 1 + 5 + 8 = 32; done = 2 + (1+1) + 1 + 1 + 4 = 10
     expect(score).toBe(Math.round((10 / 32) * 100));
+  });
+
+  it('orphan checkmarks from deleted habits do not inflate the score', () => {
+    const day = emptyDailyPlanData();
+    day.habits = { fajr: true, deletedHabit: true };
+    const score = computeScore({
+      day,
+      taskTotal: 0,
+      taskDone: 0,
+      habitIds: ['fajr', 'gym'],
+      waterGoal: 8,
+      nonnegCount: 0,
+      hidden: { water: true, nonneg: true, todo: true, priorities: true },
+    });
+    // Only fajr counts (deletedHabit is not in the tracker): 1/2.
+    expect(score).toBe(50);
   });
 
   it('hidden cards are excluded entirely', () => {
@@ -119,7 +137,7 @@ describe('computeScore (fair — only counts used, visible sections)', () => {
       day,
       taskTotal: 0,
       taskDone: 0,
-      habitCount: 2,
+      habitIds: ['fajr', 'gym'],
       waterGoal: 8,
       nonnegCount: 5,
       hidden: { water: true, nonneg: true, todo: true, priorities: true },
@@ -135,7 +153,7 @@ describe('computeScore (fair — only counts used, visible sections)', () => {
         day,
         taskTotal: 0,
         taskDone: 0,
-        habitCount: 0,
+        habitIds: [],
         waterGoal: 0,
         nonnegCount: 0,
         hidden: { water: true },

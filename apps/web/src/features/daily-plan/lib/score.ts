@@ -5,8 +5,11 @@ export interface ScoreInput {
   /** The day's real tasks (already day-filtered). */
   taskTotal: number;
   taskDone: number;
-  /** Habit rows shown in the tracker (settings.habits length). */
-  habitCount: number;
+  /**
+   * The habit ids currently in the tracker — deleted habits may leave orphan
+   * checkmarks in old day rows, which must not inflate the score.
+   */
+  habitIds: string[];
   waterGoal: number;
   /** Editable non-negotiable labels count. */
   nonnegCount: number;
@@ -20,14 +23,14 @@ export interface ScoreInput {
  * (three empty slots must not drag the ring down). The masthead ring.
  */
 export function computeScore(input: ScoreInput): number {
-  const { day, taskTotal, taskDone, habitCount, waterGoal, nonnegCount, hidden } = input;
+  const { day, taskTotal, taskDone, habitIds, waterGoal, nonnegCount, hidden } = input;
 
   let total = 0;
   let done = 0;
 
   if (!hidden['habits']) {
-    total += habitCount;
-    done += Math.min(Object.values(day.habits).filter(Boolean).length, habitCount);
+    total += habitIds.length;
+    done += habitIds.filter((id) => day.habits[id]).length;
   }
   if (!hidden['todo']) {
     total += taskTotal + day.quick.length;

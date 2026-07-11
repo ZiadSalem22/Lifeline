@@ -119,13 +119,38 @@ export function useSaveDay() {
 
   return useCallback(
     (date: string, next: DailyPlanData) => {
-      queryClient.setQueryData<DailyPlanDay[]>(weekKey(mode, weekStartOf(date)), (rows) => {
+      const upsert = (rows: DailyPlanDay[] | undefined): DailyPlanDay[] => {
         const list = rows ? [...rows] : [];
         const index = list.findIndex((row) => row.date === date);
-        if (index === -1) list.push({ date, data: next });
-        else list[index] = { date, data: next };
+        if (index === -1) {
+          list.push({ date, data: next });
+          list.sort((a, b) => a.date.localeCompare(b.date));
+        } else {
+          list[index] = { date, data: next };
+        }
         return list;
-      });
+      };
+      queryClient.setQueryData<DailyPlanDay[]>(weekKey(mode, weekStartOf(date)), upsert);
+      // Keep recent-days windows fresh too, so same-session edits to a past
+      // day (e.g. yesterday's Tomorrow Plan) flow straight into today's
+      // continuity/suggestions instead of waiting out staleTime.
+      queryClient.setQueriesData<DailyPlanDay[]>(
+        {
+          predicate: (query) => {
+            const key = query.queryKey;
+            return (
+              Array.isArray(key) &&
+              key[0] === 'daily-plan-recent' &&
+              key[1] === mode &&
+              typeof key[2] === 'string' &&
+              typeof key[3] === 'string' &&
+              key[2] <= date &&
+              date <= key[3]
+            );
+          },
+        },
+        upsert,
+      );
       pending.current.set(date, next);
       const existing = timers.current.get(date);
       if (existing) clearTimeout(existing);

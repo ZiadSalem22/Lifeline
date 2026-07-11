@@ -42,14 +42,6 @@ export function sectionLabel(key: PlanSectionKey): string {
   return PLAN_SECTIONS.find(([k]) => k === key)?.[1] ?? key;
 }
 
-export const NON_NEGOTIABLE_LABELS = [
-  'Stay Disciplined',
-  'Train Hard',
-  'Eat Clean',
-  'Protect Focus',
-  'Finish Strong',
-] as const;
-
 /**
  * Hourly schedule rows, personalized: start hour 0–23 → end hour 1–24
  * (24 renders as 00:00). Defaults match the design (04:00 → 00:00).

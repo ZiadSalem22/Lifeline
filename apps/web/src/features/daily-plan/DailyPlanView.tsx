@@ -128,7 +128,12 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
 
   const [quickDraft, setQuickDraft] = useState('');
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [carryDismissed, setCarryDismissed] = useState(false);
+  // Carry-bar dismissal is per-day — reset when the selected date changes
+  // (render-time adjustment guarded by comparison, the app's usual pattern).
+  const [carryState, setCarryState] = useState({ date: dateStr, dismissed: false });
+  if (carryState.date !== dateStr) setCarryState({ date: dateStr, dismissed: false });
+  const carryDismissed = carryState.dismissed;
+  const setCarryDismissed = (dismissed: boolean) => setCarryState({ date: dateStr, dismissed });
   const dragKey = useRef<string | null>(null);
 
   // Carry-over: yesterday's unfinished priorities/quick, one tap to adopt.
@@ -205,7 +210,7 @@ export function DailyPlanView({ dayToken, todos }: DailyPlanViewProps) {
     day,
     taskTotal: dayTodos.length,
     taskDone,
-    habitCount: settings.habits.length,
+    habitIds: settings.habits.map((h) => h.id),
     waterGoal: settings.targets.water,
     nonnegCount: settings.nonnegLabels.length,
     hidden: settings.hidden,

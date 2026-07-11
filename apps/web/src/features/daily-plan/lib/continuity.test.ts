@@ -35,6 +35,19 @@ describe('day templates + continuity', () => {
     expect(monday.quick.map((q) => q.t)).toEqual(['Stretch']);
   });
 
+  it('templates with more priorities than the default 3 slots keep them all', () => {
+    const settings = defaultDailyPlanSettings();
+    settings.templates = {
+      all: {
+        schedule: {},
+        priorities: ['One', 'Two', 'Three', 'Four', 'Five'],
+        quick: [],
+      },
+    };
+    const day = materializeNewDay(settings, '2026-07-09', null);
+    expect(day.priorities.map((p) => p.t)).toEqual(['One', 'Two', 'Three', 'Four', 'Five']);
+  });
+
   it('templateKeyOf maps dates to weekday keys', () => {
     expect(templateKeyOf('2026-07-06')).toBe('mon');
     expect(templateKeyOf('2026-07-09')).toBe('thu');

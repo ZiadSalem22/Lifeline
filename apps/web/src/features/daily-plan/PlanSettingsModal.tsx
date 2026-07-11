@@ -60,6 +60,15 @@ function NumberField(props: {
   max: number;
   onChange: (value: number) => void;
 }) {
+  // Draft-commit: clamping on every keystroke would fight typing (entering
+  // "2200" digit-by-digit momentarily reads "2" → snapped to min). Commit
+  // only in-range values; reconcile the text on blur.
+  const [draft, setDraft] = useState(String(props.value));
+  const [lastValue, setLastValue] = useState(props.value);
+  if (props.value !== lastValue) {
+    setLastValue(props.value);
+    setDraft(String(props.value));
+  }
   return (
     <label className={styles.macroLabel}>
       {props.label}
@@ -67,14 +76,17 @@ function NumberField(props: {
         type="number"
         className={styles.smallInput}
         style={{ width: '100%', boxSizing: 'border-box' }}
-        value={props.value}
+        value={draft}
         min={props.min}
         max={props.max}
         onChange={(e) => {
+          setDraft(e.target.value);
           const parsed = Number.parseInt(e.target.value, 10);
-          if (Number.isNaN(parsed)) return;
-          props.onChange(Math.max(props.min, Math.min(props.max, parsed)));
+          if (!Number.isNaN(parsed) && parsed >= props.min && parsed <= props.max) {
+            props.onChange(parsed);
+          }
         }}
+        onBlur={() => setDraft(String(props.value))}
       />
     </label>
   );

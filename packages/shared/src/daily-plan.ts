@@ -146,7 +146,9 @@ export type DailyPlanData = z.infer<typeof dailyPlanDataSchema>;
 
 export const planHabitSchema = z.object({
   id: planKey,
-  label: z.string().min(1).max(PLAN_LIMITS.labelMax),
+  // Empty allowed: the editor autosaves mid-edit; a min(1) here would 400
+  // the debounced PUT the instant a field is cleared and revert typing.
+  label: z.string().max(PLAN_LIMITS.labelMax).default(''),
   salah: z.boolean().default(false),
 });
 export type PlanHabit = z.infer<typeof planHabitSchema>;
@@ -180,7 +182,8 @@ export const gymExerciseSchema = z.object({
 export type GymExercise = z.infer<typeof gymExerciseSchema>;
 
 export const gymRoutineSchema = z.object({
-  name: z.string().min(1).max(60),
+  // Empty allowed — autosaving editors (see planHabitSchema.label).
+  name: z.string().max(60).default(''),
   ex: z.array(gymExerciseSchema).max(PLAN_LIMITS.exercisesMax).default([]),
 });
 export type GymRoutine = z.infer<typeof gymRoutineSchema>;
@@ -233,7 +236,8 @@ export const DEFAULT_GYM_ROUTINES: Record<string, GymRoutine> = {
 };
 
 export const mealPresetSchema = z.object({
-  name: z.string().min(1).max(200),
+  // Empty allowed — autosaving editors (see planHabitSchema.label).
+  name: z.string().max(200).default(''),
   cal: macroNumber.default(0),
   p: macroNumber.default(0),
   c: macroNumber.default(0),
@@ -307,7 +311,7 @@ export const dailyPlanSettingsSchema = z.object({
   /* ── personalization (nothing hardcoded) ──────────────────────────────── */
   /** Editable non-negotiable labels (the checks row sizes to this list). */
   nonnegLabels: z
-    .array(z.string().min(1).max(PLAN_LIMITS.labelMax))
+    .array(z.string().max(PLAN_LIMITS.labelMax))
     .max(8)
     .default(() => [...DEFAULT_NON_NEGOTIABLES]),
   motto: z.string().max(PLAN_LIMITS.labelMax).default(DEFAULT_MOTTO),
