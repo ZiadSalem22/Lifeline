@@ -1,6 +1,6 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
 import type { DailyPlanData, PlanHabit, Todo } from '@lifeline/shared';
-import { scheduleHours } from './lib/plan-model';
+import { WEEK_DAY_NAMES, scheduleHours } from './lib/plan-model';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -276,7 +276,7 @@ export function HabitsBody(props: HabitsBodyProps) {
                     on={on}
                     size={15}
                     className={styles.habitCell}
-                    label={`${habit.label} ${props.weekLetters[di] ?? ''}`}
+                    label={`${habit.label} ${WEEK_DAY_NAMES[di] ?? ''}`}
                     onToggle={() => props.onToggle(date, habit.id, !on)}
                   />
                 );
