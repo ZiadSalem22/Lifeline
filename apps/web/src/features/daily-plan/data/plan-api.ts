@@ -8,7 +8,7 @@ import {
   type DailyPlanSettings,
 } from '@lifeline/shared';
 import { api } from '../../../shared/api/client';
-import { weekDatesOf } from '../lib/plan-model';
+import { daysBefore } from '../lib/plan-model';
 
 /**
  * Daily Plan data access — one interface, two adapters:
@@ -61,14 +61,15 @@ export function createLocalPlanApi(storage: PlanStorage): PlanApi {
 
   return {
     fetchRange(start, end) {
-      // Guest ranges are always the week view — enumerate via the week of
-      // `start` and filter, so we never scan unbounded key spans.
-      const dates = weekDatesOf(start).filter((d) => d >= start && d <= end);
+      // Enumerate every date in [start, end], capped like the server (62 days).
       const items: DailyPlanDay[] = [];
-      for (const date of dates) {
+      for (let i = 0; i < 62; i += 1) {
+        const date = daysBefore(end, i);
+        if (date < start) break;
         const data = readDay(date);
         if (data !== null) items.push({ date, data });
       }
+      items.sort((a, b) => a.date.localeCompare(b.date));
       return Promise.resolve(items);
     },
     putDay(date, data) {

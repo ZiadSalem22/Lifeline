@@ -63,31 +63,83 @@ describe('plan-model week math', () => {
     expect(weekIndexOf('2026-07-12')).toBe(6);
   });
 
-  it('schedule runs 04:00 → 00:00 (21 rows)', () => {
+  it('schedule runs 04:00 → 00:00 (21 rows) by default and honors custom hours', () => {
     const hours = scheduleHours();
     expect(hours).toHaveLength(21);
     expect(hours[0]).toBe('04:00');
     expect(hours[20]).toBe('00:00');
+    expect(scheduleHours(6, 22)).toEqual([
+      '06:00',
+      '07:00',
+      '08:00',
+      '09:00',
+      '10:00',
+      '11:00',
+      '12:00',
+      '13:00',
+      '14:00',
+      '15:00',
+      '16:00',
+      '17:00',
+      '18:00',
+      '19:00',
+      '20:00',
+      '21:00',
+      '22:00',
+    ]);
   });
 });
 
-describe('computeScore', () => {
-  it('is done/total across habits, tasks, quick, priorities, non-negs, water', () => {
+describe('computeScore (fair — only counts used, visible sections)', () => {
+  it('counts habits, tasks, quick, USED priorities, non-negs, water', () => {
     const day = emptyDailyPlanData();
     day.habits = { fajr: true, gym: true };
     day.quick = [{ t: 'a', done: true }];
-    day.priorities[0] = { t: 'p1', done: true };
+    day.priorities[0] = { t: 'p1', done: true }; // slots 2+3 empty → NOT counted
     day.nonnegs = [true, false, false, false, false];
     day.water = 4;
-    const score = computeScore({ day, taskTotal: 2, taskDone: 1, habitCount: 15, waterGoal: 8 });
-    // total = 15 + 2 + 1 + 3 + 5 + 8 = 34; done = 2 + 1 + 1 + 1 + 1 + 4 = 10
-    expect(score).toBe(Math.round((10 / 34) * 100));
+    const score = computeScore({
+      day,
+      taskTotal: 2,
+      taskDone: 1,
+      habitCount: 15,
+      waterGoal: 8,
+      nonnegCount: 5,
+      hidden: {},
+    });
+    // total = 15 + (2+1) + 1 + 5 + 8 = 32; done = 2 + (1+1) + 1 + 1 + 4 = 10
+    expect(score).toBe(Math.round((10 / 32) * 100));
+  });
+
+  it('hidden cards are excluded entirely', () => {
+    const day = emptyDailyPlanData();
+    day.habits = { fajr: true };
+    day.water = 0;
+    const score = computeScore({
+      day,
+      taskTotal: 0,
+      taskDone: 0,
+      habitCount: 2,
+      waterGoal: 8,
+      nonnegCount: 5,
+      hidden: { water: true, nonneg: true, todo: true, priorities: true },
+    });
+    // Only habits count: 1/2.
+    expect(score).toBe(50);
   });
 
   it('empty day scores 0 without dividing by zero', () => {
     const day = emptyDailyPlanData();
-    day.priorities = [];
-    day.nonnegs = [];
-    expect(computeScore({ day, taskTotal: 0, taskDone: 0, habitCount: 0, waterGoal: 0 })).toBe(0);
+    expect(
+      computeScore({
+        day,
+        taskTotal: 0,
+        taskDone: 0,
+        habitCount: 0,
+        waterGoal: 0,
+        nonnegCount: 0,
+        hidden: { water: true },
+      }),
+    ).toBe(0);
   });
 });

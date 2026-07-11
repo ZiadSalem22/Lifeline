@@ -50,10 +50,15 @@ export const NON_NEGOTIABLE_LABELS = [
   'Finish Strong',
 ] as const;
 
-/** Hourly schedule rows 04:00 → 00:00 (24 % 24), matching the design. */
-export function scheduleHours(): string[] {
+/**
+ * Hourly schedule rows, personalized: start hour 0–23 → end hour 1–24
+ * (24 renders as 00:00). Defaults match the design (04:00 → 00:00).
+ */
+export function scheduleHours(startHour = 4, endHour = 24): string[] {
+  const start = Math.max(0, Math.min(23, startHour));
+  const end = Math.max(start + 1, Math.min(24, endHour));
   const hours: string[] = [];
-  for (let h = 4; h <= 24; h += 1) {
+  for (let h = start; h <= end; h += 1) {
     const hh = h % 24;
     hours.push(`${hh < 10 ? '0' : ''}${hh}:00`);
   }
@@ -83,4 +88,16 @@ export function weekDatesOf(dateStr: string): string[] {
 /** Monday-first index (0–6) of dateStr within its week. */
 export function weekIndexOf(dateStr: string): number {
   return (parseDateOnly(dateStr).getDay() + 6) % 7;
+}
+
+/** The date string n days before dateStr. */
+export function daysBefore(dateStr: string, n: number): string {
+  return format(addDays(parseDateOnly(dateStr), -n), 'yyyy-MM-dd');
+}
+
+const TEMPLATE_WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+
+/** Template key ('mon'…'sun') for a date. */
+export function templateKeyOf(dateStr: string): (typeof TEMPLATE_WEEKDAYS)[number] {
+  return TEMPLATE_WEEKDAYS[weekIndexOf(dateStr)] ?? 'mon';
 }

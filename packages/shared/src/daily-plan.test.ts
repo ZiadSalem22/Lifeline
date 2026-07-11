@@ -67,6 +67,36 @@ describe('dailyPlanSettingsSchema', () => {
   it('gym week must be exactly 7 entries', () => {
     expect(dailyPlanSettingsSchema.safeParse({ gym: { week: ['push'] } }).success).toBe(false);
   });
+
+  it('personalization defaults: labels, motto, hours, counts, empty templates', () => {
+    const settings = defaultDailyPlanSettings();
+    expect(settings.nonnegLabels).toHaveLength(5);
+    expect(settings.nonnegLabels[0]).toBe('Stay Disciplined');
+    expect(settings.motto).toBe('No excuses. Just execution.');
+    expect(settings.subtitle).toBe('discipline · focus · execution');
+    expect(settings.dayStartHour).toBe(4);
+    expect(settings.dayEndHour).toBe(24);
+    expect(settings.priorityCount).toBe(3);
+    expect(settings.gratitudeCount).toBe(3);
+    expect(settings.tomorrowCount).toBe(4);
+    expect(settings.templates).toEqual({});
+  });
+
+  it('day templates roundtrip per weekday and stored pre-personalization blobs self-heal', () => {
+    const parsed = dailyPlanSettingsSchema.parse({
+      density: 'roomy', // an "old" blob — none of the new fields present
+      templates: {
+        mon: { schedule: { '06:00': 'Gym — Push' }, priorities: ['Deep work'], quick: ['Stretch'] },
+      },
+    });
+    expect(parsed.templates.mon?.schedule['06:00']).toBe('Gym — Push');
+    expect(parsed.templates.mon?.priorities).toEqual(['Deep work']);
+    expect(parsed.nonnegLabels).toHaveLength(5); // healed defaults
+    expect(parsed.dayStartHour).toBe(4);
+    expect(
+      dailyPlanSettingsSchema.safeParse({ templates: { funday: { schedule: {} } } }).success,
+    ).toBe(false);
+  });
 });
 
 describe('dailyPlanRangeQuerySchema', () => {

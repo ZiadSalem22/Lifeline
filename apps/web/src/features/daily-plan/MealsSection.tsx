@@ -29,6 +29,8 @@ export interface MealsSectionProps {
   patchDay: PatchDay;
   patchSettings: (patch: Partial<DailyPlanSettings>) => void;
   onHide: () => void;
+  /** Recently logged items from past days — 1-tap re-log. */
+  recentItems: MealItem[];
 }
 
 const SLOT_LABELS: Record<MealSlot, string> = {
@@ -182,6 +184,21 @@ export function MealsSection(props: MealsSectionProps) {
       ].slice(-40),
     }));
     setLibOpen(false);
+  };
+
+  const logRecent = (item: MealItem) => {
+    const slot = guessSlot(new Date().getHours());
+    props.patchDay((current) => ({
+      meals: { ...current.meals, [slot]: [...current.meals[slot], { ...item }] },
+      lastLog: { slot, count: 1 },
+      chat: [
+        ...current.chat,
+        {
+          who: 'ai' as const,
+          t: `“${item.n}” → ${SLOT_LABELS[slot]} ✓  (+${Math.round(num(item.cal))} kcal)`,
+        },
+      ].slice(-40),
+    }));
   };
 
   const updateItem = (slot: MealSlot, index: number, patch: Partial<MealItem>) => {
@@ -338,6 +355,39 @@ export function MealsSection(props: MealsSectionProps) {
           Manage
         </button>
       </div>
+
+      {props.recentItems.length > 0 && (
+        <div className={styles.pinnedRow}>
+          <span className={styles.sectionMiniMuted} style={{ fontSize: 9 }}>
+            Recent
+          </span>
+          {props.recentItems.map((item, i) => (
+            <button
+              key={`${item.n}-${i}`}
+              type="button"
+              className={styles.presetChip}
+              title="Log again"
+              onClick={() => logRecent(item)}
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              <span dir="auto">{item.n}</span>
+              <span className={styles.presetCal}>{Math.round(num(item.cal))} kcal</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {typing && <div className={styles.aiStripTyping}>Analyzing…</div>}
       {!typing && lastAi && (

@@ -50,21 +50,47 @@ export function SquareCheck(props: { on: boolean; label: string; onToggle: () =>
 
 /* ── Schedule ────────────────────────────────────────────────────────────── */
 
-export function ScheduleBody({ day, patch }: { day: DailyPlanData; patch: Patch }) {
+export interface ScheduleBodyProps {
+  day: DailyPlanData;
+  patch: Patch;
+  startHour: number;
+  endHour: number;
+  /** Personal suggestions for an hour, mined from recent days. */
+  suggestionsFor: (hour: string) => string[];
+}
+
+export function ScheduleBody({
+  day,
+  patch,
+  startHour,
+  endHour,
+  suggestionsFor,
+}: ScheduleBodyProps) {
   return (
     <div className={styles.cardBody}>
-      {scheduleHours().map((time) => (
-        <div key={time} className={styles.rowRule}>
-          <span className={styles.schedTime}>{time}</span>
-          <input
-            dir="auto"
-            className={styles.inputBare}
-            value={day.schedule[time] ?? ''}
-            aria-label={`Schedule ${time}`}
-            onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
-          />
-        </div>
-      ))}
+      {scheduleHours(startHour, endHour).map((time) => {
+        const suggestions = suggestionsFor(time);
+        return (
+          <div key={time} className={styles.rowRule}>
+            <span className={styles.schedTime}>{time}</span>
+            <input
+              dir="auto"
+              className={styles.inputBare}
+              value={day.schedule[time] ?? ''}
+              aria-label={`Schedule ${time}`}
+              list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
+              onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
+            />
+            {suggestions.length > 0 && (
+              <datalist id={`plan-sched-sug-${time}`}>
+                {suggestions.map((text) => (
+                  <option key={text} value={text} />
+                ))}
+              </datalist>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -87,11 +113,28 @@ export function FocusBody({ day, patch }: { day: DailyPlanData; patch: Patch }) 
   );
 }
 
-export function GratitudeBody({ day, patch }: { day: DailyPlanData; patch: Patch }) {
+export function GratitudeBody({
+  day,
+  patch,
+  count,
+}: {
+  day: DailyPlanData;
+  patch: Patch;
+  count: number;
+}) {
+  const rows = Array.from({ length: count }, (_, i) => day.gratitude[i] ?? '');
+  const write = (i: number, value: string) => {
+    const next = Array.from(
+      { length: Math.max(count, day.gratitude.length) },
+      (_, j) => day.gratitude[j] ?? '',
+    );
+    next[i] = value;
+    patch({ gratitude: next });
+  };
   return (
     <div className={styles.cardBody}>
       <div className={styles.prompt}>I am grateful for:</div>
-      {day.gratitude.map((value, i) => (
+      {rows.map((value, i) => (
         <div key={i} className={styles.rowRule}>
           <span className={styles.schedTime} style={{ width: 14 }}>
             {i + 1}.
@@ -101,9 +144,7 @@ export function GratitudeBody({ day, patch }: { day: DailyPlanData; patch: Patch
             className={styles.inputBare}
             value={value}
             aria-label={`Gratitude ${i + 1}`}
-            onChange={(e) =>
-              patch({ gratitude: day.gratitude.map((g, j) => (j === i ? e.target.value : g)) })
-            }
+            onChange={(e) => write(i, e.target.value)}
           />
         </div>
       ))}
@@ -186,10 +227,33 @@ export function MoodBody({ day, patch }: { day: DailyPlanData; patch: Patch }) {
 
 /* ── Top 3 Priorities ────────────────────────────────────────────────────── */
 
-export function PrioritiesBody({ day, patch }: { day: DailyPlanData; patch: Patch }) {
+export interface PrioritiesBodyProps {
+  day: DailyPlanData;
+  patch: Patch;
+  count: number;
+  suggestions: string[];
+}
+
+export function PrioritiesBody({ day, patch, count, suggestions }: PrioritiesBodyProps) {
+  const rows = Array.from({ length: count }, (_, i) => day.priorities[i] ?? { t: '', done: false });
+  const write = (i: number, item: { t: string; done: boolean }) => {
+    const next = Array.from(
+      { length: Math.max(count, day.priorities.length) },
+      (_, j) => day.priorities[j] ?? { t: '', done: false },
+    );
+    next[i] = item;
+    patch({ priorities: next });
+  };
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
-      {day.priorities.map((p, i) => (
+      {suggestions.length > 0 && (
+        <datalist id="plan-prio-sug">
+          {suggestions.map((text) => (
+            <option key={text} value={text} />
+          ))}
+        </datalist>
+      )}
+      {rows.map((p, i) => (
         <div key={i} className={styles.rowRule} style={{ padding: '5px 0' }}>
           <span className={styles.prioNum}>{i + 1}.</span>
           <input
@@ -198,23 +262,14 @@ export function PrioritiesBody({ day, patch }: { day: DailyPlanData; patch: Patc
             style={{ fontWeight: 600 }}
             value={p.t}
             aria-label={`Priority ${i + 1}`}
-            onChange={(e) =>
-              patch({
-                priorities: day.priorities.map((x, j) =>
-                  j === i ? { ...x, t: e.target.value } : x,
-                ),
-              })
-            }
+            list={suggestions.length > 0 ? 'plan-prio-sug' : undefined}
+            onChange={(e) => write(i, { ...p, t: e.target.value })}
           />
           <CircleCheck
             on={p.done}
             size={19}
             label={`Toggle priority ${i + 1}`}
-            onToggle={() =>
-              patch({
-                priorities: day.priorities.map((x, j) => (j === i ? { ...x, done: !x.done } : x)),
-              })
-            }
+            onToggle={() => write(i, { ...p, done: !p.done })}
           />
         </div>
       ))}
@@ -235,7 +290,8 @@ export interface HabitsBodyProps {
 }
 
 export function HabitsBody(props: HabitsBodyProps) {
-  const salahCount = props.habits.filter((h) => h.salah).length;
+  // Divider sits under the last prayer row (the editor may reorder freely).
+  const lastSalahIndex = props.habits.map((h) => h.salah).lastIndexOf(true);
   // Band position over the selected day's 22px column (3px gaps, rightmost = index 6).
   const bandRight = (6 - props.selectedIdx) * 25 - 2;
   return (
@@ -260,7 +316,7 @@ export function HabitsBody(props: HabitsBodyProps) {
               className={[
                 styles.habitRow,
                 habit.salah ? styles.habitRowSalah : undefined,
-                hi === salahCount - 1 ? styles.habitRowDivide : undefined,
+                hi === lastSalahIndex ? styles.habitRowDivide : undefined,
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -298,6 +354,7 @@ export interface TodoBodyProps {
   onToggleTodo: (id: string) => void;
   quickDraft: string;
   onQuickDraft: (value: string) => void;
+  suggestions: string[];
 }
 
 export function TodoBody(props: TodoBodyProps) {
@@ -355,6 +412,13 @@ export function TodoBody(props: TodoBodyProps) {
         </div>
       ))}
       <div className={styles.quickAddRow}>
+        {props.suggestions.length > 0 && (
+          <datalist id="plan-quick-sug">
+            {props.suggestions.map((text) => (
+              <option key={text} value={text} />
+            ))}
+          </datalist>
+        )}
         <input
           dir="auto"
           className={styles.smallInput}
@@ -362,6 +426,7 @@ export function TodoBody(props: TodoBodyProps) {
           placeholder="Add a quick to-do…"
           aria-label="Add a quick to-do"
           value={props.quickDraft}
+          list={props.suggestions.length > 0 ? 'plan-quick-sug' : undefined}
           onChange={(e) => props.onQuickDraft(e.target.value)}
           onKeyDown={onKey}
         />
@@ -415,19 +480,32 @@ export function WaterBody({
 
 /* ── Tomorrow Plan ───────────────────────────────────────────────────────── */
 
-export function TomorrowBody({ day, patch }: { day: DailyPlanData; patch: Patch }) {
+export function TomorrowBody({
+  day,
+  patch,
+  count,
+}: {
+  day: DailyPlanData;
+  patch: Patch;
+  count: number;
+}) {
+  const rows = Array.from({ length: count }, (_, i) => day.tomorrow[i] ?? { t: '', done: false });
+  const write = (i: number, item: { t: string; done: boolean }) => {
+    const next = Array.from(
+      { length: Math.max(count, day.tomorrow.length) },
+      (_, j) => day.tomorrow[j] ?? { t: '', done: false },
+    );
+    next[i] = item;
+    patch({ tomorrow: next });
+  };
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
-      {day.tomorrow.map((item, i) => (
+      {rows.map((item, i) => (
         <div key={i} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
           <SquareCheck
             on={item.done}
             label={`Toggle tomorrow item ${i + 1}`}
-            onToggle={() =>
-              patch({
-                tomorrow: day.tomorrow.map((x, j) => (j === i ? { ...x, done: !x.done } : x)),
-              })
-            }
+            onToggle={() => write(i, { ...item, done: !item.done })}
           />
           <input
             dir="auto"
@@ -435,11 +513,7 @@ export function TomorrowBody({ day, patch }: { day: DailyPlanData; patch: Patch 
             style={{ padding: '2px 0' }}
             value={item.t}
             aria-label={`Tomorrow item ${i + 1}`}
-            onChange={(e) =>
-              patch({
-                tomorrow: day.tomorrow.map((x, j) => (j === i ? { ...x, t: e.target.value } : x)),
-              })
-            }
+            onChange={(e) => write(i, { ...item, t: e.target.value })}
           />
         </div>
       ))}

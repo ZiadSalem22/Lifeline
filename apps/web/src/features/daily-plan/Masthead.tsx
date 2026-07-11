@@ -7,10 +7,12 @@ const CIRC = 2 * Math.PI * 29;
 export interface MastheadProps {
   dateStr: string;
   score: number;
+  /** Personal subtitle line (empty hides the rule row). */
+  subtitle: string;
 }
 
 /** "DAILY PLAN" display header: subtitle rules, date, week chips, score ring. */
-export function Masthead({ dateStr, score }: MastheadProps) {
+export function Masthead({ dateStr, score, subtitle }: MastheadProps) {
   const todayIdx = weekIndexOf(dateStr);
   const dash = `${((score / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
   const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'EEEE, MMMM d, yyyy');
@@ -19,11 +21,13 @@ export function Masthead({ dateStr, score }: MastheadProps) {
     <div className={styles.masthead}>
       <div className={styles.mastheadLeft}>
         <div className={styles.mastheadTitle}>DAILY PLAN</div>
-        <div className={styles.mastheadSub}>
-          <span className={styles.ruleLine} />
-          discipline · focus · execution
-          <span className={styles.ruleLine} />
-        </div>
+        {subtitle.trim().length > 0 && (
+          <div className={styles.mastheadSub} dir="auto">
+            <span className={styles.ruleLine} />
+            {subtitle}
+            <span className={styles.ruleLine} />
+          </div>
+        )}
       </div>
       <div className={styles.mastheadDate}>
         <div className={styles.dateLabel}>{dateLabel}</div>

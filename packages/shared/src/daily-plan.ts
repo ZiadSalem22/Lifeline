@@ -242,6 +242,29 @@ export const mealPresetSchema = z.object({
 });
 export type MealPreset = z.infer<typeof mealPresetSchema>;
 
+/** Day-template keys: one per weekday plus a fallback for every day. */
+export const TEMPLATE_KEYS = ['all', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
+
+/** A reusable day skeleton — prefills brand-new days (nothing stored yet). */
+export const dayTemplateSchema = z.object({
+  schedule: boundedRecord(planText, PLAN_LIMITS.scheduleRowsMax).default({}),
+  priorities: z.array(planText).max(5).default([]),
+  quick: z.array(planText).max(16).default([]),
+});
+export type DayTemplate = z.infer<typeof dayTemplateSchema>;
+
+export const DEFAULT_NON_NEGOTIABLES = [
+  'Stay Disciplined',
+  'Train Hard',
+  'Eat Clean',
+  'Protect Focus',
+  'Finish Strong',
+];
+
+export const DEFAULT_MOTTO = 'No excuses. Just execution.';
+export const DEFAULT_SUBTITLE = 'discipline · focus · execution';
+
 export const dailyPlanSettingsSchema = z.object({
   density: z.enum(['compact', 'roomy']).default('compact'),
   secOrder: z.array(planKey).max(32).default([]),
@@ -281,6 +304,22 @@ export const dailyPlanSettingsSchema = z.object({
   gymTaskNumber: z.number().int().min(1).nullable().default(null),
   /** Habit row auto-checked when today's workout finishes. */
   gymHabitId: planKey.default('gym'),
+  /* ── personalization (nothing hardcoded) ──────────────────────────────── */
+  /** Editable non-negotiable labels (the checks row sizes to this list). */
+  nonnegLabels: z
+    .array(z.string().min(1).max(PLAN_LIMITS.labelMax))
+    .max(8)
+    .default(() => [...DEFAULT_NON_NEGOTIABLES]),
+  motto: z.string().max(PLAN_LIMITS.labelMax).default(DEFAULT_MOTTO),
+  subtitle: z.string().max(PLAN_LIMITS.labelMax).default(DEFAULT_SUBTITLE),
+  /** Schedule range: first hour (0–23) → last hour (1–24; 24 renders 00:00). */
+  dayStartHour: z.number().int().min(0).max(23).default(4),
+  dayEndHour: z.number().int().min(1).max(24).default(24),
+  priorityCount: z.number().int().min(1).max(5).default(3),
+  gratitudeCount: z.number().int().min(1).max(8).default(3),
+  tomorrowCount: z.number().int().min(1).max(8).default(4),
+  /** Per-weekday day skeletons ('all' = fallback); prefill brand-new days. */
+  templates: z.partialRecord(z.enum(TEMPLATE_KEYS), dayTemplateSchema).default({}),
 });
 export type DailyPlanSettings = z.infer<typeof dailyPlanSettingsSchema>;
 

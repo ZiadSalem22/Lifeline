@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   defaultDailyPlanSettings,
-  emptyDailyPlanData,
   type DailyPlanData,
   type DailyPlanDay,
   type DailyPlanSettings,
 } from '@lifeline/shared';
 import { useAuth } from '../../../app/providers/auth-context';
-import { weekDatesOf, weekStartOf } from '../lib/plan-model';
+import { daysBefore, weekDatesOf, weekStartOf } from '../lib/plan-model';
 import { localPlanApi, serverPlanApi, type PlanApi } from './plan-api';
 
 /**
@@ -45,14 +44,39 @@ export function useDailyPlanWeek(dateStr: string) {
     queryFn: () => planApi.fetchRange(weekStart, weekEnd),
   });
 
+  // STORED rows only — callers decide what an absent day means (the view
+  // materializes new days from templates + yesterday's tomorrow-plan).
   const days = useMemo(() => {
-    const map = new Map((query.data ?? []).map((row) => [row.date, row.data]));
     const out: Record<string, DailyPlanData> = {};
-    for (const date of weekDates) out[date] = map.get(date) ?? emptyDailyPlanData();
+    for (const row of query.data ?? []) out[row.date] = row.data;
     return out;
-  }, [query.data, weekDates]);
+  }, [query.data]);
 
   return { days, weekDates, isLoading: query.isLoading, isFetched: query.isFetched };
+}
+
+/**
+ * The last `windowDays` of plan rows ENDING YESTERDAY (relative to dateStr) —
+ * the source for personal suggestions, templates-from-history, and the
+ * tomorrow→today / carry-over flows. Oldest → newest; missing days omitted.
+ */
+export function useRecentPlanDays(dateStr: string, windowDays = 28) {
+  const { planApi, mode } = usePlanApi();
+  const { checkedIdentity } = useAuth();
+  const end = daysBefore(dateStr, 1);
+  const start = daysBefore(dateStr, windowDays);
+  const query = useQuery({
+    queryKey: ['daily-plan-recent', mode, start, end],
+    enabled: checkedIdentity,
+    staleTime: 5 * 60_000,
+    queryFn: () => planApi.fetchRange(start, end),
+  });
+  const rows = query.data ?? [];
+  return {
+    recentDays: rows.map((row) => row.data),
+    yesterday: rows.find((row) => row.date === end)?.data ?? null,
+    isFetched: query.isFetched,
+  };
 }
 
 /**
