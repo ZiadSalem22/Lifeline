@@ -125,8 +125,15 @@ export function useRecentPlanDays(dateStr: string, windowDays = 28) {
     queryFn: () => planApi.fetchRange(start, end),
   });
   const rows = query.data ?? [];
+  const recentByDate = useMemo(() => {
+    const out: Record<string, DailyPlanData> = {};
+    for (const row of query.data ?? []) out[row.date] = row.data;
+    return out;
+  }, [query.data]);
   return {
     recentDays: rows.map((row) => row.data),
+    /** Same rows keyed by date — streak/history math needs the dates. */
+    recentByDate,
     yesterday: rows.find((row) => row.date === end)?.data ?? null,
     isFetched: query.isFetched,
   };

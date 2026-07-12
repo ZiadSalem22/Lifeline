@@ -12,6 +12,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/node_modules/**',
       '**/*.gen.ts',
+      // Static assets served verbatim (service worker runs in its own
+      // worker global scope, not the app's lint environment).
+      'apps/web/public/**',
       // Legacy JS app dirs retained for one cutover cycle — not part of the
       // TypeScript monorepo; removed at the follow-up cleanup.
       'backend/**',
@@ -58,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/server/**/*.ts', 'packages/shared/**/*.ts'],
+    files: ['apps/server/**/*.ts', 'packages/shared/**/*.ts', 'apps/web/scripts/**/*.mjs'],
     languageOptions: {
       globals: { ...globals.node },
     },

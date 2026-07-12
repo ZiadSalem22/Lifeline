@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
-import type { DailyPlanData, PlanHabit, Todo } from '@lifeline/shared';
+import type { DailyPlanData, HabitMark, PlanHabit, Todo } from '@lifeline/shared';
 import {
   WEEK_DAY_NAMES,
   dividerBelowAt,
@@ -55,43 +55,113 @@ export function SquareCheck(props: { on: boolean; label: string; onToggle: () =>
   );
 }
 
-/** One real task as a plan-card row: check, #num, title (opens in Tasks). */
-function TaskRow(props: { todo: Todo; onToggle: () => void; onOpen: (todo: Todo) => void }) {
-  const { todo } = props;
-  const doneSubs = todo.subtasks.filter((s) => s.isCompleted).length;
+type SubtaskToggle = (todo: Todo, subtaskId: string) => void;
+
+/** Expandable subtask checklist shared by task rows and schedule chips. */
+function SubtaskDisclosure(props: { todo: Todo; expanded: boolean; onToggleExpand: () => void }) {
+  const done = props.todo.subtasks.filter((s) => s.isCompleted).length;
   return (
-    <div className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
-      <SquareCheck
-        on={todo.isCompleted}
-        label={`Toggle task ${todo.taskNumber}`}
-        onToggle={props.onToggle}
-      />
-      <span className={styles.numChip}>#{todo.taskNumber}</span>
-      {todo.isCompleted ? (
-        // The Tasks editor refuses completed tasks — plain text, no dead link.
-        <span dir="auto" className={styles.todoTitleDone}>
-          {todo.title}
-        </span>
-      ) : (
-        <button
-          type="button"
-          dir="auto"
-          className={styles.todoTitleBtn}
-          title="Open in Tasks"
-          onClick={() => props.onOpen(todo)}
-        >
-          {todo.title}
-        </button>
-      )}
-      {todo.subtasks.length > 0 && (
-        <span className={styles.todoSub}>
-          {doneSubs}/{todo.subtasks.length}
-        </span>
-      )}
-      {todo.tags[0] && (
-        <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-      )}
+    <button
+      type="button"
+      className={styles.subCountBtn}
+      aria-expanded={props.expanded}
+      aria-label={`Subtasks of task ${props.todo.taskNumber}`}
+      onClick={props.onToggleExpand}
+    >
+      {done}/{props.todo.subtasks.length}
+      <svg
+        width="8"
+        height="8"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        style={{ transform: props.expanded ? 'rotate(180deg)' : undefined }}
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+  );
+}
+
+function SubtaskList(props: { todo: Todo; onToggleSubtask: SubtaskToggle }) {
+  return (
+    <div className={styles.subtaskList}>
+      {props.todo.subtasks.map((sub) => (
+        <div key={sub.subtaskId} className={styles.subtaskRow}>
+          <SquareCheck
+            on={sub.isCompleted}
+            label={`Toggle subtask ${sub.title}`}
+            onToggle={() => props.onToggleSubtask(props.todo, sub.subtaskId)}
+          />
+          <span dir="auto" className={sub.isCompleted ? styles.todoTitleDone : styles.todoTitle}>
+            {sub.title}
+          </span>
+        </div>
+      ))}
     </div>
+  );
+}
+
+/** One real task as a plan-card row: check, #num, title (opens in Tasks), subtasks. */
+function TaskRow(props: {
+  todo: Todo;
+  onToggle: () => void;
+  onOpen: (todo: Todo) => void;
+  onToggleSubtask?: SubtaskToggle | undefined;
+}) {
+  const { todo } = props;
+  const [expanded, setExpanded] = useState(false);
+  const expandable = todo.subtasks.length > 0 && props.onToggleSubtask !== undefined;
+  return (
+    <>
+      <div className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
+        <SquareCheck
+          on={todo.isCompleted}
+          label={`Toggle task ${todo.taskNumber}`}
+          onToggle={props.onToggle}
+        />
+        <span className={styles.numChip}>#{todo.taskNumber}</span>
+        {todo.isCompleted ? (
+          // The Tasks editor refuses completed tasks — plain text, no dead link.
+          <span dir="auto" className={styles.todoTitleDone}>
+            {todo.title}
+          </span>
+        ) : (
+          <button
+            type="button"
+            dir="auto"
+            className={styles.todoTitleBtn}
+            title="Open in Tasks"
+            onClick={() => props.onOpen(todo)}
+          >
+            {todo.title}
+          </button>
+        )}
+        {expandable ? (
+          <SubtaskDisclosure
+            todo={todo}
+            expanded={expanded}
+            onToggleExpand={() => setExpanded((v) => !v)}
+          />
+        ) : (
+          todo.subtasks.length > 0 && (
+            <span className={styles.todoSub}>
+              {todo.subtasks.filter((s) => s.isCompleted).length}/{todo.subtasks.length}
+            </span>
+          )
+        )}
+        {todo.tags[0] && (
+          <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
+        )}
+      </div>
+      {expandable && expanded && props.onToggleSubtask && (
+        <SubtaskList todo={todo} onToggleSubtask={props.onToggleSubtask} />
+      )}
+    </>
   );
 }
 
@@ -125,6 +195,7 @@ export interface ScheduleBodyProps {
   onToggleTodo: (id: string) => void;
   onOpenTask: (todo: Todo) => void;
   onAddTaskAt: (hour: string) => void;
+  onToggleSubtask?: SubtaskToggle | undefined;
 }
 
 function SchedChip(props: {
@@ -133,37 +204,54 @@ function SchedChip(props: {
   alwaysTime?: boolean;
   onToggle: () => void;
   onOpen: (todo: Todo) => void;
+  onToggleSubtask?: SubtaskToggle | undefined;
 }) {
   const { todo } = props;
+  const [expanded, setExpanded] = useState(false);
+  const expandable = todo.subtasks.length > 0 && props.onToggleSubtask !== undefined;
   const showTime =
     todo.dueTime !== null && (props.alwaysTime === true || !todo.dueTime.endsWith(':00'));
   return (
-    <div className={styles.schedChip}>
-      <SquareCheck
-        on={todo.isCompleted}
-        label={`Toggle task ${todo.taskNumber}`}
-        onToggle={props.onToggle}
-      />
-      {todo.isCompleted ? (
-        <span dir="auto" className={styles.todoTitleDone}>
-          {todo.title}
-        </span>
-      ) : (
-        <button
-          type="button"
-          dir="auto"
-          className={styles.todoTitleBtn}
-          title="Open in Tasks"
-          onClick={() => props.onOpen(todo)}
-        >
-          {todo.title}
-        </button>
+    <>
+      <div className={styles.schedChip}>
+        <SquareCheck
+          on={todo.isCompleted}
+          label={`Toggle task ${todo.taskNumber}`}
+          onToggle={props.onToggle}
+        />
+        {todo.isCompleted ? (
+          <span dir="auto" className={styles.todoTitleDone}>
+            {todo.title}
+          </span>
+        ) : (
+          <button
+            type="button"
+            dir="auto"
+            className={styles.todoTitleBtn}
+            title="Open in Tasks"
+            onClick={() => props.onOpen(todo)}
+          >
+            {todo.title}
+          </button>
+        )}
+        {expandable && (
+          <SubtaskDisclosure
+            todo={todo}
+            expanded={expanded}
+            onToggleExpand={() => setExpanded((v) => !v)}
+          />
+        )}
+        {showTime && <span className={styles.chipTime}>{todo.dueTime}</span>}
+        {todo.tags[0] && (
+          <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
+        )}
+      </div>
+      {expandable && expanded && props.onToggleSubtask && (
+        <div className={styles.schedChipSubs}>
+          <SubtaskList todo={todo} onToggleSubtask={props.onToggleSubtask} />
+        </div>
       )}
-      {showTime && <span className={styles.chipTime}>{todo.dueTime}</span>}
-      {todo.tags[0] && (
-        <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-      )}
-    </div>
+    </>
   );
 }
 
@@ -177,19 +265,23 @@ export function ScheduleBody({
   onToggleTodo,
   onOpenTask,
   onAddTaskAt,
+  onToggleSubtask,
 }: ScheduleBodyProps) {
   const hours = scheduleHours(startHour, endHour);
+  const byTime = (a: Todo, b: Todo) => (a.dueTime ?? '').localeCompare(b.dueTime ?? '');
   // Timed tasks outside the configured hours must not silently vanish.
-  const hourPrefixes = new Set(hours.map((t) => t.slice(0, 3)));
-  const offHours = todos.filter(
-    (t) => t.dueTime !== null && !hourPrefixes.has(t.dueTime.slice(0, 3)),
-  );
+  const offHours = todos
+    .filter(
+      (t) =>
+        t.dueTime !== null && !new Set(hours.map((h) => h.slice(0, 3))).has(t.dueTime.slice(0, 3)),
+    )
+    .sort(byTime);
   return (
     <div className={styles.cardBody}>
       {hours.map((time) => {
         const suggestions = suggestionsFor(time);
         // '13:30' lands on the '13:00' row; the chip shows the real minutes.
-        const rowTodos = todos.filter((t) => t.dueTime?.startsWith(time.slice(0, 3)));
+        const rowTodos = todos.filter((t) => t.dueTime?.startsWith(time.slice(0, 3))).sort(byTime);
         return (
           <div key={time}>
             <div className={`${styles.rowRule} ${styles.schedRow}`}>
@@ -225,6 +317,7 @@ export function ScheduleBody({
                 todo={todo}
                 onToggle={() => onToggleTodo(todo.id)}
                 onOpen={onOpenTask}
+                onToggleSubtask={onToggleSubtask}
               />
             ))}
           </div>
@@ -242,6 +335,7 @@ export function ScheduleBody({
               alwaysTime
               onToggle={() => onToggleTodo(todo.id)}
               onOpen={onOpenTask}
+              onToggleSubtask={onToggleSubtask}
             />
           ))}
         </div>
@@ -394,6 +488,7 @@ export interface PrioritiesBodyProps {
   highTodos: Todo[];
   onToggleTodo: (id: string) => void;
   onOpenTask: (todo: Todo) => void;
+  onToggleSubtask?: SubtaskToggle | undefined;
 }
 
 export function PrioritiesBody({
@@ -404,6 +499,7 @@ export function PrioritiesBody({
   highTodos,
   onToggleTodo,
   onOpenTask,
+  onToggleSubtask,
 }: PrioritiesBodyProps) {
   const rows = Array.from({ length: count }, (_, i) => day.priorities[i] ?? { t: '', done: false });
   const write = (i: number, item: { t: string; done: boolean }) => {
@@ -425,6 +521,7 @@ export function PrioritiesBody({
               todo={todo}
               onToggle={() => onToggleTodo(todo.id)}
               onOpen={onOpenTask}
+              onToggleSubtask={onToggleSubtask}
             />
           ))}
         </>
@@ -466,13 +563,128 @@ export function PrioritiesBody({
 export interface HabitsBodyProps {
   habits: PlanHabit[];
   weekDates: string[];
-  /** habit done-map per week date. */
-  daysHabits: Record<string, Record<string, boolean>>;
+  /** habit mark-map per week date (true / false / 'skip'). */
+  daysHabits: Record<string, Record<string, HabitMark>>;
   selectedIdx: number;
   weekLetters: readonly string[];
-  onToggle: (date: string, habitId: string, next: boolean) => void;
+  /** Cell click cycles empty → done → skipped → empty. */
+  onMark: (date: string, habitId: string, next: HabitMark) => void;
   /** On-card editing — functional write of the full habits list. */
   onEditHabits: (updater: (habits: PlanHabit[]) => PlanHabit[]) => void;
+  /** Current streak per habit id (consecutive done days, skips pass through). */
+  streaks: Record<string, number>;
+  /** 28-day history per habit id, oldest → newest (label click reveals it). */
+  historyFor: (habitId: string) => { date: string; mark: HabitMark | undefined }[];
+}
+
+/** empty → done → skipped → empty. */
+function nextHabitMark(current: HabitMark | undefined): HabitMark {
+  if (current === true) return 'skip';
+  if (current === 'skip') return false;
+  return true;
+}
+
+/** Tri-state tracker cell: empty circle / filled / muted dash (skipped). */
+function HabitCell(props: { mark: HabitMark | undefined; label: string; onCycle: () => void }) {
+  const state = props.mark === true ? 'on' : props.mark === 'skip' ? 'skip' : 'off';
+  return (
+    <button
+      type="button"
+      className={[
+        styles.circle,
+        styles.habitCell,
+        state === 'on' ? styles.circleOn : undefined,
+        state === 'skip' ? styles.circleSkip : undefined,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={{ width: 15, height: 15 }}
+      aria-pressed={state === 'on' ? true : state === 'skip' ? 'mixed' : false}
+      aria-label={state === 'skip' ? `${props.label} (skipped)` : props.label}
+      title={state === 'skip' ? 'Skipped — counts for neither score nor streak' : undefined}
+      onClick={props.onCycle}
+    >
+      {state === 'skip' ? '–' : ''}
+    </button>
+  );
+}
+
+function HabitTrackerRow(props: {
+  habit: PlanHabit;
+  divide: boolean;
+  weekDates: string[];
+  daysHabits: Record<string, Record<string, HabitMark>>;
+  onMark: (date: string, habitId: string, next: HabitMark) => void;
+  streak: number;
+  historyFor: (habitId: string) => { date: string; mark: HabitMark | undefined }[];
+}) {
+  const { habit } = props;
+  const [showHistory, setShowHistory] = useState(false);
+  return (
+    <>
+      <div
+        className={[
+          styles.habitRow,
+          habit.salah ? styles.habitRowSalah : undefined,
+          props.divide && !showHistory ? styles.habitRowDivide : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <span className={styles.habitLabel}>
+          <button
+            type="button"
+            dir="auto"
+            className={styles.habitLabelBtn}
+            aria-expanded={showHistory}
+            aria-label={`${habit.label} — show last 28 days`}
+            onClick={() => setShowHistory((v) => !v)}
+          >
+            {habit.label}
+          </button>
+          {props.streak >= 2 && (
+            <span className={styles.streakChip} title={`${props.streak}-day streak`}>
+              ×{props.streak}
+            </span>
+          )}
+        </span>
+        {props.weekDates.map((date, di) => {
+          const mark = props.daysHabits[date]?.[habit.id];
+          return (
+            <HabitCell
+              key={date}
+              mark={mark}
+              label={`${habit.label} ${WEEK_DAY_NAMES[di] ?? ''}`}
+              onCycle={() => props.onMark(date, habit.id, nextHabitMark(mark))}
+            />
+          );
+        })}
+      </div>
+      {showHistory && (
+        <div
+          className={
+            props.divide ? `${styles.habitHistory} ${styles.habitRowDivide}` : styles.habitHistory
+          }
+          role="img"
+          aria-label={`${habit.label} last 28 days`}
+        >
+          {props.historyFor(habit.id).map(({ date, mark }) => (
+            <span
+              key={date}
+              className={[
+                styles.histCell,
+                mark === true ? styles.histCellOn : undefined,
+                mark === 'skip' ? styles.histCellSkip : undefined,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              title={`${date}${mark === true ? ' — done' : mark === 'skip' ? ' — skipped' : ''}`}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 export function HabitsBody(props: HabitsBodyProps) {
@@ -514,8 +726,7 @@ export function HabitsBody(props: HabitsBodyProps) {
             <div key={habit.id} className={styles.habitEditRow}>
               <input
                 dir="auto"
-                className={styles.smallInput}
-                style={{ flex: 1 }}
+                className={`${styles.smallInput} ${styles.habitEditName}`}
                 maxLength={100}
                 value={habit.label}
                 aria-label={`Habit ${i + 1} name`}
@@ -642,37 +853,96 @@ export function HabitsBody(props: HabitsBodyProps) {
               ))}
             </div>
             {props.habits.map((habit, hi) => (
-              <div
+              <HabitTrackerRow
                 key={habit.id}
-                className={[
-                  styles.habitRow,
-                  habit.salah ? styles.habitRowSalah : undefined,
-                  dividerBelowAt(props.habits, hi) ? styles.habitRowDivide : undefined,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                <span dir="auto" className={styles.habitLabel}>
-                  {habit.label}
-                </span>
-                {props.weekDates.map((date, di) => {
-                  const on = props.daysHabits[date]?.[habit.id] ?? false;
-                  return (
-                    <CircleCheck
-                      key={date}
-                      on={on}
-                      size={15}
-                      className={styles.habitCell}
-                      label={`${habit.label} ${WEEK_DAY_NAMES[di] ?? ''}`}
-                      onToggle={() => props.onToggle(date, habit.id, !on)}
-                    />
-                  );
-                })}
-              </div>
+                habit={habit}
+                divide={dividerBelowAt(props.habits, hi)}
+                weekDates={props.weekDates}
+                daysHabits={props.daysHabits}
+                onMark={props.onMark}
+                streak={props.streaks[habit.id] ?? 0}
+                historyFor={props.historyFor}
+              />
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Week Review ─────────────────────────────────────────────────────────── */
+
+export interface WeekReviewBodyProps {
+  weekDates: string[];
+  selectedIdx: number;
+  weekLetters: readonly string[];
+  /** Per-day score, Monday-first; null = nothing stored that day. */
+  scores: (number | null)[];
+  /** Week habit completion % over counted (non-skipped) marks; null = no data. */
+  habitPct: number | null;
+  waterAvg: number | null;
+  tasksDone: number;
+  tasksTotal: number;
+  onSelectDay?: ((date: string) => void) | undefined;
+}
+
+/** Seven mini score bars + week aggregates — "how did this week actually go?". */
+export function WeekReviewBody(props: WeekReviewBodyProps) {
+  return (
+    <div className={styles.cardBody}>
+      <div className={styles.weekBars}>
+        {props.weekDates.map((date, i) => {
+          const score = props.scores[i] ?? null;
+          const bar = (
+            <span className={styles.weekBarTrack} aria-hidden="true">
+              <span
+                className={i === props.selectedIdx ? styles.weekBarFillSel : styles.weekBarFill}
+                style={{ height: `${score ?? 0}%` }}
+              />
+            </span>
+          );
+          const label = `${WEEK_DAY_NAMES[i] ?? ''} ${date}${score === null ? ' — no entry' : ` — ${score}%`}`;
+          return (
+            <div key={date} className={styles.weekBarCol}>
+              {props.onSelectDay ? (
+                <button
+                  type="button"
+                  className={styles.weekBarBtn}
+                  aria-label={label}
+                  onClick={() => props.onSelectDay?.(date)}
+                >
+                  {bar}
+                </button>
+              ) : (
+                <span className={styles.weekBarBtn} aria-label={label}>
+                  {bar}
+                </span>
+              )}
+              <span
+                className={i === props.selectedIdx ? styles.habitHeadToday : styles.habitHead}
+                style={{ width: 'auto' }}
+              >
+                {props.weekLetters[i]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className={styles.weekStatsRow}>
+        <span className={styles.weekStat}>
+          <span className={styles.sectionMiniMuted}>Habits</span>
+          {props.habitPct === null ? '—' : `${props.habitPct}%`}
+        </span>
+        <span className={styles.weekStat}>
+          <span className={styles.sectionMiniMuted}>Water</span>
+          {props.waterAvg === null ? '—' : `${props.waterAvg} / day`}
+        </span>
+        <span className={styles.weekStat}>
+          <span className={styles.sectionMiniMuted}>Tasks</span>
+          {props.tasksTotal === 0 ? '—' : `${props.tasksDone} / ${props.tasksTotal}`}
+        </span>
+      </div>
     </div>
   );
 }
@@ -694,6 +964,7 @@ export interface TodoBodyProps {
   quickPending: boolean;
   quickError: string;
   suggestions: string[];
+  onToggleSubtask?: SubtaskToggle | undefined;
 }
 
 export function TodoBody(props: TodoBodyProps) {
@@ -716,6 +987,7 @@ export function TodoBody(props: TodoBodyProps) {
           todo={todo}
           onToggle={() => props.onToggleTodo(todo.id)}
           onOpen={props.onOpenTask}
+          onToggleSubtask={props.onToggleSubtask}
         />
       ))}
       {/* Legacy scratch items from before quick-add created real tasks. */}
@@ -822,6 +1094,7 @@ export interface TomorrowBodyProps {
   onToggleTodo: (id: string) => void;
   onOpenTask: (todo: Todo) => void;
   onAddTask: () => void;
+  onToggleSubtask?: SubtaskToggle | undefined;
 }
 
 export function TomorrowBody({
@@ -832,6 +1105,7 @@ export function TomorrowBody({
   onToggleTodo,
   onOpenTask,
   onAddTask,
+  onToggleSubtask,
 }: TomorrowBodyProps) {
   const rows = Array.from({ length: count }, (_, i) => day.tomorrow[i] ?? { t: '', done: false });
   const write = (i: number, item: { t: string; done: boolean }) => {
@@ -851,6 +1125,7 @@ export function TomorrowBody({
           todo={todo}
           onToggle={() => onToggleTodo(todo.id)}
           onOpen={onOpenTask}
+          onToggleSubtask={onToggleSubtask}
         />
       ))}
       <div className={styles.sectionMiniMuted} style={{ paddingTop: 6 }}>

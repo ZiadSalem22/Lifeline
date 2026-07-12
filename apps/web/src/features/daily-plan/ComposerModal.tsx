@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Tag, Todo } from '@lifeline/shared';
 import { Composer } from '../todos/components/Composer';
@@ -33,6 +34,17 @@ export function ComposerModal({
   initialDueTime,
   onClose,
 }: ComposerModalProps) {
+  // Lock the page behind the popup — on phones the background otherwise
+  // scrolls under your thumb while the sheet is open.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   return createPortal(
     <div
       className={styles.overlay}

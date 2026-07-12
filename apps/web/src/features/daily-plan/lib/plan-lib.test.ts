@@ -12,6 +12,7 @@ import {
   withDividerAt,
 } from './plan-model';
 import { computeScore } from './score';
+import { habitHistory, habitStreak } from './streaks';
 
 describe('food-parser', () => {
   it('parses "2 eggs and toast" with quantities and macros', () => {
@@ -133,6 +134,50 @@ describe('habit dividers (tri-state)', () => {
   });
 });
 
+describe('habit streaks (skip days pass through)', () => {
+  const src = (marks: Record<string, boolean | 'skip'>) => (date: string) => marks[date];
+
+  it('counts consecutive done days ending today', () => {
+    expect(
+      habitStreak(
+        src({ '2026-07-11': true, '2026-07-10': true, '2026-07-09': true }),
+        '2026-07-11',
+      ),
+    ).toBe(3);
+  });
+
+  it("today not done YET is neutral — yesterday's streak still shows", () => {
+    expect(habitStreak(src({ '2026-07-10': true, '2026-07-09': true }), '2026-07-11')).toBe(2);
+  });
+
+  it('skip days neither count nor break', () => {
+    expect(
+      habitStreak(
+        src({ '2026-07-11': true, '2026-07-10': 'skip', '2026-07-09': true }),
+        '2026-07-11',
+      ),
+    ).toBe(2);
+  });
+
+  it('an explicit miss breaks the streak', () => {
+    expect(
+      habitStreak(
+        src({ '2026-07-11': true, '2026-07-10': false, '2026-07-09': true }),
+        '2026-07-11',
+      ),
+    ).toBe(1);
+    expect(habitStreak(src({ '2026-07-11': false }), '2026-07-11')).toBe(0);
+  });
+
+  it('habitHistory returns 28 dated marks oldest → newest', () => {
+    const history = habitHistory(src({ '2026-07-11': true, '2026-07-10': 'skip' }), '2026-07-11');
+    expect(history).toHaveLength(28);
+    expect(history[0]?.date).toBe('2026-06-14');
+    expect(history[27]).toEqual({ date: '2026-07-11', mark: true });
+    expect(history[26]).toEqual({ date: '2026-07-10', mark: 'skip' });
+  });
+});
+
 describe('computeScore (fair — only counts used, visible sections)', () => {
   const fifteen = Array.from({ length: 15 }, (_, i) => `h${i}`);
 
@@ -154,6 +199,22 @@ describe('computeScore (fair — only counts used, visible sections)', () => {
     });
     // total = 15 + (2+1) + 1 + 5 + 8 = 32; done = 2 + (1+1) + 1 + 1 + 4 = 10
     expect(score).toBe(Math.round((10 / 32) * 100));
+  });
+
+  it('skipped habits drop out of both sides of the score', () => {
+    const day = emptyDailyPlanData();
+    day.habits = { fajr: true, gym: 'skip', reading: false };
+    const score = computeScore({
+      day,
+      taskTotal: 0,
+      taskDone: 0,
+      habitIds: ['fajr', 'gym', 'reading'],
+      waterGoal: 8,
+      nonnegCount: 0,
+      hidden: { water: true, nonneg: true, todo: true, priorities: true },
+    });
+    // gym is skipped → 1 done of 2 counted (fajr, reading), not 1 of 3.
+    expect(score).toBe(50);
   });
 
   it('orphan checkmarks from deleted habits do not inflate the score', () => {

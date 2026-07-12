@@ -792,11 +792,174 @@ button.weekChipToday:hover:not(:disabled) {
   margin-bottom: 2px;
 }
 
+/* Skipped day: dashed muted ring with a dash — deliberately "not counted". */
+.circleSkip {
+  border-style: dashed;
+  border-color: var(--plan-muted);
+  color: var(--plan-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* Habit label doubles as the 28-day history toggle. */
+.habitLabelBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  text-align: start;
+}
+
+.habitLabelBtn:hover,
+.habitLabelBtn:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.streakChip {
+  margin-inline-start: 5px;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+  vertical-align: 1px;
+}
+
+/* 28 squares, oldest → newest (GitHub-graph style, monochrome). */
+.habitHistory {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  gap: 2px;
+  padding: 4px 0 6px;
+}
+
+.histCell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  border: 1px solid var(--plan-rule);
+  background: transparent;
+}
+
+.histCellOn {
+  background: var(--plan-primary);
+  border-color: var(--plan-primary);
+}
+
+.histCellSkip {
+  border-style: dashed;
+  border-color: var(--plan-muted);
+}
+
+/* ── week review ─────────────────────────────────────────────────────────── */
+
+.weekBars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.weekBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.weekBarBtn {
+  width: 100%;
+  height: 68px;
+  display: flex;
+  align-items: flex-end;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+span.weekBarBtn {
+  cursor: default;
+}
+
+.weekBarTrack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--plan-rule);
+  background: linear-gradient(to top, var(--plan-surface2), transparent 60%);
+}
+
+.weekBarFill {
+  width: 100%;
+  background: var(--plan-muted);
+  opacity: 0.55;
+  transition: height 0.3s ease-out;
+}
+
+.weekBarFillSel {
+  composes: weekBarFill;
+  background: var(--plan-primary);
+  opacity: 1;
+}
+
+button.weekBarBtn:hover .weekBarFill {
+  opacity: 0.8;
+}
+
+.weekStatsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--plan-rule);
+  margin-top: 10px;
+}
+
+.weekStat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .habitEditRow {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 2px 0;
+}
+
+.habitEditName {
+  flex: 1;
+}
+
+/* Narrow screens: the name input takes its own line instead of squeezing
+   to ~90px next to PRAYER/DIVIDER and the three buttons. */
+@media (max-width: 480px) {
+  .habitEditRow {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .habitEditName {
+    flex: 1 1 100%;
+  }
 }
 
 .habitEditFlag {
@@ -944,6 +1107,55 @@ button.weekChipToday:hover:not(:disabled) {
   font-size: 10px;
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Subtask disclosure: the n/m count is the expander. */
+.subCountBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.subCountBtn:hover,
+.subCountBtn[aria-expanded='true'] {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
+.subtaskList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 5px 26px;
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.subtaskRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.schedChipSubs {
+  padding-left: 44px;
+}
+
+.schedChipSubs .subtaskList {
+  padding-left: 0;
+  border-bottom: 1px dashed var(--plan-rule);
 }
 
 /* ── mood / review ───────────────────────────────────────────────────────── */

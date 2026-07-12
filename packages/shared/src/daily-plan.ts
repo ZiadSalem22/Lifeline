@@ -85,6 +85,10 @@ const boundedRecord = <V extends z.ZodType>(value: V, max: number) =>
     .record(planKey, value)
     .refine((obj) => Object.keys(obj).length <= max, { message: `At most ${max} keys` });
 
+/** Habit day mark: done / not done / deliberately skipped. */
+export const habitMarkSchema = z.union([z.boolean(), z.literal('skip')]);
+export type HabitMark = z.infer<typeof habitMarkSchema>;
+
 export const dailyPlanDataSchema = z.object({
   /** 'HH:mm' → what's planned for that hour. */
   schedule: boundedRecord(planText, PLAN_LIMITS.scheduleRowsMax).default({}),
@@ -96,8 +100,13 @@ export const dailyPlanDataSchema = z.object({
       { t: '', done: false },
       { t: '', done: false },
     ]),
-  /** habitId → done, for THIS day (the week grid writes to 7 day rows). */
-  habits: boundedRecord(z.boolean(), PLAN_LIMITS.listMax).default({}),
+  /**
+   * habitId → mark, for THIS day (the week grid writes to 7 day rows).
+   * true = done, false = not done, 'skip' = deliberately skipped (sick or
+   * travel day) — skipped marks count for neither the score nor a streak
+   * break. Old blobs are plain booleans, still valid.
+   */
+  habits: boundedRecord(habitMarkSchema, PLAN_LIMITS.listMax).default({}),
   quick: z.array(quickItemSchema).max(PLAN_LIMITS.listMax).default([]),
   water: z.number().int().min(0).max(24).default(0),
   focusText: planLongText.default(''),

@@ -12,3 +12,12 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// Installable PWA shell (prod only — the dev server must never be cached).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Offline shell is progressive enhancement — never block the app on it.
+    });
+  });
+}

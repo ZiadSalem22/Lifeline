@@ -170,11 +170,10 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
 
         <Section title="Habits">
           {settings.habits.map((habit, i) => (
-            <div key={habit.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div key={habit.id} className={styles.habitEditRow}>
               <input
                 dir="auto"
-                className={styles.smallInput}
-                style={{ flex: 1 }}
+                className={`${styles.smallInput} ${styles.habitEditName}`}
                 maxLength={100}
                 value={habit.label}
                 aria-label={`Habit ${i + 1} name`}

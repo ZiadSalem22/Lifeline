@@ -29,8 +29,11 @@ export function computeScore(input: ScoreInput): number {
   let done = 0;
 
   if (!hidden['habits']) {
-    total += habitIds.length;
-    done += habitIds.filter((id) => day.habits[id]).length;
+    // Skipped habits (sick/travel day) drop out of BOTH sides — a deliberate
+    // rest must not tank the ring the tracker is supposed to reward.
+    const counted = habitIds.filter((id) => day.habits[id] !== 'skip');
+    total += counted.length;
+    done += counted.filter((id) => day.habits[id] === true).length;
   }
   if (!hidden['todo']) {
     total += taskTotal + day.quick.length;

@@ -22,6 +22,7 @@ export const PLAN_SECTIONS = [
   ['water', 'Water Tracker'],
   ['tomorrow', 'Tomorrow Plan'],
   ['nonneg', 'Non-Negotiables'],
+  ['week', 'Week Review'],
 ] as const;
 export type PlanSectionKey = (typeof PLAN_SECTIONS)[number][0];
 
@@ -37,6 +38,7 @@ export const PLAN_GRID_KEYS: PlanSectionKey[] = [
   'todo',
   'water',
   'tomorrow',
+  'week',
 ];
 
 export function sectionLabel(key: PlanSectionKey): string {

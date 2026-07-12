@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
-import type { DailyPlanData, DailyPlanSettings, Tag, Todo } from '@lifeline/shared';
+import type { DailyPlanData, DailyPlanSettings, HabitMark, Tag, Todo } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
-import { useCreateTodo, useToggleComplete } from '../todos/data/hooks';
+import { useCreateTodo, useToggleComplete, useUpdateSubtasks } from '../todos/data/hooks';
 import {
   useDailyPlanWeek,
   usePlanSaveStatus,
@@ -23,6 +23,7 @@ import {
   type PlanSectionKey,
 } from './lib/plan-model';
 import { computeScore } from './lib/score';
+import { habitHistory, habitStreak } from './lib/streaks';
 import { carryOverFrom, carryTitles, materializeNewDay } from './lib/templates';
 import {
   prioritySuggestions,
@@ -45,6 +46,7 @@ import {
   TodoBody,
   TomorrowBody,
   WaterBody,
+  WeekReviewBody,
 } from './cards';
 import { WorkoutBody } from './WorkoutCard';
 import { workoutBadge } from './lib/workout-lib';
@@ -96,7 +98,7 @@ export function DailyPlanView({
   const { settings, ready: settingsReady } = usePlanSettings();
   const saveSettings = useSaveSettings();
   const toggleComplete = useToggleComplete();
-  const { recentDays, yesterday } = useRecentPlanDays(dateStr);
+  const { recentDays, recentByDate, yesterday } = useRecentPlanDays(dateStr);
 
   // Midnight rollover: 'today' is resolved per render, but nothing re-renders
   // at 00:00 — a tab left open overnight would keep writing to yesterday's
@@ -419,6 +421,20 @@ export function DailyPlanView({
     [todos, toggleComplete],
   );
 
+  // Subtasks are checkable right from the plan (task rows + schedule chips).
+  const updateSubtasks = useUpdateSubtasks();
+  const toggleSubtask = useCallback(
+    (todo: Todo, subtaskId: string) => {
+      updateSubtasks.mutate({
+        id: todo.id,
+        subtasks: todo.subtasks.map((sub) =>
+          sub.subtaskId === subtaskId ? { ...sub, isCompleted: !sub.isCompleted } : sub,
+        ),
+      });
+    },
+    [updateSubtasks],
+  );
+
   // Workout completion → gym habit (+ configured real task) sync.
   const onWorkoutCompletion = useCallback(
     (complete: boolean) => {
@@ -436,6 +452,55 @@ export function DailyPlanView({
 
   const saveStatus = usePlanSaveStatus();
   const hiddenChips = PLAN_SECTIONS.filter(([key]) => settings.hidden[key]);
+
+  // Week Review aggregates — computed over stored week rows + this week's
+  // real tasks; missing days stay null (an empty bar, not a zero).
+  const weekStats = useMemo(() => {
+    const habitIds = settings.habits.map((h) => h.id);
+    const scores: (number | null)[] = [];
+    let habitDone = 0;
+    let habitCounted = 0;
+    let waterSum = 0;
+    let storedDays = 0;
+    let tasksDone = 0;
+    let tasksTotal = 0;
+    for (const date of weekDates) {
+      const dayTasks = filterTodosForDay(todos, date);
+      tasksTotal += dayTasks.length;
+      tasksDone += dayTasks.filter((t) => t.isCompleted).length;
+      const row = effectiveDays[date];
+      if (!row) {
+        scores.push(null);
+        continue;
+      }
+      scores.push(
+        computeScore({
+          day: row,
+          taskTotal: dayTasks.length,
+          taskDone: dayTasks.filter((t) => t.isCompleted).length,
+          habitIds,
+          waterGoal: settings.targets.water,
+          nonnegCount: settings.nonnegLabels.length,
+          hidden: settings.hidden,
+        }),
+      );
+      storedDays += 1;
+      waterSum += row.water;
+      for (const id of habitIds) {
+        const mark = row.habits[id];
+        if (mark === 'skip') continue;
+        habitCounted += 1;
+        if (mark === true) habitDone += 1;
+      }
+    }
+    return {
+      scores,
+      habitPct: habitCounted > 0 ? Math.round((habitDone / habitCounted) * 100) : null,
+      waterAvg: storedDays > 0 ? Math.round((waterSum / storedDays) * 10) / 10 : null,
+      tasksDone,
+      tasksTotal,
+    };
+  }, [weekDates, effectiveDays, todos, settings]);
   const score = computeScore({
     day,
     taskTotal: dayTodos.length,
@@ -446,8 +511,28 @@ export function DailyPlanView({
     hidden: settings.hidden,
   });
 
-  const daysHabits: Record<string, Record<string, boolean>> = {};
+  const daysHabits: Record<string, Record<string, HabitMark>> = {};
   for (const date of weekDates) daysHabits[date] = effectiveDays[date]?.habits ?? {};
+
+  // Streaks + 28-day history: marks come from this week's cache plus the
+  // recent window (28 days ending yesterday), all relative to the selected
+  // day — a ~5-week horizon, plenty for the streaks that matter daily.
+  const markSource = useCallback(
+    (habitId: string) => (date: string) =>
+      (effectiveDays[date] ?? recentByDate[date])?.habits[habitId],
+    [effectiveDays, recentByDate],
+  );
+  const streaks = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const habit of settings.habits) {
+      out[habit.id] = habitStreak(markSource(habit.id), dateStr);
+    }
+    return out;
+  }, [settings.habits, markSource, dateStr]);
+  const historyFor = useCallback(
+    (habitId: string) => habitHistory(markSource(habitId), dateStr),
+    [markSource, dateStr],
+  );
 
   const bodies: Record<PlanSectionKey, { badge?: string; body: ReactElement } | null> = {
     schedule: {
@@ -462,6 +547,7 @@ export function DailyPlanView({
           onToggleTodo={toggleTask}
           onOpenTask={(todo) => openTask(todo, dateStr)}
           onAddTaskAt={(hour) => openComposer(dateStr, hour)}
+          onToggleSubtask={toggleSubtask}
         />
       ),
     },
@@ -480,6 +566,7 @@ export function DailyPlanView({
           highTodos={highTodos}
           onToggleTodo={toggleTask}
           onOpenTask={(todo) => openTask(todo, dateStr)}
+          onToggleSubtask={toggleSubtask}
         />
       ),
     },
@@ -491,10 +578,12 @@ export function DailyPlanView({
           daysHabits={daysHabits}
           selectedIdx={selectedIdx}
           weekLetters={WEEK_LETTERS}
-          onToggle={(date, habitId, next) =>
+          onMark={(date, habitId, next) =>
             patchDate(date, (d) => ({ habits: { ...d.habits, [habitId]: next } }))
           }
           onEditHabits={(updater) => patchSettings((s) => ({ habits: updater(s.habits) }))}
+          streaks={streaks}
+          historyFor={historyFor}
         />
       ),
     },
@@ -528,6 +617,7 @@ export function DailyPlanView({
           quickPending={createTodo.isPending}
           quickError={quickError}
           suggestions={quickSugs}
+          onToggleSubtask={toggleSubtask}
         />
       ),
     },
@@ -545,6 +635,22 @@ export function DailyPlanView({
           onToggleTodo={toggleTask}
           onOpenTask={(todo) => openTask(todo, tomorrowStr)}
           onAddTask={() => openComposer(tomorrowStr)}
+          onToggleSubtask={toggleSubtask}
+        />
+      ),
+    },
+    week: {
+      body: (
+        <WeekReviewBody
+          weekDates={weekDates}
+          selectedIdx={selectedIdx}
+          weekLetters={WEEK_LETTERS}
+          scores={weekStats.scores}
+          habitPct={weekStats.habitPct}
+          waterAvg={weekStats.waterAvg}
+          tasksDone={weekStats.tasksDone}
+          tasksTotal={weekStats.tasksTotal}
+          onSelectDay={onSelectDay}
         />
       ),
     },
