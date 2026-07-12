@@ -12,16 +12,24 @@ export interface PlanCardProps {
   /** Container currently fits two columns (span 2 is only legal then). */
   canWide: boolean;
   gapPx: number;
+  /** This card is the drag source (dimmed while its ghost travels). */
+  dragging: boolean;
   onToggleWide: () => void;
   onHide: () => void;
   onDragStartKey: (key: string) => void;
+  /** Fired while dragging over this card — the grid makes room live. */
+  onDragOverKey: (key: string) => void;
+  onDragEndKey: () => void;
   onDropOnKey: (key: string) => void;
+  /** Keyboard reorder from the grip (arrow keys): move one slot. */
+  onMoveKey: (key: string, delta: -1 | 1) => void;
   children: ReactNode;
 }
 
 /**
  * Masonry card frame (design handoff): secbar header + absolute top-right
- * controls — grip ⣿ (HTML5 drag to reorder), width ⇄ (1↔2 panels), hide ✕.
+ * controls — grip ⣿ (HTML5 drag to reorder, arrow keys when focused), width
+ * ⇄ (1↔2 panels), hide ✕. Controls fade in on card hover/focus (CSS).
  * The card measures itself (ResizeObserver) and sets its grid-row span so the
  * dense grid packs like masonry.
  */
@@ -51,7 +59,7 @@ export function PlanCard(props: PlanCardProps) {
   return (
     <div
       ref={ref}
-      className={styles.card}
+      className={props.dragging ? `${styles.card} ${styles.cardDragging}` : styles.card}
       data-sec={props.secKey}
       style={{
         order: props.order,
@@ -60,6 +68,7 @@ export function PlanCard(props: PlanCardProps) {
       onDragOver={(event) => {
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        props.onDragOverKey(props.secKey);
       }}
       onDrop={handleDrop}
     >
@@ -67,7 +76,7 @@ export function PlanCard(props: PlanCardProps) {
         type="button"
         draggable
         className={`${styles.cardCtl} ${styles.ctlGrip}`}
-        title="Drag to rearrange"
+        title="Drag to rearrange (or focus and use arrow keys)"
         aria-label={`Drag to rearrange ${props.title}`}
         onDragStart={(event) => {
           props.onDragStartKey(props.secKey);
@@ -78,6 +87,16 @@ export function PlanCard(props: PlanCardProps) {
             } catch {
               // some engines throw on setData in tests
             }
+          }
+        }}
+        onDragEnd={props.onDragEndKey}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            props.onMoveKey(props.secKey, -1);
+          } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+            event.preventDefault();
+            props.onMoveKey(props.secKey, 1);
           }
         }}
       >

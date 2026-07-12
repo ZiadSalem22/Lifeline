@@ -6,10 +6,12 @@ import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
 import { useCreateTodo, useToggleComplete } from '../todos/data/hooks';
 import {
   useDailyPlanWeek,
+  usePlanSaveStatus,
   usePlanSettings,
   useRecentPlanDays,
   useSaveDay,
   useSaveSettings,
+  type PlanSaveStatus,
 } from './data/hooks';
 import {
   PLAN_GRID_KEYS,
@@ -67,9 +69,9 @@ export interface DailyPlanViewProps {
   /** Tag list for the Add Task composer popup. */
   allTags?: Tag[];
   /** Deep-link a task into the Tasks-mode editor on the given day. */
-  onOpenTask?: (todo: Todo, dayStr: string) => void;
-  /** Navigate to another day (masthead week chips). */
-  onSelectDay?: (date: string) => void;
+  onOpenTask?: ((todo: Todo, dayStr: string) => void) | undefined;
+  /** Navigate to another day (masthead week chips, chevrons, date jump). */
+  onSelectDay?: ((date: string) => void) | undefined;
 }
 
 export function DailyPlanView({
@@ -288,8 +290,20 @@ export function DailyPlanView({
   );
 
   // Card order: persisted secOrder ∪ registry (new cards append).
-  const order = settings.secOrder.filter((k) => (PLAN_GRID_KEYS as string[]).includes(k));
-  for (const key of PLAN_GRID_KEYS) if (!order.includes(key)) order.push(key);
+  const persistedOrder = settings.secOrder.filter((k) => (PLAN_GRID_KEYS as string[]).includes(k));
+  for (const key of PLAN_GRID_KEYS) if (!persistedOrder.includes(key)) persistedOrder.push(key);
+
+  // Fluid drag: while a card is in flight, the grid reorders LIVE under the
+  // cursor (previewOrder) and only commits on drop — a cancelled drag snaps
+  // back. The ref mirrors the state so drag handlers never read stale order.
+  const [previewOrder, setPreviewOrder] = useState<string[] | null>(null);
+  const previewRef = useRef<string[] | null>(null);
+  const setPreview = (next: string[] | null) => {
+    previewRef.current = next;
+    setPreviewOrder(next);
+  };
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const order = previewOrder ?? persistedOrder;
 
   const density = settings.density;
   const colw = density === 'roomy' ? 420 : 340;
@@ -308,6 +322,39 @@ export function DailyPlanView({
     return () => window.removeEventListener('resize', measure);
   }, [colw, gap]);
 
+  // FLIP: whenever cards land in new grid slots (drag preview, drop, width
+  // toggle), glide them from their previous position instead of teleporting.
+  const cardRects = useRef(new Map<string, { left: number; top: number }>());
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const origin = grid.getBoundingClientRect();
+    const previous = cardRects.current;
+    const next = new Map<string, { left: number; top: number }>();
+    for (const el of grid.children) {
+      const key = (el as HTMLElement).dataset['sec'];
+      if (!key) continue;
+      const rect = el.getBoundingClientRect();
+      const pos = { left: rect.left - origin.left, top: rect.top - origin.top };
+      next.set(key, pos);
+      const old = previous.get(key);
+      if (!reduced && old && typeof el.animate === 'function') {
+        const dx = old.left - pos.left;
+        const dy = old.top - pos.top;
+        if (dx !== 0 || dy !== 0) {
+          el.animate(
+            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+            { duration: 220, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+          );
+        }
+      }
+    }
+    cardRects.current = next;
+  });
+
   const hide = (key: PlanSectionKey) =>
     patchSettings({ hidden: { ...settingsRef.current.hidden, [key]: true } });
   const show = (key: string) => {
@@ -319,13 +366,47 @@ export function DailyPlanView({
     patchSettings({
       secWide: { ...settingsRef.current.secWide, [key]: !settingsRef.current.secWide[key] },
     });
-  const dropOn = (target: string) => {
+
+  const dragStart = (key: string) => {
+    dragKey.current = key;
+    setDraggingKey(key);
+  };
+  // Make room live: moving over a card slides the dragged card into its slot
+  // (after it when travelling forward, before it when travelling back).
+  const dragOverCard = (target: string) => {
     const from = dragKey.current;
-    dragKey.current = null;
     if (!from || from === target) return;
-    const next = order.filter((k) => k !== from);
-    const at = next.indexOf(target);
-    next.splice(at === -1 ? next.length : at, 0, from);
+    const base = previewRef.current ?? persistedOrder;
+    const fromIdx = base.indexOf(from);
+    const targetIdx = base.indexOf(target);
+    if (fromIdx === -1 || targetIdx === -1) return;
+    const next = base.filter((k) => k !== from);
+    next.splice(fromIdx < targetIdx ? next.indexOf(target) + 1 : next.indexOf(target), 0, from);
+    if (next.join('|') !== base.join('|')) setPreview(next);
+  };
+  const commitDrag = () => {
+    const from = dragKey.current;
+    const preview = previewRef.current;
+    dragKey.current = null;
+    setDraggingKey(null);
+    setPreview(null);
+    if (from && preview) patchSettings({ secOrder: preview });
+  };
+  // dragend without a drop (Escape, released outside) — snap back.
+  const cancelDrag = () => {
+    if (dragKey.current === null && previewRef.current === null) return;
+    dragKey.current = null;
+    setDraggingKey(null);
+    setPreview(null);
+  };
+  // Keyboard reorder from the grip: one slot per arrow press, persisted.
+  const moveCard = (key: string, delta: -1 | 1) => {
+    const at = persistedOrder.indexOf(key);
+    const to = at + delta;
+    if (at === -1 || to < 0 || to >= persistedOrder.length) return;
+    const next = [...persistedOrder];
+    next.splice(at, 1);
+    next.splice(to, 0, key);
     patchSettings({ secOrder: next });
   };
 
@@ -353,6 +434,7 @@ export function DailyPlanView({
     [patchDay, todos, toggleComplete],
   );
 
+  const saveStatus = usePlanSaveStatus();
   const hiddenChips = PLAN_SECTIONS.filter(([key]) => settings.hidden[key]);
   const score = computeScore({
     day,
@@ -483,6 +565,7 @@ export function DailyPlanView({
           marginBottom: 'var(--gap)',
         }}
       >
+        <SaveIndicator status={saveStatus} />
         <Segmented
           label="Theme"
           options={[
@@ -591,7 +674,19 @@ export function DailyPlanView({
         </div>
       )}
 
-      <div ref={gridRef} className={styles.grid}>
+      <div
+        ref={gridRef}
+        className={styles.grid}
+        // Dropping in a gap between cards is as valid as dropping on one —
+        // the live preview has already placed the card; just commit.
+        onDragOver={(event) => {
+          if (dragKey.current) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          commitDrag();
+        }}
+      >
         {PLAN_GRID_KEYS.filter((key) => !settings.hidden[key]).map((key) => {
           const entry = bodies[key];
           if (!entry) return null;
@@ -605,12 +700,14 @@ export function DailyPlanView({
               wide={Boolean(settings.secWide[key])}
               canWide={canWide}
               gapPx={gap}
+              dragging={draggingKey === key}
               onToggleWide={() => toggleWide(key)}
               onHide={() => hide(key)}
-              onDragStartKey={(k) => {
-                dragKey.current = k;
-              }}
-              onDropOnKey={dropOn}
+              onDragStartKey={dragStart}
+              onDragOverKey={dragOverCard}
+              onDragEndKey={cancelDrag}
+              onDropOnKey={() => commitDrag()}
+              onMoveKey={moveCard}
             >
               {entry.body}
             </PlanCard>
@@ -717,6 +814,33 @@ export function DailyPlanView({
         onClose={closeComposer}
       />
     </div>
+  );
+}
+
+/**
+ * Honest write indicator: Saving… while any day/settings blob is dirty,
+ * Saved ✓ for a moment once everything lands, a sticky warning on failure.
+ */
+function SaveIndicator({ status }: { status: PlanSaveStatus }) {
+  // Saving/error derive straight from status; 'saved' lingers for a moment
+  // (render-time transition detection + a timer, no set-state-in-effect).
+  const [savedVisible, setSavedVisible] = useState(false);
+  const [lastStatus, setLastStatus] = useState(status);
+  if (status !== lastStatus) {
+    setLastStatus(status);
+    if (status === 'saved') setSavedVisible(true);
+  }
+  useEffect(() => {
+    if (!savedVisible) return;
+    const timer = setTimeout(() => setSavedVisible(false), 2000);
+    return () => clearTimeout(timer);
+  }, [savedVisible]);
+  const visible = status === 'saving' || status === 'error' || (status === 'saved' && savedVisible);
+  if (!visible) return null;
+  return (
+    <span className={styles.saveHint} role="status" data-state={status}>
+      {status === 'saving' ? 'Saving…' : status === 'error' ? 'Couldn’t save' : 'Saved ✓'}
+    </span>
   );
 }
 

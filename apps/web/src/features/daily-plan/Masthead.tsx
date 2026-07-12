@@ -1,5 +1,13 @@
+import { useRef } from 'react';
 import { format } from 'date-fns';
-import { WEEK_DAY_NAMES, WEEK_LETTERS, weekDatesOf, weekIndexOf } from './lib/plan-model';
+import {
+  WEEK_DAY_NAMES,
+  WEEK_LETTERS,
+  daysAfter,
+  daysBefore,
+  weekDatesOf,
+  weekIndexOf,
+} from './lib/plan-model';
 import styles from './DailyPlan.module.css';
 
 const CIRC = 2 * Math.PI * 29;
@@ -13,12 +21,13 @@ export interface MastheadProps {
   onSelectDay?: ((date: string) => void) | undefined;
 }
 
-/** "DAILY PLAN" display header: subtitle rules, date, week chips, score ring. */
+/** "DAILY PLAN" display header: subtitle rules, date (± day, jump-to-date), week chips, score ring. */
 export function Masthead({ dateStr, score, subtitle, onSelectDay }: MastheadProps) {
   const todayIdx = weekIndexOf(dateStr);
   const weekDates = weekDatesOf(dateStr);
   const dash = `${((score / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
   const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'EEEE, MMMM d, yyyy');
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className={styles.masthead}>
@@ -33,7 +42,53 @@ export function Masthead({ dateStr, score, subtitle, onSelectDay }: MastheadProp
         )}
       </div>
       <div className={styles.mastheadDate}>
-        <div className={styles.dateLabel}>{dateLabel}</div>
+        {onSelectDay ? (
+          <div className={styles.dateRow}>
+            <button
+              type="button"
+              className={styles.dayNavBtn}
+              aria-label="Previous day"
+              onClick={() => onSelectDay(daysBefore(dateStr, 1))}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className={styles.dateLabelBtn}
+              aria-label="Change date"
+              title="Jump to any date"
+              onClick={() => {
+                const input = dateInputRef.current;
+                if (!input) return;
+                if (typeof input.showPicker === 'function') input.showPicker();
+                else input.click();
+              }}
+            >
+              {dateLabel}
+            </button>
+            <button
+              type="button"
+              className={styles.dayNavBtn}
+              aria-label="Next day"
+              onClick={() => onSelectDay(daysAfter(dateStr, 1))}
+            >
+              ›
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              className={styles.dateJumpInput}
+              tabIndex={-1}
+              value={dateStr}
+              aria-label="Jump to date"
+              onChange={(e) => {
+                if (e.target.value) onSelectDay(e.target.value);
+              }}
+            />
+          </div>
+        ) : (
+          <div className={styles.dateLabel}>{dateLabel}</div>
+        )}
         <div className={styles.weekChips}>
           {WEEK_LETTERS.map((letter, i) =>
             onSelectDay ? (

@@ -160,6 +160,75 @@
   font-weight: 600;
 }
 
+/* Date row: ‹ date › with a hidden native picker anchored underneath. */
+.dateRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dayNavBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--plan-rule);
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 0 2px;
+}
+
+.dayNavBtn:hover {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
+.dateLabelBtn {
+  composes: dateLabel;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--color-text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dateLabelBtn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dateJumpInput {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  pointer-events: none;
+}
+
+.saveHint {
+  align-self: center;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--plan-muted);
+}
+
+.saveHint[data-state='error'] {
+  color: var(--plan-danger);
+  font-weight: 600;
+}
+
 .weekChips {
   display: flex;
   gap: 5px;
@@ -333,7 +402,10 @@ button.weekChipToday:hover:not(:disabled) {
   top: 8px;
   z-index: 3;
   color: var(--plan-secbar-text);
-  opacity: 0.55;
+  /* Quiet by default — the grip/width/hide trio fades in when the card is
+     hovered or focused, so eleven cards don't shout 33 icons at once. */
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
   display: inline-flex;
   padding: 2px 5px;
   border-radius: 6px;
@@ -343,15 +415,67 @@ button.weekChipToday:hover:not(:disabled) {
   cursor: pointer;
 }
 
-.cardCtl:hover,
-.cardCtl:focus-visible {
+.card:hover .cardCtl,
+.card:focus-within .cardCtl,
+.fullCard:hover .cardCtl,
+.fullCard:focus-within .cardCtl {
+  opacity: 0.55;
+}
+
+:is(.card, .fullCard) .cardCtl:hover,
+:is(.card, .fullCard) .cardCtl:focus-visible {
   opacity: 1;
   background: rgba(150, 150, 150, 0.28);
 }
 
 .cardCtl:focus-visible {
+  opacity: 1;
   outline: 2px solid var(--plan-secbar-text);
   outline-offset: 1px;
+}
+
+/* No hover on touch — keep the controls visible there. */
+@media (hover: none) {
+  .cardCtl {
+    opacity: 0.55;
+  }
+}
+
+/*
+ * Touch hit-slop: the small circles/squares/icons keep their visual size but
+ * grow an invisible tap area on coarse pointers (the ::after inherits the
+ * button's click target). Habit cells get less slop — their grid is dense.
+ */
+@media (pointer: coarse) {
+  .square,
+  .cupBtn,
+  .iconBtn,
+  .rowAddBtn,
+  .cardCtl,
+  .circle {
+    position: relative;
+  }
+
+  .square::after,
+  .cupBtn::after,
+  .iconBtn::after,
+  .rowAddBtn::after,
+  .cardCtl::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .circle::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+  }
+}
+
+/* The drag source dims while its ghost travels; the grid glides via FLIP. */
+.cardDragging {
+  opacity: 0.35;
 }
 
 .ctlGrip {

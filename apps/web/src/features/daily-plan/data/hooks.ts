@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   defaultDailyPlanSettings,
@@ -18,6 +18,48 @@ import { localPlanApi, serverPlanApi, type PlanApi } from './plan-api';
  */
 
 export const PLAN_SAVE_DEBOUNCE_MS = 800;
+
+/* ── save status (Saving… / Saved ✓ indicator) ───────────────────────────── */
+
+export type PlanSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+// Module-level store: useSaveDay/useSaveSettings mark keys dirty when an edit
+// is queued and settle them when the PUT lands, so any component can show an
+// honest write indicator without prop-drilling through the card tree.
+const dirtyKeys = new Set<string>();
+let saveStatus: PlanSaveStatus = 'idle';
+const saveListeners = new Set<() => void>();
+
+function setSaveStatus(next: PlanSaveStatus) {
+  if (saveStatus === next) return;
+  saveStatus = next;
+  for (const listener of saveListeners) listener();
+}
+
+function markDirty(key: string) {
+  dirtyKeys.add(key);
+  setSaveStatus('saving');
+}
+
+function markSettled(key: string, ok: boolean) {
+  dirtyKeys.delete(key);
+  if (!ok) setSaveStatus('error');
+  else if (dirtyKeys.size === 0 && saveStatus === 'saving') setSaveStatus('saved');
+}
+
+const subscribeSaveStatus = (listener: () => void) => {
+  saveListeners.add(listener);
+  return () => saveListeners.delete(listener);
+};
+
+/** Live plan write status: idle → saving → saved (or error, sticky until the next success). */
+export function usePlanSaveStatus(): PlanSaveStatus {
+  return useSyncExternalStore(
+    subscribeSaveStatus,
+    () => saveStatus,
+    () => saveStatus,
+  );
+}
 
 function usePlanApi(): { planApi: PlanApi; mode: 'guest' | 'server' } {
   const { guestMode } = useAuth();
@@ -108,10 +150,14 @@ export function useSaveDay() {
       const data = pending.current.get(date);
       if (!data) return;
       pending.current.delete(date);
-      planApi.putDay(date, data).catch(() => {
-        // Server rejected/failed — refetch the truth for that week.
-        void queryClient.invalidateQueries({ queryKey: weekKey(mode, weekStartOf(date)) });
-      });
+      planApi
+        .putDay(date, data)
+        .then(() => markSettled(`day:${date}`, true))
+        .catch(() => {
+          markSettled(`day:${date}`, false);
+          // Server rejected/failed — refetch the truth for that week.
+          void queryClient.invalidateQueries({ queryKey: weekKey(mode, weekStartOf(date)) });
+        });
     },
     [planApi, queryClient, mode],
   );
@@ -127,7 +173,10 @@ export function useSaveDay() {
         const timer = timerMap.get(date);
         if (timer) clearTimeout(timer);
         timerMap.delete(date);
-        void planApi.putDay(date, data).catch(() => {});
+        void planApi
+          .putDay(date, data)
+          .then(() => markSettled(`day:${date}`, true))
+          .catch(() => markSettled(`day:${date}`, false));
       }
       pendingMap.clear();
     };
@@ -142,7 +191,12 @@ export function useSaveDay() {
       for (const timer of timerMap.values()) clearTimeout(timer);
       timerMap.clear();
       // Fire-and-forget the unsaved blobs so day/mode switches never lose data.
-      for (const [date, data] of pendingMap) void planApi.putDay(date, data).catch(() => {});
+      for (const [date, data] of pendingMap) {
+        void planApi
+          .putDay(date, data)
+          .then(() => markSettled(`day:${date}`, true))
+          .catch(() => markSettled(`day:${date}`, false));
+      }
       pendingMap.clear();
     };
   }, [planApi]);
@@ -182,6 +236,7 @@ export function useSaveDay() {
         upsert,
       );
       pending.current.set(date, next);
+      markDirty(`day:${date}`);
       const existing = timers.current.get(date);
       if (existing) clearTimeout(existing);
       timers.current.set(
@@ -226,9 +281,13 @@ export function useSaveSettings() {
     const data = pending.current;
     if (!data) return;
     pending.current = null;
-    planApi.putSettings(data).catch(() => {
-      void queryClient.invalidateQueries({ queryKey: settingsKey(mode) });
-    });
+    planApi
+      .putSettings(data)
+      .then(() => markSettled('settings', true))
+      .catch(() => {
+        markSettled('settings', false);
+        void queryClient.invalidateQueries({ queryKey: settingsKey(mode) });
+      });
   }, [planApi, queryClient, mode]);
 
   useEffect(() => {
@@ -237,7 +296,12 @@ export function useSaveSettings() {
       timer.current = null;
       const data = pending.current;
       pending.current = null;
-      if (data) void planApi.putSettings(data).catch(() => {});
+      if (data) {
+        void planApi
+          .putSettings(data)
+          .then(() => markSettled('settings', true))
+          .catch(() => markSettled('settings', false));
+      }
     };
     const onHide = () => {
       if (document.visibilityState === 'hidden') flushNow();
@@ -255,6 +319,7 @@ export function useSaveSettings() {
     (next: DailyPlanSettings) => {
       queryClient.setQueryData(settingsKey(mode), next);
       pending.current = next;
+      markDirty('settings');
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(flush, PLAN_SAVE_DEBOUNCE_MS);
     },
