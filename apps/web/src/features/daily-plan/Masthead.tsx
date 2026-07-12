@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { WEEK_LETTERS, weekIndexOf } from './lib/plan-model';
+import { WEEK_DAY_NAMES, WEEK_LETTERS, weekDatesOf, weekIndexOf } from './lib/plan-model';
 import styles from './DailyPlan.module.css';
 
 const CIRC = 2 * Math.PI * 29;
@@ -9,11 +9,14 @@ export interface MastheadProps {
   score: number;
   /** Personal subtitle line (empty hides the rule row). */
   subtitle: string;
+  /** Week chips navigate to that day of the selected week when provided. */
+  onSelectDay?: ((date: string) => void) | undefined;
 }
 
 /** "DAILY PLAN" display header: subtitle rules, date, week chips, score ring. */
-export function Masthead({ dateStr, score, subtitle }: MastheadProps) {
+export function Masthead({ dateStr, score, subtitle, onSelectDay }: MastheadProps) {
   const todayIdx = weekIndexOf(dateStr);
+  const weekDates = weekDatesOf(dateStr);
   const dash = `${((score / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
   const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'EEEE, MMMM d, yyyy');
 
@@ -32,16 +35,34 @@ export function Masthead({ dateStr, score, subtitle }: MastheadProps) {
       <div className={styles.mastheadDate}>
         <div className={styles.dateLabel}>{dateLabel}</div>
         <div className={styles.weekChips}>
-          {WEEK_LETTERS.map((letter, i) => (
-            <span
-              key={i}
-              className={
-                i === todayIdx ? `${styles.weekChip} ${styles.weekChipToday}` : styles.weekChip
-              }
-            >
-              {letter}
-            </span>
-          ))}
+          {WEEK_LETTERS.map((letter, i) =>
+            onSelectDay ? (
+              <button
+                key={i}
+                type="button"
+                className={
+                  i === todayIdx ? `${styles.weekChip} ${styles.weekChipToday}` : styles.weekChip
+                }
+                aria-label={`Go to ${WEEK_DAY_NAMES[i] ?? ''} ${weekDates[i] ?? ''}`}
+                aria-current={i === todayIdx ? 'date' : undefined}
+                onClick={() => {
+                  const date = weekDates[i];
+                  if (date && i !== todayIdx) onSelectDay(date);
+                }}
+              >
+                {letter}
+              </button>
+            ) : (
+              <span
+                key={i}
+                className={
+                  i === todayIdx ? `${styles.weekChip} ${styles.weekChipToday}` : styles.weekChip
+                }
+              >
+                {letter}
+              </span>
+            ),
+          )}
         </div>
       </div>
       <div className={styles.scoreWrap}>
@@ -72,7 +93,7 @@ export function Masthead({ dateStr, score, subtitle }: MastheadProps) {
             fontSize="16"
             fontWeight="700"
             fill="var(--color-text)"
-            fontFamily="var(--font-family-heading)"
+            fontFamily="var(--plan-display-font)"
           >
             {score}%
           </text>

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { dailyPlanDataSchema, defaultDailyPlanSettings } from '@lifeline/shared';
@@ -63,6 +63,7 @@ describe('customize panel', () => {
 
   it('deleting a habit removes its tracker row', async () => {
     const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPlan();
     expect(await screen.findByText('Brush Teeth')).toBeInTheDocument();
 
@@ -76,7 +77,7 @@ describe('customize panel', () => {
 });
 
 describe('day continuity', () => {
-  it('a new day is prefilled from the weekday template; leftovers become real tasks', async () => {
+  it('a new day is prefilled from the weekday template (no carry bar off-today)', async () => {
     // Seed settings with a Thursday template and yesterday's plan row.
     const settings = defaultDailyPlanSettings();
     settings.templates = {
@@ -98,14 +99,30 @@ describe('day continuity', () => {
     // Template schedule + priority prefill (display-only materialization).
     expect(await screen.findByDisplayValue('Gym — Push')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ship personalization')).toBeInTheDocument();
-    // Yesterday's unfinished quick item AND tomorrow-plan note are offered
-    // by the carry bar (nothing lands in day.quick anymore).
-    expect(screen.getByText(/2 unfinished items from yesterday/)).toBeInTheDocument();
+    // Nothing lands in day.quick anymore, and the carry bar is a TODAY-only
+    // ritual — a past date viewed later must not offer "yesterday" items.
     expect(screen.queryByText('Prep gym bag')).not.toBeInTheDocument();
+    expect(screen.queryByText(/unfinished item/)).not.toBeInTheDocument();
+  });
+
+  it("today's carry bar turns yesterday's leftovers into real tasks, once", async () => {
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayStr = fmt(new Date());
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yesterday = dailyPlanDataSchema.parse({
+      tomorrow: [{ t: 'Prep gym bag', done: false }],
+      quick: [{ t: 'Call bank', done: false }],
+    });
+    window.localStorage.setItem(`daily_plan:${fmt(yest)}`, JSON.stringify(yesterday));
+
+    renderPlan('today');
+    expect(await screen.findByText(/2 unfinished items from yesterday/)).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Add as tasks' }));
-    // Both carried items became REAL guest tasks due the selected day.
+    // Both carried items became REAL guest tasks due today.
     await waitFor(() => {
       const raw = window.localStorage.getItem('guest_todos');
       expect(raw).not.toBeNull();
@@ -113,12 +130,14 @@ describe('day continuity', () => {
       const titles = todos.map((t) => t.title);
       expect(titles).toContain('Call bank');
       expect(titles).toContain('Prep gym bag');
-      expect(todos.every((t) => t.dueDate === '2026-07-09')).toBe(true);
+      expect(todos.every((t) => t.dueDate === todayStr)).toBe(true);
     });
-    expect(screen.queryByText(/unfinished items from yesterday/)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText(/unfinished items from yesterday/)).not.toBeInTheDocument(),
+    );
     // The outcome persists (carryHandled) — a reload must not re-offer.
     await waitFor(() => {
-      const raw = window.localStorage.getItem('daily_plan:2026-07-09');
+      const raw = window.localStorage.getItem(`daily_plan:${todayStr}`);
       expect(raw).not.toBeNull();
       expect((JSON.parse(raw as string) as { carryHandled: boolean }).carryHandled).toBe(true);
     });

@@ -68,19 +68,57 @@ export interface DailyPlanViewProps {
   allTags?: Tag[];
   /** Deep-link a task into the Tasks-mode editor on the given day. */
   onOpenTask?: (todo: Todo, dayStr: string) => void;
+  /** Navigate to another day (masthead week chips). */
+  onSelectDay?: (date: string) => void;
 }
 
-export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: DailyPlanViewProps) {
+export function DailyPlanView({
+  dayToken,
+  todos,
+  allTags = [],
+  onOpenTask,
+  onSelectDay,
+}: DailyPlanViewProps) {
   const dateStr = resolveDayString(dayToken);
   const selectedIdx = weekIndexOf(dateStr);
   const { theme, setTheme } = useTheme();
 
-  const { days, weekDates } = useDailyPlanWeek(dateStr);
+  const {
+    days,
+    weekDates,
+    ready: weekReady,
+    isError: weekError,
+    refetch: refetchWeek,
+  } = useDailyPlanWeek(dateStr);
   const saveDay = useSaveDay();
-  const { settings } = usePlanSettings();
+  const { settings, ready: settingsReady } = usePlanSettings();
   const saveSettings = useSaveSettings();
   const toggleComplete = useToggleComplete();
   const { recentDays, yesterday } = useRecentPlanDays(dateStr);
+
+  // Midnight rollover: 'today' is resolved per render, but nothing re-renders
+  // at 00:00 — a tab left open overnight would keep writing to yesterday's
+  // blob. A timer armed for local midnight plus a wake-from-sleep/refocus
+  // tick keep dateStr honest (browsers throttle background timers, so the
+  // visibility tick is what actually heals the overnight case).
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    if (dayToken !== 'today' && dayToken !== 'tomorrow') return;
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    const timer = setTimeout(
+      () => setDayTick((t) => t + 1),
+      Math.max(1_000, nextMidnight.getTime() - now.getTime()),
+    );
+    const onWake = () => {
+      if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', onWake);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onWake);
+    };
+  }, [dayToken, dateStr]);
 
   // Day continuity: a date with nothing stored wakes up prefilled from the
   // weekday template (display-only until the first edit persists it);
@@ -95,15 +133,24 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
   // compose (e.g. workout set → completion sync) instead of clobbering.
   const daysRef = useRef(effectiveDays);
   const settingsRef = useRef(settings);
+  const readyRef = useRef({ week: weekReady, settings: settingsReady });
   useLayoutEffect(() => {
     daysRef.current = effectiveDays;
   }, [effectiveDays]);
   useLayoutEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+  useLayoutEffect(() => {
+    readyRef.current = { week: weekReady, settings: settingsReady };
+  }, [weekReady, settingsReady]);
 
   const patchDate = useCallback(
     (date: string, patch: DayPatch) => {
+      // Never compose a whole-blob save before the stored rows arrive — that
+      // would overwrite a filled server day with template/blank data. The
+      // load window is sub-second; an edit inside it is dropped, not saved
+      // wrong (and the error banner below covers the failed-fetch case).
+      if (!readyRef.current.week || !readyRef.current.settings) return;
       const current = daysRef.current[date] ?? materializeNewDay(settingsRef.current, date);
       const partial = typeof patch === 'function' ? patch(current) : patch;
       const next = { ...current, ...partial };
@@ -120,6 +167,9 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
 
   const patchSettings = useCallback(
     (patch: SettingsPatch) => {
+      // Same guard as patchDate: a PUT composed from the defaults (settings
+      // fetch in flight or failed) would wipe every customization.
+      if (!readyRef.current.settings) return;
       const current = settingsRef.current;
       const partial = typeof patch === 'function' ? patch(current) : patch;
       const next = { ...current, ...partial };
@@ -175,8 +225,9 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
         recurrence: null,
       },
       {
-        // Clear only on success — a failed add keeps the draft to retry.
-        onSuccess: () => setQuickDraft(''),
+        // Clear only on success — and only if the user hasn't already typed
+        // the next thing while the create was in flight.
+        onSuccess: () => setQuickDraft((d) => (d.trim() === title ? '' : d)),
         onError: () => setQuickError('Could not add the task. Try again.'),
       },
     );
@@ -188,29 +239,43 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
   // Carry-over: yesterday's unfinished priorities / legacy quick / tomorrow
   // notes, one tap to adopt as REAL tasks. `day.carryHandled` persists the
   // outcome (Add or Dismiss) so the bar never re-offers after a reload.
+  // Offered on TODAY only — on other days "yesterday" isn't yesterday, and
+  // on the tomorrow view the bar would invite duplicating in-progress work.
+  const isToday = dateStr === resolveDayString('today');
   const carry = useMemo(() => carryOverFrom(yesterday), [yesterday]);
+  const [carryError, setCarryError] = useState(false);
   const addCarryAsTasks = useCallback(() => {
     const existing = new Set(
       filterTodosForDay(todos, dateStr).map((t) => t.title.trim().toLowerCase()),
     );
+    const creates: Promise<unknown>[] = [];
     for (const title of carryTitles(carry)) {
       const key = title.trim().toLowerCase();
       if (!key || existing.has(key)) continue;
       existing.add(key);
-      createTodo.mutate({
-        title,
-        description: null,
-        dueDate: dateStr,
-        dueTime: null,
-        tags: [],
-        isFlagged: false,
-        duration: 0,
-        priority: 'medium',
-        subtasks: [],
-        recurrence: null,
-      });
+      creates.push(
+        createTodo.mutateAsync({
+          title,
+          description: null,
+          dueDate: dateStr,
+          dueTime: null,
+          tags: [],
+          isFlagged: false,
+          duration: 0,
+          priority: 'medium',
+          subtasks: [],
+          recurrence: null,
+        }),
+      );
     }
-    patchDay({ carryHandled: true });
+    setCarryError(false);
+    void Promise.allSettled(creates).then((results) => {
+      // Don't burn the one-shot offer if every create failed (offline etc.).
+      if (results.some((r) => r.status === 'rejected')) setCarryError(true);
+      if (creates.length === 0 || results.some((r) => r.status === 'fulfilled')) {
+        patchDay({ carryHandled: true });
+      }
+    });
   }, [carry, todos, createTodo, dateStr, patchDay]);
 
   // Personal suggestion pools from the last 28 days.
@@ -424,7 +489,9 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
             ['dark', 'DARK'],
             ['paper', 'PAPER'],
           ]}
-          value={theme === 'paper' ? 'paper' : 'dark'}
+          // Honest state: on any of the other 8 app themes neither tab is
+          // active (the old ternary showed DARK as selected on all of them).
+          value={theme === 'paper' || theme === 'dark' ? theme : ''}
           onChange={(value) => setTheme(value === 'paper' ? 'paper' : 'dark')}
         />
         <Segmented
@@ -466,16 +533,35 @@ export function DailyPlanView({ dayToken, todos, allTags = [], onOpenTask }: Dai
         </button>
       </div>
 
-      <Masthead dateStr={dateStr} score={score} subtitle={settings.subtitle} />
+      <Masthead
+        dateStr={dateStr}
+        score={score}
+        subtitle={settings.subtitle}
+        onSelectDay={onSelectDay}
+      />
 
-      {carry.count > 0 && !day.carryHandled && (
+      {weekError && !weekReady && (
+        <div className={styles.hiddenBar} role="alert">
+          <span className={styles.hiddenBarLabel}>Offline?</span>
+          <span style={{ fontSize: 12 }}>
+            Couldn&apos;t load this day&apos;s plan — editing is paused so nothing gets overwritten.
+          </span>
+          <button type="button" className={styles.hiddenChip} onClick={() => void refetchWeek()}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {isToday && carry.count > 0 && !day.carryHandled && (
         <div className={styles.hiddenBar} role="status">
           <span className={styles.hiddenBarLabel}>Yesterday</span>
           <span style={{ fontSize: 12 }}>
-            {carry.count} unfinished item{carry.count > 1 ? 's' : ''} from yesterday
+            {carryError
+              ? "Couldn't add the tasks — check your connection and try again."
+              : `${carry.count} unfinished item${carry.count > 1 ? 's' : ''} from yesterday`}
           </span>
           <button type="button" className={styles.hiddenChip} onClick={addCarryAsTasks}>
-            Add as tasks
+            {carryError ? 'Retry' : 'Add as tasks'}
           </button>
           <button
             type="button"

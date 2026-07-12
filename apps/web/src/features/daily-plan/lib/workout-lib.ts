@@ -21,6 +21,17 @@ export function routineOf(settings: DailyPlanSettings, key: string): GymRoutine 
   return settings.gym.routines[key] ?? { name: 'Rest', ex: [] };
 }
 
+/**
+ * Unique routine key checked against the persisted set. A module counter
+ * alone resets per page load and can re-mint an existing key, silently
+ * REPLACING that routine on spread-merge (data loss).
+ */
+export function newRoutineKey(routines: Record<string, GymRoutine>): string {
+  let seq = 1;
+  while (`r${seq}` in routines) seq += 1;
+  return `r${seq}`;
+}
+
 export function isRoutineComplete(routine: GymRoutine, done: number[]): boolean {
   return (
     routine.ex.length > 0 && routine.ex.every((ex, i) => Math.min(done[i] ?? 0, ex.sets) >= ex.sets)

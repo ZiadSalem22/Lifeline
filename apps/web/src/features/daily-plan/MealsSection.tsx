@@ -546,7 +546,7 @@ export function MealsSection(props: MealsSectionProps) {
                 fontSize="13"
                 fontWeight="700"
                 fill="var(--color-text)"
-                fontFamily="var(--font-family-heading)"
+                fontFamily="var(--plan-display-font)"
               >
                 {totCal.toLocaleString()}
               </text>

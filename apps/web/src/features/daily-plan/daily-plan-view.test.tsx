@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '../../app/providers/theme-provider';
@@ -69,6 +69,21 @@ describe('DailyPlanView', () => {
     expect(screen.getByText('3 / 8 cups')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cup 3' }));
     expect(screen.getByText('2 / 8 cups')).toBeInTheDocument();
+  });
+
+  it('masthead week chips navigate to that weekday (buttons only with onSelectDay)', async () => {
+    const onSelectDay = vi.fn();
+    renderWithProviders(
+      <ThemeProvider>
+        <DailyPlanView dayToken="2026-07-09" todos={[]} onSelectDay={onSelectDay} />
+      </ThemeProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Go to Mon 2026-07-06' }));
+    expect(onSelectDay).toHaveBeenCalledWith('2026-07-06');
+    // The selected day's own chip is a no-op (no useless navigation).
+    await user.click(screen.getByRole('button', { name: 'Go to Thu 2026-07-09' }));
+    expect(onSelectDay).toHaveBeenCalledTimes(1);
   });
 
   it('hiding a card moves it to the restore bar; Show all brings it back', async () => {

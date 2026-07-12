@@ -52,6 +52,7 @@ export function ComposerModal({
           initialDueDate={initialDueDate}
           initialDueTime={initialDueTime}
           closeOnOutsideClick={false}
+          initialFocus="title"
         />
       </div>
     </div>,

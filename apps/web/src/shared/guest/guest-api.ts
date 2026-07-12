@@ -21,9 +21,8 @@ import type {
  * - taskNumber = max + 1 at creation (sequential across recurrence expansion);
  * - recurrence expansion mirrors the server: `daily` / `specificDays` /
  *   legacy `{type, interval}` pre-expand to N rows, `dateRange` creates one
- *   spanning todo;
- * - completing a recurring todo spawns the single next occurrence (subtasks
- *   reset to isCompleted:false with **stable subtaskId**), respecting endDate;
+ *   spanning todo; completion just flips the flag (pre-generate-only, like
+ *   the server — no spawn-on-complete);
  * - the 10 default tags are seeded and re-merged case-insensitively by name on
  *   every read (ids `tag-work` … `tag-misc`, colors from shared DEFAULT_TAGS).
  *
@@ -434,53 +433,6 @@ export function createGuestApi(storage: GuestStorage = browserStorage): GuestApi
     return [];
   }
 
-  /** Next occurrence after `currentDate`, or null when past endDate / no rule. */
-  function nextOccurrence(recurrence: Recurrence, currentDate: string | null): string | null {
-    if (currentDate === null) return null;
-    const rec = recurrenceFields(recurrence);
-    const end = rec.endDate ? toUtcDate(rec.endDate.slice(0, 10)) : null;
-
-    if (rec.mode === 'daily' || rec.mode === 'dateRange') {
-      const next = toUtcDate(currentDate);
-      if (!isValidDate(next)) return null;
-      next.setUTCDate(next.getUTCDate() + 1);
-      if (end && next > end) return null;
-      return toDateOnly(next);
-    }
-
-    if (rec.mode === 'specificDays') {
-      const selected = (rec.selectedDays ?? []).map((day) => day.toLowerCase());
-      if (selected.length === 0) return null;
-      const probe = toUtcDate(currentDate);
-      if (!isValidDate(probe)) return null;
-      for (let i = 1; i <= 365; i += 1) {
-        probe.setUTCDate(probe.getUTCDate() + 1);
-        if (end && probe > end) return null;
-        const dayName = DAY_NAMES_SUNDAY_FIRST[probe.getUTCDay()] ?? '';
-        if (selected.includes(dayName)) return toDateOnly(probe);
-      }
-      return null;
-    }
-
-    if (
-      rec.type === 'daily' ||
-      rec.type === 'weekly' ||
-      rec.type === 'monthly' ||
-      rec.type === 'custom'
-    ) {
-      const interval = rec.interval ?? 1;
-      const next = toUtcDate(currentDate);
-      if (!isValidDate(next)) return null;
-      if (rec.type === 'weekly') next.setUTCDate(next.getUTCDate() + 7 * interval);
-      else if (rec.type === 'monthly') next.setUTCMonth(next.getUTCMonth() + interval);
-      else next.setUTCDate(next.getUTCDate() + interval);
-      if (end && next > end) return null;
-      return toDateOnly(next);
-    }
-
-    return null;
-  }
-
   /* ── public surface ──────────────────────────────────────────────────────── */
 
   return {
@@ -566,34 +518,15 @@ export function createGuestApi(storage: GuestStorage = browserStorage): GuestApi
       const todos = readTodos();
       const index = requireTodo(todos, id);
       const current = todos[index] as Todo;
-      const wasCompleted = current.isCompleted;
       const toggled: Todo = {
         ...current,
-        isCompleted: !wasCompleted,
+        isCompleted: !current.isCompleted,
         updatedAt: new Date().toISOString(),
       };
       todos[index] = toggled;
-
-      // Completing a recurring todo spawns the single next occurrence.
-      if (!wasCompleted && toggled.recurrence) {
-        const nextDate = nextOccurrence(toggled.recurrence, toggled.dueDate);
-        if (nextDate !== null) {
-          const now = new Date().toISOString();
-          todos.push({
-            ...toggled,
-            id: crypto.randomUUID(),
-            taskNumber: nextTaskNumber(todos),
-            dueDate: nextDate,
-            isCompleted: false,
-            // Subtasks reset with STABLE subtaskId (identity contract).
-            subtasks: toggled.subtasks.map((subtask) => ({ ...subtask, isCompleted: false })),
-            originalId: toggled.originalId ?? toggled.id,
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
-      }
-
+      // Pre-generate-only, matching the server: createTodo already expanded
+      // the recurrence into rows, so completion just flips the flag — a
+      // spawn-on-complete here duplicated every pre-expanded occurrence.
       writeTodos(todos);
       return Promise.resolve(toggled);
     },

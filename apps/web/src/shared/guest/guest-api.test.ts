@@ -120,40 +120,33 @@ describe('guest-api todos', () => {
     expect(todos.map((todo) => todo.dueDate)).toEqual(['2026-07-01', '2026-07-15', '2026-07-29']);
   });
 
-  it('spawns the next occurrence on complete, resets subtasks with stable ids, stops at endDate', async () => {
+  it('completion never creates rows — recurrence is pre-generate-only, like the server', async () => {
     const api = createGuestApi(memoryStorage());
-    const created = await api.createTodo({
+
+    // A dateRange task is ONE spanning row; completing it completes the span.
+    const span = await api.createTodo({
       title: 'water plants',
       recurrence: { mode: 'dateRange', startDate: '2026-07-01', endDate: '2026-07-02' },
-      subtasks: [{ title: 'front garden' }],
     });
-    const subtaskId = created.subtasks[0]!.subtaskId;
+    expect(await api.fetchTodos()).toHaveLength(1);
+    const toggledSpan = await api.toggleTodo(span.id);
+    expect(toggledSpan.isCompleted).toBe(true);
+    expect(await api.fetchTodos()).toHaveLength(1);
 
-    // Complete the subtask, then the todo itself.
-    await api.updateTodo(created.id, {
-      subtasks: [{ subtaskId, title: 'front garden', isCompleted: true }],
+    // A daily rule was already expanded at create; completing one occurrence
+    // must NOT duplicate the next one (the old spawn-on-complete bug).
+    const first = await api.createTodo({
+      title: 'stretch',
+      recurrence: { mode: 'daily', startDate: '2026-07-10', endDate: '2026-07-12' },
     });
-    const toggled = await api.toggleTodo(created.id);
-    expect(toggled.isCompleted).toBe(true);
-
-    const afterFirstToggle = await api.fetchTodos();
-    expect(afterFirstToggle).toHaveLength(2);
-    const spawned = afterFirstToggle.find((todo) => todo.dueDate === '2026-07-02')!;
-    expect(spawned.isCompleted).toBe(false);
-    expect(spawned.taskNumber).toBe(2);
-    expect(spawned.originalId).toBe(created.id);
-    // Subtask identity is stable; completion resets.
-    expect(spawned.subtasks[0]).toMatchObject({
-      subtaskId,
-      title: 'front garden',
-      isCompleted: false,
-    });
-
-    // Completing the last occurrence (dueDate === endDate) spawns nothing.
-    await api.toggleTodo(spawned.id);
-    const afterSecondToggle = await api.fetchTodos();
-    expect(afterSecondToggle).toHaveLength(2);
-    expect(afterSecondToggle.every((todo) => todo.isCompleted)).toBe(true);
+    const beforeToggle = await api.fetchTodos();
+    expect(beforeToggle.filter((todo) => todo.title === 'stretch')).toHaveLength(3);
+    await api.toggleTodo(first.id);
+    const afterToggle = await api.fetchTodos();
+    expect(afterToggle.filter((todo) => todo.title === 'stretch')).toHaveLength(3);
+    expect(
+      afterToggle.filter((todo) => todo.title === 'stretch' && todo.dueDate === '2026-07-11'),
+    ).toHaveLength(1);
   });
 
   it('toggleFlag flips the flag and updateTodo patches fields', async () => {

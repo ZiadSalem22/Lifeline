@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { WEEK_DAY_NAMES } from './lib/plan-model';
-import { isRoutineComplete, resolveRoutineKey, routineOf } from './lib/workout-lib';
+import { isRoutineComplete, newRoutineKey, resolveRoutineKey, routineOf } from './lib/workout-lib';
 import type { WorkoutState } from './lib/workout-lib';
 import { CircleCheck } from './cards';
 import styles from './DailyPlan.module.css';
@@ -17,6 +17,43 @@ import styles from './DailyPlan.module.css';
  */
 
 const fmtKg = (v: number): string => String(Math.round(v * 10) / 10);
+
+/**
+ * Number input that doesn't fight typing: clearing the field to retype no
+ * longer snaps to 0/1 mid-edit. Drafts locally, commits parseable values,
+ * reconciles with the stored value on blur (same pattern as the Customize
+ * panel's NumberField).
+ */
+function DraftNumber(props: {
+  value: number;
+  ariaLabel: string;
+  onCommit: (value: number) => void;
+  commit?: (raw: number) => number;
+  className?: string | undefined;
+  style?: React.CSSProperties | undefined;
+}) {
+  const [draft, setDraft] = useState(String(props.value));
+  const [last, setLast] = useState(props.value);
+  if (props.value !== last) {
+    setLast(props.value);
+    setDraft(String(props.value));
+  }
+  return (
+    <input
+      type="number"
+      className={props.className}
+      style={props.style}
+      value={draft}
+      aria-label={props.ariaLabel}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        const parsed = Number.parseFloat(e.target.value);
+        if (!Number.isNaN(parsed)) props.onCommit(props.commit ? props.commit(parsed) : parsed);
+      }}
+      onBlur={() => setDraft(String(props.value))}
+    />
+  );
+}
 
 export interface WorkoutBodyProps extends WorkoutState {
   patchDay: (patch: Partial<DailyPlanData>) => void;
@@ -111,12 +148,12 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                   flex: '0 0 auto',
                 }}
               >
-                <input
-                  type="number"
+                <DraftNumber
                   className={styles.kgInput}
                   value={ex.kg}
-                  aria-label={`${ex.n} kg`}
-                  onChange={(e) => setKg(i, Number.parseFloat(e.target.value) || 0)}
+                  ariaLabel={`${ex.n} kg`}
+                  commit={(raw) => Math.max(0, raw)}
+                  onCommit={(v) => setKg(i, v)}
                 />
                 <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>kg</span>
               </span>
@@ -223,8 +260,6 @@ interface SetupProps {
   patchSettings: (patch: Partial<DailyPlanSettings>) => void;
 }
 
-let newRoutineSeq = 0;
-
 export function WorkoutSetupModal(props: SetupProps) {
   const gym = props.settings.gym;
   const keys = Object.keys(gym.routines);
@@ -319,8 +354,7 @@ export function WorkoutSetupModal(props: SetupProps) {
               className={styles.tinyPill}
               style={{ borderColor: 'transparent' }}
               onClick={() => {
-                newRoutineSeq += 1;
-                const key = `r${newRoutineSeq}-${keys.length}`;
+                const key = newRoutineKey(gym.routines);
                 patchGym({ routines: { ...gym.routines, [key]: { name: 'New Routine', ex: [] } } });
                 setEditKey(key);
               }}
@@ -345,6 +379,7 @@ export function WorkoutSetupModal(props: SetupProps) {
               dir="auto"
               className={styles.smallInput}
               style={{ flex: 1, fontWeight: 600 }}
+              maxLength={100}
               value={editRoutine.name}
               aria-label="Routine name"
               onChange={(e) => updateEdit({ name: e.target.value })}
@@ -359,7 +394,10 @@ export function WorkoutSetupModal(props: SetupProps) {
                   borderRadius: 8,
                   color: 'var(--plan-danger)',
                 }}
-                title="Delete routine"
+                disabled={keys.length <= 2}
+                title={
+                  keys.length <= 2 ? 'Keep at least one routine besides Rest' : 'Delete routine'
+                }
                 aria-label="Delete routine"
                 onClick={deleteRoutine}
               >
@@ -398,36 +436,34 @@ export function WorkoutSetupModal(props: SetupProps) {
               <input
                 dir="auto"
                 className={styles.smallInput}
+                maxLength={100}
                 value={ex.n}
                 aria-label={`Exercise ${i + 1} name`}
                 onChange={(e) => updateEx(i, { n: e.target.value })}
               />
-              <input
-                type="number"
+              <DraftNumber
                 className={styles.smallInput}
                 style={{ textAlign: 'center', padding: '6px 4px' }}
                 value={ex.sets}
-                aria-label={`Exercise ${i + 1} sets`}
-                onChange={(e) =>
-                  updateEx(i, {
-                    sets: Math.max(1, Math.min(10, Number.parseInt(e.target.value, 10) || 1)),
-                  })
-                }
+                ariaLabel={`Exercise ${i + 1} sets`}
+                commit={(raw) => Math.max(1, Math.min(10, Math.round(raw)))}
+                onCommit={(sets) => updateEx(i, { sets })}
               />
               <input
                 className={styles.smallInput}
                 style={{ textAlign: 'center', padding: '6px 4px' }}
                 value={ex.reps}
+                maxLength={100}
                 aria-label={`Exercise ${i + 1} reps`}
                 onChange={(e) => updateEx(i, { reps: e.target.value })}
               />
-              <input
-                type="number"
+              <DraftNumber
                 className={styles.smallInput}
                 style={{ textAlign: 'center', padding: '6px 4px' }}
                 value={ex.kg}
-                aria-label={`Exercise ${i + 1} kg`}
-                onChange={(e) => updateEx(i, { kg: Number.parseFloat(e.target.value) || 0 })}
+                ariaLabel={`Exercise ${i + 1} kg`}
+                commit={(raw) => Math.max(0, raw)}
+                onCommit={(kg) => updateEx(i, { kg })}
               />
               <button
                 type="button"

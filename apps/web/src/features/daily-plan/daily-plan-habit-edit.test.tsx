@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlanHabit } from '@lifeline/shared';
@@ -55,12 +55,18 @@ describe('habits on-card editing', () => {
     );
   });
 
-  it('delete and reorder rows on the card', async () => {
+  it('delete confirms first, then removes; reorder moves rows', async () => {
     const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderPlan();
     expect(await screen.findByText('Brush Teeth')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Edit habits' }));
+    // Declined confirm = no deletion (misclick protection).
+    await user.click(screen.getByRole('button', { name: 'Delete habit Brush Teeth' }));
+    expect(screen.getByDisplayValue('Brush Teeth')).toBeInTheDocument();
+
+    confirmSpy.mockReturnValue(true);
     await user.click(screen.getByRole('button', { name: 'Delete habit Brush Teeth' }));
     expect(screen.queryByDisplayValue('Brush Teeth')).not.toBeInTheDocument();
 

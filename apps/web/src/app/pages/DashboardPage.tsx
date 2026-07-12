@@ -251,6 +251,11 @@ export default function DashboardPage() {
     [navigate, setViewMode],
   );
 
+  const handleSelectPlanDay = useCallback(
+    (date: string) => void navigate(`/day/${date}`),
+    [navigate],
+  );
+
   if (todosQuery.isLoading) {
     return (
       <div className={styles.loadingWrap}>
@@ -382,6 +387,7 @@ export default function DashboardPage() {
           todos={todos ?? []}
           allTags={allTags}
           onOpenTask={handleOpenPlanTask}
+          onSelectDay={handleSelectPlanDay}
         />
       ) : (
         <>

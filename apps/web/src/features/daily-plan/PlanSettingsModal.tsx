@@ -87,6 +87,15 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
   const [templateKey, setTemplateKey] = useState<TemplateKey>(templateKeyOf(props.dateStr));
   const [savedFlash, setSavedFlash] = useState(false);
 
+  // Re-seed the weekday chip on every open — seeded only at mount, "SAVE
+  // CURRENT DAY" would target whatever weekday the modal FIRST opened on
+  // after the user navigates to another day.
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
+    if (props.open) setTemplateKey(templateKeyOf(props.dateStr));
+  }
+
   const patchHabits = (habits: PlanHabit[]) => props.patchSettings({ habits });
   const moveHabit = (index: number, delta: -1 | 1) => {
     const next = [...settings.habits];
@@ -166,6 +175,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
                 dir="auto"
                 className={styles.smallInput}
                 style={{ flex: 1 }}
+                maxLength={100}
                 value={habit.label}
                 aria-label={`Habit ${i + 1} name`}
                 onChange={(e) =>
@@ -222,7 +232,10 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
                 type="button"
                 className={styles.iconBtn}
                 aria-label={`Delete habit ${habit.label}`}
-                onClick={() => patchHabits(settings.habits.filter((_, j) => j !== i))}
+                onClick={() => {
+                  if (!window.confirm(`Delete habit "${habit.label}"?`)) return;
+                  patchHabits(settings.habits.filter((_, j) => j !== i));
+                }}
               >
                 <svg
                   width="12"
@@ -360,6 +373,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
                 dir="auto"
                 className={styles.smallInput}
                 style={{ flex: 1 }}
+                maxLength={100}
                 value={label}
                 aria-label={`Non-negotiable ${i + 1}`}
                 onChange={(e) =>
@@ -417,6 +431,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               dir="auto"
               className={styles.smallInput}
               style={{ width: '100%', boxSizing: 'border-box' }}
+              maxLength={100}
               value={settings.subtitle}
               aria-label="Masthead subtitle"
               onChange={(e) => props.patchSettings({ subtitle: e.target.value })}
@@ -428,6 +443,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               dir="auto"
               className={styles.smallInput}
               style={{ width: '100%', boxSizing: 'border-box' }}
+              maxLength={100}
               value={settings.motto}
               aria-label="Motto"
               onChange={(e) => props.patchSettings({ motto: e.target.value })}

@@ -138,10 +138,10 @@ export function useUpdateTodo() {
   });
 }
 
-/** Complete/uncomplete via the dedicated endpoints; guest toggle spawns the next recurrence. */
+/** Complete/uncomplete via the dedicated endpoints (guest toggle just flips the flag). */
 export function useToggleComplete() {
   const { guestMode } = useAuth();
-  const { replaceTodo, invalidate } = useTodoCache();
+  const { replaceTodo } = useTodoCache();
   return useMutation({
     mutationFn: async ({ id, isCompleted }: { id: string; isCompleted: boolean }) => {
       if (guestMode) return guestApi.toggleTodo(id);
@@ -150,11 +150,7 @@ export function useToggleComplete() {
         : todosApi.completeTodo(id));
       return todo;
     },
-    onSuccess: (todo) => {
-      replaceTodo(todo);
-      // Guest recurrence spawn may have added a row.
-      if (guestMode) void invalidate();
-    },
+    onSuccess: (todo) => replaceTodo(todo),
   });
 }
 

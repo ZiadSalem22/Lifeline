@@ -52,7 +52,18 @@ export function useDailyPlanWeek(dateStr: string) {
     return out;
   }, [query.data]);
 
-  return { days, weekDates, isLoading: query.isLoading, isFetched: query.isFetched };
+  return {
+    days,
+    weekDates,
+    isLoading: query.isLoading,
+    isFetched: query.isFetched,
+    // Data-presence gate for writes: a whole-blob save composed before the
+    // stored rows arrive would overwrite the server copy with template/blank
+    // data. NOT isFetched — that also turns true after an errored fetch.
+    ready: query.data !== undefined,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
 }
 
 /**
@@ -108,7 +119,26 @@ export function useSaveDay() {
   useEffect(() => {
     const timerMap = timers.current;
     const pendingMap = pending.current;
+    // Refresh/close/app-switch would silently drop the 800ms debounce window:
+    // React cleanups do not run on unload. Flush everything the moment the
+    // page hides (the PUTs are keepalive, so they outlive a closing tab).
+    const flushAll = () => {
+      for (const [date, data] of pendingMap) {
+        const timer = timerMap.get(date);
+        if (timer) clearTimeout(timer);
+        timerMap.delete(date);
+        void planApi.putDay(date, data).catch(() => {});
+      }
+      pendingMap.clear();
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushAll();
+    };
+    window.addEventListener('pagehide', flushAll);
+    document.addEventListener('visibilitychange', onHide);
     return () => {
+      window.removeEventListener('pagehide', flushAll);
+      document.removeEventListener('visibilitychange', onHide);
       for (const timer of timerMap.values()) clearTimeout(timer);
       timerMap.clear();
       // Fire-and-forget the unsaved blobs so day/mode switches never lose data.
@@ -176,6 +206,10 @@ export function usePlanSettings() {
     settings: query.data ?? defaultDailyPlanSettings(),
     isLoading: query.isLoading,
     isFetched: query.isFetched,
+    // Same data-presence gate as useDailyPlanWeek: a settings PUT composed
+    // from the defaults (fetch still in flight or errored) would wipe every
+    // customization with a default-based blob.
+    ready: query.data !== undefined,
   };
 }
 
@@ -198,11 +232,22 @@ export function useSaveSettings() {
   }, [planApi, queryClient, mode]);
 
   useEffect(() => {
-    return () => {
+    const flushNow = () => {
       if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
       const data = pending.current;
       pending.current = null;
       if (data) void planApi.putSettings(data).catch(() => {});
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    window.addEventListener('pagehide', flushNow);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flushNow);
+      document.removeEventListener('visibilitychange', onHide);
+      flushNow();
     };
   }, [planApi]);
 

@@ -36,6 +36,12 @@ export interface ComposerProps {
    * (the inline Tasks-mode behavior).
    */
   closeOnOutsideClick?: boolean | undefined;
+  /**
+   * Which field the open-autofocus targets. The inline Tasks composer keeps
+   * the legacy 'load' (#number bar); the plan popup focuses 'title' so
+   * typing right after "+ ADD TASK" lands in the task name.
+   */
+  initialFocus?: 'load' | 'title' | undefined;
 }
 
 interface DraftSubtask {
@@ -56,9 +62,11 @@ export function Composer({
   initialDueDate,
   initialDueTime,
   closeOnOutsideClick = true,
+  initialFocus = 'load',
 }: ComposerProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const loadInputRef = useRef<HTMLInputElement | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -108,10 +116,10 @@ export function Composer({
     const timer = setTimeout(() => {
       const active = document.activeElement;
       if (active && active !== document.body && formRef.current?.contains(active)) return;
-      loadInputRef.current?.focus();
+      (initialFocus === 'title' ? titleInputRef : loadInputRef).current?.focus();
     }, 40);
     return () => clearTimeout(timer);
-  }, [open]);
+  }, [open, initialFocus]);
 
   // Outside click & Escape close the composer (old App.jsx:279-297). The
   // recurrence/tag modals stop propagation via their portal overlays, but we
@@ -315,7 +323,9 @@ export function Composer({
 
       <div className={styles.titleField}>
         <input
+          ref={titleInputRef}
           type="text"
+          dir="auto"
           className={styles.titleInput}
           value={title}
           onChange={(event) => {
@@ -437,6 +447,7 @@ export function Composer({
       </div>
 
       <textarea
+        dir="auto"
         className={styles.descriptionInput}
         value={description}
         onChange={(event) => setDescription(event.target.value)}
@@ -552,6 +563,7 @@ export function Composer({
                 }
               }}
               placeholder="Add subtask..."
+              dir="auto"
               aria-label="New subtask"
             />
             <button type="button" className={styles.subtaskAdd} onClick={addSubtask}>

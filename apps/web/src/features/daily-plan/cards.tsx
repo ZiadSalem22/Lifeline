@@ -127,6 +127,46 @@ export interface ScheduleBodyProps {
   onAddTaskAt: (hour: string) => void;
 }
 
+function SchedChip(props: {
+  todo: Todo;
+  /** Always show the time (off-hours chips) vs only off-hour minutes. */
+  alwaysTime?: boolean;
+  onToggle: () => void;
+  onOpen: (todo: Todo) => void;
+}) {
+  const { todo } = props;
+  const showTime =
+    todo.dueTime !== null && (props.alwaysTime === true || !todo.dueTime.endsWith(':00'));
+  return (
+    <div className={styles.schedChip}>
+      <SquareCheck
+        on={todo.isCompleted}
+        label={`Toggle task ${todo.taskNumber}`}
+        onToggle={props.onToggle}
+      />
+      {todo.isCompleted ? (
+        <span dir="auto" className={styles.todoTitleDone}>
+          {todo.title}
+        </span>
+      ) : (
+        <button
+          type="button"
+          dir="auto"
+          className={styles.todoTitleBtn}
+          title="Open in Tasks"
+          onClick={() => props.onOpen(todo)}
+        >
+          {todo.title}
+        </button>
+      )}
+      {showTime && <span className={styles.chipTime}>{todo.dueTime}</span>}
+      {todo.tags[0] && (
+        <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
+      )}
+    </div>
+  );
+}
+
 export function ScheduleBody({
   day,
   patch,
@@ -138,9 +178,15 @@ export function ScheduleBody({
   onOpenTask,
   onAddTaskAt,
 }: ScheduleBodyProps) {
+  const hours = scheduleHours(startHour, endHour);
+  // Timed tasks outside the configured hours must not silently vanish.
+  const hourPrefixes = new Set(hours.map((t) => t.slice(0, 3)));
+  const offHours = todos.filter(
+    (t) => t.dueTime !== null && !hourPrefixes.has(t.dueTime.slice(0, 3)),
+  );
   return (
     <div className={styles.cardBody}>
-      {scheduleHours(startHour, endHour).map((time) => {
+      {hours.map((time) => {
         const suggestions = suggestionsFor(time);
         // '13:30' lands on the '13:00' row; the chip shows the real minutes.
         const rowTodos = todos.filter((t) => t.dueTime?.startsWith(time.slice(0, 3)));
@@ -151,6 +197,7 @@ export function ScheduleBody({
               <input
                 dir="auto"
                 className={styles.inputBare}
+                maxLength={500}
                 value={day.schedule[time] ?? ''}
                 aria-label={`Schedule ${time}`}
                 list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
@@ -173,38 +220,32 @@ export function ScheduleBody({
               </button>
             </div>
             {rowTodos.map((todo) => (
-              <div key={todo.id} className={styles.schedChip}>
-                <SquareCheck
-                  on={todo.isCompleted}
-                  label={`Toggle task ${todo.taskNumber}`}
-                  onToggle={() => onToggleTodo(todo.id)}
-                />
-                {todo.isCompleted ? (
-                  <span dir="auto" className={styles.todoTitleDone}>
-                    {todo.title}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    dir="auto"
-                    className={styles.todoTitleBtn}
-                    title="Open in Tasks"
-                    onClick={() => onOpenTask(todo)}
-                  >
-                    {todo.title}
-                  </button>
-                )}
-                {todo.dueTime && !todo.dueTime.endsWith(':00') && (
-                  <span className={styles.chipTime}>{todo.dueTime}</span>
-                )}
-                {todo.tags[0] && (
-                  <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-                )}
-              </div>
+              <SchedChip
+                key={todo.id}
+                todo={todo}
+                onToggle={() => onToggleTodo(todo.id)}
+                onOpen={onOpenTask}
+              />
             ))}
           </div>
         );
       })}
+      {offHours.length > 0 && (
+        <div>
+          <div className={styles.sectionMiniMuted} style={{ paddingTop: 8 }}>
+            Outside hours
+          </div>
+          {offHours.map((todo) => (
+            <SchedChip
+              key={todo.id}
+              todo={todo}
+              alwaysTime
+              onToggle={() => onToggleTodo(todo.id)}
+              onOpen={onOpenTask}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -219,6 +260,7 @@ export function FocusBody({ day, patch }: { day: DailyPlanData; patch: Patch }) 
         dir="auto"
         className={styles.lined}
         rows={3}
+        maxLength={2000}
         value={day.focusText}
         aria-label="Focus"
         onChange={(e) => patch({ focusText: e.target.value })}
@@ -256,6 +298,7 @@ export function GratitudeBody({
           <input
             dir="auto"
             className={styles.inputBare}
+            maxLength={500}
             value={value}
             aria-label={`Gratitude ${i + 1}`}
             onChange={(e) => write(i, e.target.value)}
@@ -274,6 +317,7 @@ export function ReviewBody({ day, patch }: { day: DailyPlanData; patch: Patch })
         dir="auto"
         className={styles.lined}
         rows={rows}
+        maxLength={2000}
         value={value}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
@@ -399,6 +443,7 @@ export function PrioritiesBody({
             dir="auto"
             className={p.done ? `${styles.inputBare} ${styles.inputDone}` : `${styles.inputBare}`}
             style={{ fontWeight: 600 }}
+            maxLength={500}
             value={p.t}
             aria-label={`Priority ${i + 1}`}
             list={suggestions.length > 0 ? 'plan-prio-sug' : undefined}
@@ -471,6 +516,7 @@ export function HabitsBody(props: HabitsBodyProps) {
                 dir="auto"
                 className={styles.smallInput}
                 style={{ flex: 1 }}
+                maxLength={100}
                 value={habit.label}
                 aria-label={`Habit ${i + 1} name`}
                 onChange={(e) =>
@@ -543,7 +589,12 @@ export function HabitsBody(props: HabitsBodyProps) {
                 type="button"
                 className={styles.iconBtn}
                 aria-label={`Delete habit ${habit.label}`}
-                onClick={() => props.onEditHabits((habits) => habits.filter((_, j) => j !== i))}
+                onClick={() => {
+                  // Tiny ✕, whole-week history at stake — confirm (app
+                  // convention: native confirm, same as task delete).
+                  if (!window.confirm(`Delete habit "${habit.label}"?`)) return;
+                  props.onEditHabits((habits) => habits.filter((_, j) => j !== i));
+                }}
               >
                 <svg
                   width="12"
@@ -816,6 +867,7 @@ export function TomorrowBody({
             dir="auto"
             className={styles.inputBare}
             style={{ padding: '2px 0' }}
+            maxLength={500}
             value={item.t}
             aria-label={`Tomorrow item ${i + 1}`}
             onChange={(e) => write(i, { ...item, t: e.target.value })}

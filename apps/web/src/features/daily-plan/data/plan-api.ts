@@ -29,14 +29,16 @@ export const serverPlanApi: PlanApi = {
     const res = await api.get<{ items: DailyPlanDay[] }>(`/daily-plan?start=${start}&end=${end}`);
     return res.items;
   },
+  // keepalive: plan writes are debounced and flushed on pagehide — the PUT
+  // must survive a tab close mid-flight (blobs stay well under the 64KB cap).
   putDay(date, data) {
-    return api.put<DailyPlanDay>(`/daily-plan/${date}`, { data });
+    return api.put<DailyPlanDay>(`/daily-plan/${date}`, { data }, { keepalive: true });
   },
   fetchSettings() {
     return api.get<DailyPlanSettings>('/daily-plan/settings');
   },
   putSettings(data) {
-    return api.put<DailyPlanSettings>('/daily-plan/settings', { data });
+    return api.put<DailyPlanSettings>('/daily-plan/settings', { data }, { keepalive: true });
   },
 };
 

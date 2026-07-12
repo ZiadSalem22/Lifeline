@@ -4,11 +4,20 @@
  * native; [data-theme='dark'|'paper'] get the handoff's exact values.
  */
 
-.planRoot {
+/*
+ * Plan theme tokens live on :root, NOT .planRoot: the plan's modals
+ * (Customize / Add Food / Workout Setup) portal to document.body, and a
+ * token scoped to .planRoot is invalid there — borders, muted colors and
+ * active-chip fills silently vanish. Defaults derive from the app theme
+ * (all 10 themes look native); dark/paper get the handoff's exact values.
+ */
+:global(:root) {
   --plan-card: var(--color-surface);
   --plan-card-border: var(--color-border);
   --plan-secbar: var(--color-surface-light);
-  --plan-secbar-text: var(--color-primary);
+  /* Text color, not primary: primary-on-surface-light is near-illegible in
+     most non-handoff themes (dark/paper override with their exact values). */
+  --plan-secbar-text: var(--color-text);
   --plan-rule: var(--color-border);
   --plan-surface2: var(--color-surface-light);
   --plan-hover: var(--color-surface-hover);
@@ -20,6 +29,48 @@
   --plan-today-band: color-mix(in srgb, var(--color-primary) 10%, transparent);
   --plan-today-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 22%, transparent);
   --plan-display-font: var(--font-family-heading);
+  /* Small-caps utility labels (section minis, badges, bars). Dark keeps the
+     heading sans; paper routes these to the base sans so the only display
+     face is the serif — the print reference is serif + ONE quiet sans. */
+  --plan-label-font: var(--font-family-heading);
+}
+
+:global([data-theme='dark']) {
+  --plan-card: #0d0d0d;
+  --plan-card-border: #262626;
+  --plan-secbar: #131313;
+  --plan-secbar-text: #00ff41;
+  --plan-rule: #262626;
+  --plan-surface2: #1a1a1a;
+  --plan-hover: #262626;
+  --plan-primary: #00ff41;
+  --plan-primary-ink: #000;
+  --plan-muted: #999;
+  --plan-danger: #ef4444;
+  --plan-today-band: rgba(0, 255, 65, 0.1);
+  --plan-today-shadow: 0 0 0 1px rgba(0, 255, 65, 0.22), 0 0 16px rgba(0, 255, 65, 0.1);
+}
+
+:global([data-theme='paper']) {
+  --plan-card: #fff;
+  --plan-card-border: #141414;
+  --plan-secbar: #141414;
+  --plan-secbar-text: #fff;
+  --plan-rule: #dcdcd4;
+  --plan-surface2: #f0efe8;
+  --plan-hover: #e9e8e0;
+  --plan-primary: #141414;
+  --plan-primary-ink: #fff;
+  --plan-muted: #5c5c56;
+  --plan-danger: #b91c1c;
+  --plan-rad: 4px;
+  --plan-today-band: rgba(20, 20, 20, 0.05);
+  --plan-today-shadow: 0 0 0 1px rgba(20, 20, 20, 0.11), 0 4px 14px rgba(20, 20, 20, 0.1);
+  --plan-display-font: 'Playfair Display', serif;
+  --plan-label-font: var(--font-family-base);
+}
+
+.planRoot {
   /* density (compact) */
   --colw: 340px;
   --pad: 14px;
@@ -37,38 +88,11 @@
   --fs: 14px;
 }
 
-:global([data-theme='dark']) .planRoot {
-  --plan-card: #0d0d0d;
-  --plan-card-border: #262626;
-  --plan-secbar: #131313;
-  --plan-secbar-text: #00ff41;
-  --plan-rule: #262626;
-  --plan-surface2: #1a1a1a;
-  --plan-hover: #262626;
-  --plan-primary: #00ff41;
-  --plan-primary-ink: #000;
-  --plan-muted: #999;
-  --plan-danger: #ef4444;
-  --plan-today-band: rgba(0, 255, 65, 0.1);
-  --plan-today-shadow: 0 0 0 1px rgba(0, 255, 65, 0.22), 0 0 16px rgba(0, 255, 65, 0.1);
-}
-
-:global([data-theme='paper']) .planRoot {
-  --plan-card: #fff;
-  --plan-card-border: #141414;
-  --plan-secbar: #141414;
-  --plan-secbar-text: #fff;
-  --plan-rule: #dcdcd4;
-  --plan-surface2: #f0efe8;
-  --plan-hover: #e9e8e0;
-  --plan-primary: #141414;
-  --plan-primary-ink: #fff;
-  --plan-muted: #5c5c56;
-  --plan-danger: #b91c1c;
-  --plan-rad: 4px;
-  --plan-today-band: rgba(20, 20, 20, 0.05);
-  --plan-today-shadow: 0 0 0 1px rgba(20, 20, 20, 0.11), 0 4px 14px rgba(20, 20, 20, 0.1);
-  --plan-display-font: 'Playfair Display', serif;
+/* Paper = the print planner: serif display everywhere, italic serif prompts. */
+:global([data-theme='paper']) .planRoot .prompt,
+:global([data-theme='paper']) .planRoot .mastheadSub {
+  font-family: var(--plan-display-font);
+  font-style: italic;
 }
 
 @keyframes fadeIn {
@@ -155,10 +179,26 @@
   background: transparent;
 }
 
+/* As a button the chip navigates to that weekday. */
+button.weekChip {
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.weekChip:hover:not(:disabled) {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
 .weekChipToday {
   background: var(--plan-primary);
   color: var(--plan-primary-ink);
   border-color: var(--plan-primary);
+}
+
+button.weekChipToday:hover:not(:disabled) {
+  color: var(--plan-primary-ink);
 }
 
 .scoreWrap {
@@ -200,7 +240,7 @@
   text-transform: uppercase;
   color: var(--plan-muted);
   font-weight: 700;
-  font-family: var(--font-family-heading);
+  font-family: var(--plan-label-font);
 }
 
 .hiddenChip {
@@ -270,7 +310,7 @@
   background: var(--plan-secbar);
   color: var(--plan-secbar-text);
   padding: 8px 14px;
-  font-family: var(--font-family-heading);
+  font-family: var(--plan-display-font);
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -519,7 +559,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 700;
-  font-family: var(--font-family-heading);
+  font-family: var(--plan-label-font);
 }
 
 .sectionMiniMuted {
@@ -1288,7 +1328,7 @@
 }
 
 .kcalLeftBig {
-  font-family: var(--font-family-heading);
+  font-family: var(--plan-display-font);
   font-weight: 700;
   font-size: 19px;
   line-height: 1;
@@ -1550,7 +1590,7 @@
 .motto {
   text-align: center;
   margin-top: 20px;
-  font-family: var(--font-family-heading);
+  font-family: var(--plan-display-font);
   font-weight: 700;
   letter-spacing: 0.34em;
   font-size: 12px;

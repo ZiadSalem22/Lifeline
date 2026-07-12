@@ -65,12 +65,27 @@ async function toApiError(response: Response): Promise<ApiError> {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-async function request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
+export interface RequestOptions {
+  /**
+   * Let the request outlive its page (fetch keepalive) — for writes flushed
+   * on pagehide/tab-close. Bodies must stay under the browser's ~64KB
+   * keepalive budget.
+   */
+  keepalive?: boolean;
+}
+
+async function request<T>(
+  method: HttpMethod,
+  path: string,
+  body?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   const token = await tokenSupplier();
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const init: RequestInit = { method, headers };
+  if (opts?.keepalive) init.keepalive = true;
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
@@ -97,7 +112,8 @@ async function getBlob(path: string): Promise<Blob> {
 export const api = {
   get: <T>(path: string): Promise<T> => request<T>('GET', path),
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>('POST', path, body),
-  put: <T>(path: string, body?: unknown): Promise<T> => request<T>('PUT', path, body),
+  put: <T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> =>
+    request<T>('PUT', path, body, opts),
   patch: <T>(path: string, body?: unknown): Promise<T> => request<T>('PATCH', path, body),
   del: <T = void>(path: string): Promise<T> => request<T>('DELETE', path),
   getBlob,
