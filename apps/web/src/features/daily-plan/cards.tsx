@@ -1134,9 +1134,14 @@ function MeasureField(props: {
 }) {
   const shown = () => (props.canonical > 0 ? String(props.toDisplay(props.canonical)) : '');
   const [draft, setDraft] = useState(shown);
-  const [seen, setSeen] = useState(props.canonical);
-  if (props.canonical !== seen) {
-    setSeen(props.canonical);
+  // Re-sync when the stored value OR the display unit changes — a cm↔in toggle
+  // reformats the same canonical value, so keying on canonical alone would
+  // leave a stale number under the new unit label (and a spinner tick on it
+  // would then be read in the new unit and rewrite storage). Mirrors WeightBody.
+  const sig = `${props.canonical}|${props.unitLabel}`;
+  const [seen, setSeen] = useState(sig);
+  if (sig !== seen) {
+    setSeen(sig);
     setDraft(shown());
   }
   const commit = (raw: string) => {

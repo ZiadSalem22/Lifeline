@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { defaultDailyPlanSettings } from '@lifeline/shared';
 import { ThemeProvider } from '../../app/providers/theme-provider';
@@ -42,5 +42,32 @@ describe('Weight & body card', () => {
     expect(screen.getByLabelText('Body fat')).toBeInTheDocument();
     expect(screen.getByLabelText('Waist')).toBeInTheDocument();
     expect(screen.getByLabelText('Arm')).toBeInTheDocument();
+  });
+
+  it('reformats a stored measurement when the length unit is toggled (no stale value under the new label)', async () => {
+    const settings = defaultDailyPlanSettings();
+    settings.units = { weight: 'kg', length: 'cm' };
+    window.localStorage.setItem('daily_plan_settings', JSON.stringify(settings));
+    // 80 cm waist, stored canonically.
+    window.localStorage.setItem(
+      'daily_plan:2026-07-09',
+      JSON.stringify({ weight: 80, body: { waist: 80 } }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ThemeProvider>
+        <DailyPlanView dayToken="2026-07-09" todos={[]} />
+      </ThemeProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '+ Body measurements' }));
+    expect(screen.getByLabelText('Waist')).toHaveValue(80);
+
+    // Switching to inches must reformat the SAME stored value (80 cm → 31.5 in),
+    // not leave the "80" draft sitting under an "in" label.
+    const lengthToggle = screen.getByRole('group', { name: 'Length unit' });
+    await user.click(within(lengthToggle).getByRole('button', { name: 'in' }));
+    expect(screen.getByLabelText('Waist')).toHaveValue(31.5);
   });
 });
