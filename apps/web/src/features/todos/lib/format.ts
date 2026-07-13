@@ -1,4 +1,4 @@
-import type { Todo } from '@lifeline/shared';
+import type { Priority, Todo } from '@lifeline/shared';
 
 /** "Xh Ym" | "Xh" | "Ym" | "" — old App.jsx formatDuration. */
 export function formatDuration(totalMinutes: number): string {
@@ -45,11 +45,12 @@ export function randomTagColor(): string {
   return TAG_PRESET_COLORS[index] ?? TAG_PRESET_COLORS[0];
 }
 
-/** Old TaskCard hardcoded priority badge colors. */
-export const PRIORITY_COLORS: Record<Todo['priority'], string> = {
-  high: '#ef4444',
-  medium: '#FDBA74',
-  low: '#6EE7B7',
+/** Priority badge colors — theme tokens (see tokens.css). */
+export const PRIORITY_COLORS: Record<Priority, string> = {
+  // Theme tokens (tokens.css) — light themes deepen these for contrast.
+  high: 'var(--priority-high)',
+  medium: 'var(--priority-medium)',
+  low: 'var(--priority-low)',
 };
 
 export const PRIORITY_LABELS: Record<Todo['priority'], string> = {

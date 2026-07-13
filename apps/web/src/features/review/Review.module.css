@@ -1,0 +1,519 @@
+/**
+ * Weekly Review — consumes the --plan-* tokens so paper/dark inherit the
+ * editorial plan look (this page is part of the plan ritual).
+ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  padding: clamp(14px, 2.5vw, 22px) clamp(14px, 2.5vw, 26px);
+}
+
+.title {
+  font-family: var(--plan-display-font);
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.weekNav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.navBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--plan-rule);
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 0 2px;
+}
+
+.navBtn:hover {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
+.weekLabelBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.weekLabelBtn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.thisWeekChip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.thisWeekChip:hover {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
+.dateJumpInput {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  pointer-events: none;
+}
+
+.scoreWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scoreMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.miniLabel {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--plan-muted);
+  font-family: var(--plan-label-font);
+}
+
+.deltaChip {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--plan-muted);
+}
+
+.deltaChip[data-tone='good'] {
+  color: var(--chart-ink);
+}
+
+.deltaChip[data-tone='bad'] {
+  color: var(--plan-danger);
+}
+
+/* ── days strip ──────────────────────────────────────────────────────────── */
+
+.daysStrip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .daysStrip {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .dayCol {
+    min-width: 96px;
+  }
+}
+
+.dayCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+.dayCol:hover {
+  border-color: var(--plan-primary);
+}
+
+.dayCol[data-today='true'] {
+  box-shadow: var(--plan-today-shadow);
+}
+
+.dayBarTrack {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(to top, var(--plan-surface2), transparent 70%);
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.dayBarFill {
+  width: 100%;
+  background: var(--plan-primary);
+  opacity: 0.85;
+  transition: height 0.3s ease-out;
+}
+
+.dayName {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--plan-muted);
+  font-family: var(--plan-label-font);
+}
+
+.dayDate {
+  font-family: var(--plan-display-font);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.dayMeta {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayCounts {
+  font-size: 9.5px;
+  color: var(--plan-muted);
+  white-space: nowrap;
+}
+
+/* ── cards grid ──────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.card {
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  padding: 14px 16px;
+}
+
+.cardTitle {
+  font-family: var(--plan-display-font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.empty {
+  color: var(--plan-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* habits grid */
+.habitRow {
+  display: grid;
+  grid-template-columns: 1fr repeat(7, 18px) 40px;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.habitRowDivide {
+  border-bottom: 1px solid var(--color-text);
+  padding-bottom: 6px;
+  margin-bottom: 3px;
+}
+
+.habitLabel {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habitLabel[data-salah='true'] {
+  font-weight: 700;
+}
+
+.habitCell {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.4px solid var(--plan-muted);
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: var(--plan-muted);
+}
+
+.habitCell[data-mark='on'] {
+  background: var(--plan-primary);
+  border-color: var(--plan-primary);
+}
+
+.habitCell[data-mark='skip'] {
+  border-style: dashed;
+}
+
+.habitPct {
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* tasks */
+.taskSummary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bigStat {
+  display: block;
+  font-family: var(--plan-display-font);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.taskLink {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--plan-rule);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.taskLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.numChip {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-card-border);
+  color: var(--plan-muted);
+  font-size: 10px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+/* nutrition */
+.statRow {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.kcalBars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+
+.kcalBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.kcalBarTrack {
+  position: relative;
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(to top, var(--plan-surface2), transparent 70%);
+}
+
+.kcalBarFill {
+  width: 100%;
+  background: var(--chart-ink);
+  opacity: 0.85;
+}
+
+.kcalBarFill[data-over='true'] {
+  background: var(--plan-danger);
+}
+
+/* the dashed 100%-of-target line */
+.kcalTarget {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  border-top: 1.5px dashed var(--chart-target);
+}
+
+/* workout */
+.trainDots {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.trainDot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.4px solid var(--plan-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--plan-muted);
+}
+
+.trainDot[data-on='true'] {
+  background: var(--plan-primary);
+  border-color: var(--plan-primary);
+  color: var(--plan-primary-ink);
+}
+
+/* ── journal wall ────────────────────────────────────────────────────────── */
+
+.journalWall {
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  padding: 16px 18px;
+}
+
+.journalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 14px;
+}
+
+.journalDay {
+  border: 1px solid var(--plan-rule);
+  border-radius: calc(var(--plan-rad) - 4px);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.journalHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid var(--plan-rule);
+  padding-bottom: 5px;
+}
+
+.journalDayName {
+  font-family: var(--plan-display-font);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.journalRating {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--plan-primary);
+}
+
+.journalLine {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.journalTag {
+  display: inline-block;
+  margin-inline-end: 5px;
+  padding: 0 5px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+  font-family: var(--plan-label-font);
+}
+
+.journalGratitude {
+  font-size: 12px;
+  color: var(--plan-muted);
+  font-style: italic;
+}
+
+.journalEmpty {
+  color: var(--plan-muted);
+  opacity: 0.6;
+}

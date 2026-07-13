@@ -17,6 +17,13 @@ export const exportPayloadSchema = z.object({
   todos: z.array(z.record(z.string(), z.unknown())),
   tags: z.array(z.record(z.string(), z.unknown())),
   stats: z.record(z.string(), z.unknown()),
+  // Daily-plan data (added later): OPTIONAL so old export files stay
+  // importable — and declared here because the import parse strips unknown
+  // keys, which would otherwise silently drop plans on a round-trip.
+  dailyPlans: z
+    .array(z.object({ date: z.string(), data: z.record(z.string(), z.unknown()) }))
+    .optional(),
+  dailyPlanSettings: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 export type ExportPayload = z.infer<typeof exportPayloadSchema>;
 

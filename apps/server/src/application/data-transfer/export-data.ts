@@ -1,5 +1,5 @@
 import type { ExportPayload, Todo } from '@lifeline/shared';
-import type { CurrentUser, TagRepository, TodoRepository } from '../ports.js';
+import type { CurrentUser, DailyPlanRepository, TagRepository, TodoRepository } from '../ports.js';
 import { toProfileDto, toSettingsDto } from '../identity/mappers.js';
 import { buildPeriodTotals, buildTopTags, type TagCount } from '../stats/get-stats.js';
 
@@ -78,6 +78,7 @@ function todoToCsvRow(todo: Todo): string {
 export interface ExportDataDeps {
   todos: Pick<TodoRepository, 'listAll'>;
   tags: Pick<TagRepository, 'listVisible'>;
+  dailyPlans: Pick<DailyPlanRepository, 'getAllDays' | 'getSettings'>;
 }
 
 export class ExportData {
@@ -87,9 +88,11 @@ export class ExportData {
   ) {}
 
   async buildJson(user: CurrentUser): Promise<ExportPayload> {
-    const [todos, tags] = await Promise.all([
+    const [todos, tags, planDays, planSettings] = await Promise.all([
       this.deps.todos.listAll(user.id, { includeArchived: false }),
       this.deps.tags.listVisible(user.id),
+      this.deps.dailyPlans.getAllDays(user.id),
+      this.deps.dailyPlans.getSettings(user.id),
     ]);
     const now = this.now();
     const stats: ExportStats = {
@@ -128,6 +131,11 @@ export class ExportData {
         isDefault: tag.isDefault,
       })),
       stats: stats as unknown as Record<string, unknown>,
+      // Daily plans are the user's journal/health data — an export without
+      // them is misleadingly incomplete. Import ignores these for now (merge
+      // semantics for day blobs is its own design).
+      dailyPlans: planDays.map((row) => ({ date: row.planDate, data: row.data })),
+      dailyPlanSettings: planSettings,
     };
   }
 

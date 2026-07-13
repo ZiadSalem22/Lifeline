@@ -568,7 +568,8 @@ export const TaskCard = memo(function TaskCard(props: TaskCardProps) {
                   style={{
                     color: PRIORITY_COLORS[todo.priority],
                     borderColor: PRIORITY_COLORS[todo.priority],
-                    background: `${PRIORITY_COLORS[todo.priority]}20`,
+                    // color-mix, not hex+alpha: the colors are CSS vars now.
+                    background: `color-mix(in srgb, ${PRIORITY_COLORS[todo.priority]} 12%, transparent)`,
                   }}
                   title={`Priority: ${PRIORITY_LABELS[todo.priority]}`}
                 >

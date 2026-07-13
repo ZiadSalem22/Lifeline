@@ -6,6 +6,7 @@ import {
   HomeIcon,
   LogoIcon,
   MoonIcon,
+  NoteIcon,
   SearchIcon,
   SettingsIcon,
   StatsIcon,
@@ -104,6 +105,10 @@ export function Sidebar({ open, onClose, onOpenSettings }: SidebarProps) {
           <NavLink to="/statistics" className={navLinkClass} onClick={onClose}>
             <StatsIcon width={16} height={16} />
             <span>Statistics</span>
+          </NavLink>
+          <NavLink to="/review" className={navLinkClass} onClick={onClose}>
+            <NoteIcon width={16} height={16} />
+            <span>Review</span>
           </NavLink>
         </nav>
 

@@ -1,11 +1,14 @@
 import {
+  MAX_PLAN_METRICS_DAYS,
   dailyPlanDataSchema,
   dailyPlanSettingsSchema,
   defaultDailyPlanSettings,
   emptyDailyPlanData,
+  extractDayMetrics,
   type DailyPlanData,
   type DailyPlanDay,
   type DailyPlanSettings,
+  type PlanMetricsResponse,
 } from '@lifeline/shared';
 import { api } from '../../../shared/api/client';
 import { daysBefore } from '../lib/plan-model';
@@ -19,6 +22,8 @@ import { daysBefore } from '../lib/plan-model';
  */
 export interface PlanApi {
   fetchRange(start: string, end: string): Promise<DailyPlanDay[]>;
+  /** Compact per-day metrics (Statistics feed) — ≤ MAX_PLAN_METRICS_DAYS. */
+  fetchMetrics(start: string, end: string): Promise<PlanMetricsResponse>;
   putDay(date: string, data: DailyPlanData): Promise<DailyPlanDay>;
   fetchSettings(): Promise<DailyPlanSettings>;
   putSettings(data: DailyPlanSettings): Promise<DailyPlanSettings>;
@@ -28,6 +33,9 @@ export const serverPlanApi: PlanApi = {
   async fetchRange(start, end) {
     const res = await api.get<{ items: DailyPlanDay[] }>(`/daily-plan?start=${start}&end=${end}`);
     return res.items;
+  },
+  fetchMetrics(start, end) {
+    return api.get<PlanMetricsResponse>(`/daily-plan/metrics?start=${start}&end=${end}`);
   },
   // keepalive: plan writes are debounced and flushed on pagehide — the PUT
   // must survive a tab close mid-flight (blobs stay well under the 64KB cap).
@@ -73,6 +81,18 @@ export function createLocalPlanApi(storage: PlanStorage): PlanApi {
       }
       items.sort((a, b) => a.date.localeCompare(b.date));
       return Promise.resolve(items);
+    },
+    fetchMetrics(start, end) {
+      // Same shared extractor as the server endpoint — parity by construction.
+      const items = [];
+      for (let i = 0; i < MAX_PLAN_METRICS_DAYS; i += 1) {
+        const date = daysBefore(end, i);
+        if (date < start) break;
+        const data = readDay(date);
+        if (data !== null) items.push(extractDayMetrics(date, data));
+      }
+      items.sort((a, b) => a.date.localeCompare(b.date));
+      return Promise.resolve({ items });
     },
     putDay(date, data) {
       const parsed = dailyPlanDataSchema.parse(data);

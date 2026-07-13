@@ -6,6 +6,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import ProfilePage from './pages/ProfilePage';
 import SearchPage from './pages/SearchPage';
 import StatisticsPage from './pages/StatisticsPage';
+import ReviewPage from './pages/ReviewPage';
 import { RequireAuth, RequireOnboarded } from './route-guards';
 
 export function createAppRouter() {
@@ -27,6 +28,8 @@ export function createAppRouter() {
             { path: 'search', element: <SearchPage /> },
             { path: 'advanced-search', element: <SearchPage /> },
             { path: 'statistics', element: <StatisticsPage /> },
+            { path: 'review', element: <ReviewPage /> },
+            { path: 'review/:weekStart', element: <ReviewPage /> },
             { path: 'stats', element: <StatisticsPage /> },
             {
               element: <RequireAuth />,

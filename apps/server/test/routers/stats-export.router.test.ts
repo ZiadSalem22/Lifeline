@@ -28,6 +28,11 @@ function expectProblem(response: request.Response, status: number, code: string)
   expect(response.body).toMatchObject({ status, code });
 }
 
+const emptyPlanRepo = {
+  getAllDays: () => Promise.resolve([]),
+  getSettings: () => Promise.resolve(null),
+};
+
 describe('GET /api/v1/stats', () => {
   function statsApp(user: CurrentUser | null = USER) {
     return makeApp(
@@ -97,7 +102,7 @@ describe('GET /api/v1/export', () => {
     return makeApp(
       '/api/v1/export',
       buildExportRouter({
-        exportData: new ExportData({ todos, tags }),
+        exportData: new ExportData({ todos, tags, dailyPlans: emptyPlanRepo }),
         registry: new OpenApiRegistry(),
       }),
       user,

@@ -309,6 +309,8 @@ export interface DailyPlanDayRecord {
 export interface DailyPlanRepository {
   /** All plan rows for the user in [start, end] (date-only strings), ascending. */
   getRange(userId: string, start: string, end: string): Promise<DailyPlanDayRecord[]>;
+  /** Every plan row for the user, ascending — the data-export path. */
+  getAllDays(userId: string): Promise<DailyPlanDayRecord[]>;
   upsertDay(
     userId: string,
     planDate: string,

@@ -71,7 +71,7 @@
 
 .toggleActive {
   background: var(--color-primary);
-  color: var(--color-bg);
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 
@@ -297,4 +297,85 @@
   font-size: 0.8rem;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Statistics 2.0 additions ────────────────────────────────────────────── */
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
+.stepBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.stepBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 0 2px;
+}
+
+.stepBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--gap-md);
+}
+
+.habitStatRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.2fr) auto 2fr 44px;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.85rem;
+}
+
+.habitStatRow:last-child {
+  border-bottom: none;
+}
+
+.habitStatLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.habitStatMeta {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.habitStatPct {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+}
+
+.chipActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }

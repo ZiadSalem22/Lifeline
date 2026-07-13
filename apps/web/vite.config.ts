@@ -23,5 +23,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
+    // The suite is 200+ jsdom tests; under full-suite worker contention,
+    // userEvent-heavy specs intermittently blow the 5s default.
+    testTimeout: 15_000,
   },
 });

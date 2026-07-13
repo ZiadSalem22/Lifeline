@@ -74,6 +74,8 @@ export interface DailyPlanViewProps {
   onOpenTask?: ((todo: Todo, dayStr: string) => void) | undefined;
   /** Navigate to another day (masthead week chips, chevrons, date jump). */
   onSelectDay?: ((date: string) => void) | undefined;
+  /** Open the dedicated Weekly Review page for a week start date. */
+  onOpenReview?: ((weekStart: string) => void) | undefined;
 }
 
 export function DailyPlanView({
@@ -82,6 +84,7 @@ export function DailyPlanView({
   allTags = [],
   onOpenTask,
   onSelectDay,
+  onOpenReview,
 }: DailyPlanViewProps) {
   const dateStr = resolveDayString(dayToken);
   const selectedIdx = weekIndexOf(dateStr);
@@ -651,6 +654,7 @@ export function DailyPlanView({
           tasksDone={weekStats.tasksDone}
           tasksTotal={weekStats.tasksTotal}
           onSelectDay={onSelectDay}
+          onOpenFull={onOpenReview ? () => onOpenReview(weekDates[0] ?? dateStr) : undefined}
         />
       ),
     },

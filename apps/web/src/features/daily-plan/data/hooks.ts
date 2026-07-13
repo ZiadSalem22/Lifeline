@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'r
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   defaultDailyPlanSettings,
+  extractDayMetrics,
   type DailyPlanData,
   type DailyPlanDay,
   type DailyPlanSettings,
+  type PlanMetricsResponse,
 } from '@lifeline/shared';
 import { useAuth } from '../../../app/providers/auth-context';
 import { daysBefore, weekDatesOf, weekStartOf } from '../lib/plan-model';
@@ -140,6 +142,28 @@ export function useRecentPlanDays(dateStr: string, windowDays = 28) {
 }
 
 /**
+ * Compact per-day life metrics for a range (the Statistics feed). Server
+ * mode hits GET /daily-plan/metrics; guest mode maps localStorage days
+ * through the SAME shared extractor. Historical data, low churn — edits to
+ * today are patched into matching caches by useSaveDay below.
+ */
+export function usePlanMetrics(range: { startDate: string; endDate: string }) {
+  const { planApi, mode } = usePlanApi();
+  const { checkedIdentity } = useAuth();
+  const query = useQuery({
+    queryKey: ['plan-metrics', mode, range.startDate, range.endDate],
+    enabled: checkedIdentity,
+    staleTime: 5 * 60_000,
+    queryFn: () => planApi.fetchMetrics(range.startDate, range.endDate),
+  });
+  return {
+    metrics: query.data?.items ?? [],
+    isLoading: query.isLoading,
+    ready: query.data !== undefined,
+  };
+}
+
+/**
  * Debounced day writer. `saveDay(date, next)` patches the week cache
  * immediately and schedules the PUT; pending writes flush on unmount.
  */
@@ -241,6 +265,37 @@ export function useSaveDay() {
           },
         },
         upsert,
+      );
+      // Statistics metrics caches covering this date update too — the shared
+      // extractor makes today's edits show up in charts without a refetch.
+      queryClient.setQueriesData<PlanMetricsResponse>(
+        {
+          predicate: (query) => {
+            const key = query.queryKey;
+            return (
+              Array.isArray(key) &&
+              key[0] === 'plan-metrics' &&
+              key[1] === mode &&
+              typeof key[2] === 'string' &&
+              typeof key[3] === 'string' &&
+              key[2] <= date &&
+              date <= key[3]
+            );
+          },
+        },
+        (response) => {
+          if (!response) return response;
+          const metric = extractDayMetrics(date, next);
+          const items = [...response.items];
+          const index = items.findIndex((m) => m.date === date);
+          if (index === -1) {
+            items.push(metric);
+            items.sort((a, b) => a.date.localeCompare(b.date));
+          } else {
+            items[index] = metric;
+          }
+          return { items };
+        },
       );
       pending.current.set(date, next);
       markDirty(`day:${date}`);

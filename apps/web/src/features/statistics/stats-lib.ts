@@ -82,6 +82,35 @@ export function presetWeekRange(
   return weekRange(format(addDays(now, offsetWeeks * 7), 'yyyy-MM-dd'), weekStart);
 }
 
+/** Metrics window for the "All" tab: the trailing 366 days (fits the cap). */
+export function allMetricsRange(now: Date = new Date()): StatsRange {
+  const end = format(now, 'yyyy-MM-dd');
+  return { startDate: format(addDays(now, -365), 'yyyy-MM-dd'), endDate: end };
+}
+
+/** Step the active range one period back/forward (the ‹ › chevrons). */
+export function stepRange(period: StatsPeriod, range: StatsRange, dir: -1 | 1): StatsRange {
+  const start = new Date(`${range.startDate}T00:00:00`);
+  switch (period) {
+    case 'day': {
+      const day = format(addDays(start, dir), 'yyyy-MM-dd');
+      return { startDate: day, endDate: day };
+    }
+    case 'week': {
+      const start2 = format(addDays(start, dir * 7), 'yyyy-MM-dd');
+      return { startDate: start2, endDate: format(addDays(start, dir * 7 + 6), 'yyyy-MM-dd') };
+    }
+    case 'month': {
+      const first = new Date(start.getFullYear(), start.getMonth() + dir, 1);
+      return monthRange(format(first, 'yyyy-MM'));
+    }
+    case 'year':
+      return yearRange(String(start.getFullYear() + dir));
+    default:
+      return range;
+  }
+}
+
 /** GET /stats query string for a selection (period branch for "all"). */
 export function statsQueryString(query: StatsQuery): string {
   if (query.mode === 'all') return '?period=year';

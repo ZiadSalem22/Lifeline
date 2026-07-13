@@ -20,6 +20,15 @@ export class DrizzleDailyPlanRepository implements DailyPlanRepository {
     return rows;
   }
 
+  async getAllDays(userId: string): Promise<DailyPlanDayRecord[]> {
+    const rows = await this.db
+      .select({ planDate: dailyPlans.planDate, data: dailyPlans.data })
+      .from(dailyPlans)
+      .where(eq(dailyPlans.userId, userId))
+      .orderBy(asc(dailyPlans.planDate));
+    return rows;
+  }
+
   async upsertDay(
     userId: string,
     planDate: string,

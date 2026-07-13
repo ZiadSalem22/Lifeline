@@ -3,8 +3,9 @@ import { format } from 'date-fns';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makeUserAuth, renderWithProviders } from '../../test/harness';
+import { defaultDailyPlanSettings } from '@lifeline/shared';
 import { bodyOf, jsonResponse, makeMe, makeSettings } from '../../test/test-utils';
-import { DonutChart } from './charts';
+import { DonutChart } from '../../shared/ui/charts/charts';
 import { weekRange } from './stats-lib';
 import { StatisticsView } from './StatisticsView';
 
@@ -45,6 +46,12 @@ function stubStatsFetch(completionRate = 50) {
       settingsBodies.push(bodyOf(init));
       return Promise.resolve(jsonResponse(makeSettings()));
     }
+    if (parsed.pathname === '/api/v1/daily-plan/settings') {
+      return Promise.resolve(jsonResponse(defaultDailyPlanSettings()));
+    }
+    if (parsed.pathname === '/api/v1/daily-plan/metrics') {
+      return Promise.resolve(jsonResponse({ items: [] }));
+    }
     if (parsed.pathname === '/api/v1/tags') return Promise.resolve(jsonResponse([]));
     if (parsed.pathname === '/api/v1/me') return Promise.resolve(jsonResponse(makeMe()));
     return Promise.resolve(
@@ -78,9 +85,12 @@ describe('StatisticsView (server mode)', () => {
     });
   });
 
-  it('renders the donut % and metric cards from the response', async () => {
+  it('renders the donut % and metric cards on the Tasks tab', async () => {
     stubStatsFetch(50);
+    const user = userEvent.setup();
     renderWithProviders(<StatisticsView />, { auth: makeUserAuth(makeMe()) });
+    // The task content lives in its own section now.
+    await user.click(await screen.findByRole('tab', { name: 'Tasks' }));
     expect(await screen.findByText('50%')).toBeInTheDocument();
     expect(screen.getByText('25m')).toBeInTheDocument(); // avg duration
     expect(screen.getByText('100m')).toBeInTheDocument(); // time spent

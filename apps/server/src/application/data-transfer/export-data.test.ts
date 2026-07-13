@@ -52,8 +52,17 @@ function build() {
   const tags = new InMemoryTagRepository();
   tags.seedDefaults();
   const todos = new InMemoryTodoRepository(tags);
-  return { todos, tags, exportData: new ExportData({ todos, tags }, () => FROZEN_NOW) };
+  return {
+    todos,
+    tags,
+    exportData: new ExportData({ todos, tags, dailyPlans: emptyPlanRepo }, () => FROZEN_NOW),
+  };
 }
+
+const emptyPlanRepo = {
+  getAllDays: () => Promise.resolve([]),
+  getSettings: () => Promise.resolve(null),
+};
 
 describe('ExportData.buildJson', () => {
   it('emits the full payload: camelCase user block, todos, tags, stats', async () => {

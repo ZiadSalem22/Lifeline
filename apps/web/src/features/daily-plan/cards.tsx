@@ -885,12 +885,26 @@ export interface WeekReviewBodyProps {
   tasksDone: number;
   tasksTotal: number;
   onSelectDay?: ((date: string) => void) | undefined;
+  /** Opens the dedicated Weekly Review page for this week. */
+  onOpenFull?: (() => void) | undefined;
 }
 
 /** Seven mini score bars + week aggregates — "how did this week actually go?". */
 export function WeekReviewBody(props: WeekReviewBodyProps) {
   return (
     <div className={styles.cardBody}>
+      {props.onOpenFull && (
+        <div className={styles.addTaskRow}>
+          <button
+            type="button"
+            className={styles.addTaskBtn}
+            aria-label="Open the full weekly review"
+            onClick={props.onOpenFull}
+          >
+            FULL REVIEW →
+          </button>
+        </div>
+      )}
       <div className={styles.weekBars}>
         {props.weekDates.map((date, i) => {
           const score = props.scores[i] ?? null;

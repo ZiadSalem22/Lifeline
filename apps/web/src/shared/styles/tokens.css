@@ -62,6 +62,27 @@
   --gap-page: 48px;
   --gap-page-mobile: 24px;
 
+  /*
+   * Theme-pass tokens (defaults; themes override below):
+   * - on-primary: ink on a primary-filled surface (buttons, active chips)
+   * - scrim: modal backdrop dimming (split from --shadow-dark, which some
+   *   light themes set to a near-invisible 0.1 alpha)
+   * - chart-*: data ink for the statistics/review charts — several themes'
+   *   --color-primary sits at ~1.4-3:1 on their surfaces, so charts get a
+   *   guaranteed-contrast ink instead of inheriting primary directly
+   * - priority-*: task priority badges (were hardcoded dark-theme hexes)
+   */
+  --color-on-primary: #fff;
+  --scrim: rgba(0, 0, 0, 0.45);
+  --chart-ink: var(--color-primary);
+  --chart-ink-2: var(--color-text-muted);
+  --chart-track: color-mix(in srgb, var(--color-text) 8%, transparent);
+  --chart-grid: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --chart-target: color-mix(in srgb, var(--color-text) 45%, transparent);
+  --priority-high: #ef4444;
+  --priority-medium: #fdba74;
+  --priority-low: #6ee7b7;
+
   /* Brand aliases (design/colors.css) */
   --brand-primary: var(--color-primary);
   --brand-text: var(--color-text);
@@ -99,6 +120,9 @@
 
   --color-top-bar-bg: rgba(0, 0, 0, 0.7);
   --search-focus: rgba(0, 255, 65, 0.18);
+
+  --color-on-primary: #000;
+  --scrim: rgba(0, 0, 0, 0.6);
 }
 
 [data-theme='blue-dark'] {
@@ -120,6 +144,9 @@
 
   --color-top-bar-bg: rgba(0, 16, 32, 0.7);
   --search-focus: rgba(30, 144, 255, 0.18);
+
+  --color-on-primary: #001428;
+  --scrim: rgba(0, 0, 0, 0.6);
 }
 
 [data-theme='white'] {
@@ -142,6 +169,13 @@
 
   --color-top-bar-bg: rgba(255, 255, 255, 0.7);
   --search-focus: rgba(48, 199, 99, 0.18);
+
+  --color-on-primary: #0d3b24;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --chart-ink: #15803d;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
 }
 
 [data-theme='paper'] {
@@ -164,6 +198,12 @@
 
   --color-top-bar-bg: rgba(251, 250, 247, 0.85);
   --search-focus: rgba(20, 20, 20, 0.12);
+
+  --color-on-primary: #fff;
+  --scrim: rgba(20, 20, 20, 0.4);
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
 }
 
 [data-theme='clean-beige'] {
@@ -185,6 +225,13 @@
 
   --color-top-bar-bg: rgba(253, 251, 247, 0.85);
   --search-focus: rgba(139, 119, 101, 0.15);
+
+  --color-on-primary: #fdfbf7;
+  --scrim: rgba(74, 64, 54, 0.4);
+  --chart-ink: #6b5645;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
 }
 
 [data-theme='pink'] {
@@ -203,6 +250,16 @@
   --color-danger: #dc143c;
   --shadow-primary: rgba(255, 105, 180, 0.4);
   --shadow-dark: rgba(0, 0, 0, 0.1);
+
+  --color-on-primary: #500724;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --chart-ink: #c2185b;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
+
+  --color-top-bar-bg: rgba(255, 240, 245, 0.8);
+  --search-focus: rgba(255, 105, 180, 0.18);
 }
 
 [data-theme='red'] {
@@ -221,6 +278,16 @@
   --color-danger: #ff0000;
   --shadow-primary: rgba(220, 20, 60, 0.4);
   --shadow-dark: rgba(0, 0, 0, 0.1);
+
+  --color-on-primary: #fff;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --chart-ink: #7f1d1d;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
+
+  --color-top-bar-bg: rgba(255, 245, 238, 0.8);
+  --search-focus: rgba(220, 20, 60, 0.15);
 }
 
 [data-theme='blue'] {
@@ -239,6 +306,16 @@
   --color-danger: #ff0000;
   --shadow-primary: rgba(30, 144, 255, 0.4);
   --shadow-dark: rgba(0, 0, 0, 0.1);
+
+  --color-on-primary: #04234d;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --chart-ink: #1565c0;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
+
+  --color-top-bar-bg: rgba(240, 248, 255, 0.8);
+  --search-focus: rgba(30, 144, 255, 0.15);
 }
 
 [data-theme='midnight'] {
@@ -257,6 +334,13 @@
   --color-danger: #ff6347; /* Tomato */
   --shadow-primary: rgba(138, 43, 226, 0.4);
   --shadow-dark: rgba(0, 0, 0, 0.5);
+
+  --color-on-primary: #f8f5ff;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --chart-ink: #b39ddb;
+
+  --color-top-bar-bg: rgba(25, 25, 112, 0.75);
+  --search-focus: rgba(138, 43, 226, 0.25);
 }
 
 [data-theme='sunset'] {
@@ -275,4 +359,14 @@
   --color-danger: #dc143c; /* Crimson */
   --shadow-primary: rgba(255, 140, 0, 0.4);
   --shadow-dark: rgba(0, 0, 0, 0.1);
+
+  --color-on-primary: #431c00;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --chart-ink: #c2410c;
+  --priority-high: #b91c1c;
+  --priority-medium: #b45309;
+  --priority-low: #047857;
+
+  --color-top-bar-bg: rgba(255, 250, 240, 0.8);
+  --search-focus: rgba(255, 140, 0, 0.18);
 }

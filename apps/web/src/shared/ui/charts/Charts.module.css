@@ -1,0 +1,105 @@
+/**
+ * Chart kit styles. Data ink comes from the chart tokens (tokens.css):
+ * --chart-ink / --chart-ink-2 are guaranteed-contrast per theme;
+ * --chart-track / --chart-grid / --chart-target derive from the text color.
+ */
+
+.chartEmpty {
+  padding: var(--space-16);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.lineChart {
+  max-width: 100%;
+}
+
+.chartScroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* ── stat tile ───────────────────────────────────────────────────────────── */
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background: var(--color-surface);
+  min-width: 0;
+}
+
+.tileLabel {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.tileRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tileValue {
+  font-size: 1.45rem;
+  font-weight: 700;
+  font-family: var(--font-family-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tileDelta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.tileDelta[data-tone='good'] {
+  color: var(--chart-ink);
+}
+
+.tileDelta[data-tone='bad'] {
+  color: var(--color-danger);
+}
+
+.tileSpark {
+  margin-top: 2px;
+  color: var(--chart-ink);
+}
+
+/* ── calendar heatmap ────────────────────────────────────────────────────── */
+
+.heatWrap {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatWeek {
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+}
+
+.heatCell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--chart-track);
+}
+
+.heatCell[data-empty='true'] {
+  background: transparent;
+  outline: 1px solid var(--chart-track);
+  outline-offset: -1px;
+}

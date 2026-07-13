@@ -22,7 +22,7 @@
   --plan-surface2: var(--color-surface-light);
   --plan-hover: var(--color-surface-hover);
   --plan-primary: var(--color-primary);
-  --plan-primary-ink: var(--color-bg);
+  --plan-primary-ink: var(--color-on-primary);
   --plan-muted: var(--color-text-muted);
   --plan-danger: var(--color-danger);
   --plan-rad: 12px;

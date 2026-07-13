@@ -37,6 +37,7 @@ import { CreateTag } from './application/tags/create-tag.js';
 import { UpdateTag } from './application/tags/update-tag.js';
 import { DeleteTag } from './application/tags/delete-tag.js';
 import { GetStats } from './application/stats/get-stats.js';
+import { GetPlanMetrics } from './application/daily-plan/get-plan-metrics.js';
 import { ExportData } from './application/data-transfer/export-data.js';
 import { ImportData } from './application/data-transfer/import-data.js';
 import { ResetAccount } from './application/data-transfer/reset-account.js';
@@ -104,6 +105,7 @@ export interface Container {
     updateTag: UpdateTag;
     deleteTag: DeleteTag;
     getStats: GetStats;
+    getPlanMetrics: GetPlanMetrics;
     exportData: ExportData;
     importData: ImportData;
     resetAccount: ResetAccount;
@@ -181,7 +183,12 @@ export function buildContainer(
     updateTag: new UpdateTag({ tags: repos.tags }),
     deleteTag: new DeleteTag({ tags: repos.tags }),
     getStats: new GetStats({ todos: repos.todos }),
-    exportData: new ExportData({ todos: repos.todos, tags: repos.tags }),
+    getPlanMetrics: new GetPlanMetrics({ dailyPlans: repos.dailyPlans }),
+    exportData: new ExportData({
+      todos: repos.todos,
+      tags: repos.tags,
+      dailyPlans: repos.dailyPlans,
+    }),
     importData: new ImportData({ todos: repos.todos }),
     resetAccount: new ResetAccount({
       todos: repos.todos,
@@ -250,7 +257,11 @@ export function buildContainer(
     },
     {
       path: '/daily-plan',
-      router: buildDailyPlanRouter({ dailyPlans: repos.dailyPlans, registry }),
+      router: buildDailyPlanRouter({
+        dailyPlans: repos.dailyPlans,
+        getPlanMetrics: useCases.getPlanMetrics,
+        registry,
+      }),
     },
     {
       path: '/mcp-keys',

@@ -7,20 +7,25 @@ import {
   dailyPlanSettingsSchema,
   dateOnlySchema,
   defaultDailyPlanSettings,
+  planMetricsQuerySchema,
+  planMetricsResponseSchema,
   problemSchema,
   putDailyPlanDaySchema,
   putDailyPlanSettingsSchema,
   type DailyPlanRangeQuery,
+  type PlanMetricsQuery,
   type PutDailyPlanDay,
   type PutDailyPlanSettings,
 } from '@lifeline/shared';
 import { DomainValidationError, UnauthorizedError } from '../../domain/errors.js';
 import type { DailyPlanRepository } from '../../application/ports.js';
+import type { GetPlanMetrics } from '../../application/daily-plan/get-plan-metrics.js';
 import { getValidated, validate } from '../middleware/validate.js';
 import type { OpenApiRegistry } from '../openapi/registry.js';
 
 export interface DailyPlanRouterDeps {
   dailyPlans: DailyPlanRepository;
+  getPlanMetrics: GetPlanMetrics;
   registry: OpenApiRegistry;
 }
 
@@ -66,6 +71,23 @@ export function buildDailyPlanRouter(deps: DailyPlanRouterDeps): Router {
     }
     const rows = await deps.dailyPlans.getRange(user.id, start, end);
     res.json({ items: rows.map((row) => ({ date: row.planDate, data: row.data })) });
+  });
+
+  deps.registry.register({
+    method: 'get',
+    path: '/api/v1/daily-plan/metrics',
+    summary: 'Compact per-day life metrics for a range (≤ 400 days) — the Statistics feed',
+    tag: 'daily-plan',
+    responses: {
+      '200': { description: 'Per-day metrics', schema: planMetricsResponseSchema },
+      '400': { description: 'Invalid or too-wide range', schema: problemSchema },
+      '401': { description: 'Not authenticated', schema: problemSchema },
+    },
+  });
+  router.get('/metrics', validate(planMetricsQuerySchema, 'query'), async (req, res) => {
+    const user = requireCurrentUser(req.currentUser);
+    const { start, end } = getValidated<PlanMetricsQuery>(req, 'query');
+    res.json(await deps.getPlanMetrics.execute(user.id, { start, end }));
   });
 
   deps.registry.register({

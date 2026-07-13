@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { PROBLEM_CONTENT_TYPE, emptyDailyPlanData, problemSchema } from '@lifeline/shared';
 import { OpenApiRegistry } from '../../src/http/openapi/registry.js';
 import { buildDailyPlanRouter } from '../../src/http/routes/daily-plan.js';
+import { GetPlanMetrics } from '../../src/application/daily-plan/get-plan-metrics.js';
 import type { DailyPlanDayRecord, DailyPlanRepository } from '../../src/application/ports.js';
 import { makeApp, makeUser } from '../helpers/router-app.js';
 
@@ -10,6 +11,10 @@ import { makeApp, makeUser } from '../helpers/router-app.js';
 class InMemoryDailyPlanRepository implements DailyPlanRepository {
   days = new Map<string, Record<string, unknown>>(); // `${userId}|${date}`
   settings = new Map<string, Record<string, unknown>>();
+
+  getAllDays(userId: string): Promise<DailyPlanDayRecord[]> {
+    return this.getRange(userId, '0000-01-01', '9999-12-31');
+  }
 
   getRange(userId: string, start: string, end: string): Promise<DailyPlanDayRecord[]> {
     const rows: DailyPlanDayRecord[] = [];
@@ -47,7 +52,11 @@ beforeEach(() => {
   repo = new InMemoryDailyPlanRepository();
   app = makeApp(
     '/api/v1/daily-plan',
-    buildDailyPlanRouter({ dailyPlans: repo, registry: new OpenApiRegistry() }),
+    buildDailyPlanRouter({
+      dailyPlans: repo,
+      getPlanMetrics: new GetPlanMetrics({ dailyPlans: repo }),
+      registry: new OpenApiRegistry(),
+    }),
     makeUser({ id: 'u1' }),
   );
 });
@@ -58,6 +67,68 @@ function expectProblem(response: request.Response, status: number, code: string)
   expect(problemSchema.safeParse(response.body).success).toBe(true);
   expect(response.body).toMatchObject({ status, code });
 }
+
+describe('GET /api/v1/daily-plan/metrics', () => {
+  it('maps stored blobs through the shared extractor (user-scoped)', async () => {
+    await request(app)
+      .put('/api/v1/daily-plan/2026-07-09')
+      .send({
+        data: {
+          water: 5,
+          habits: { fajr: true, gym: 'skip' },
+          priorities: [{ t: 'Ship', done: true }],
+          meals: { breakfast: [{ n: 'Eggs', cal: 156, p: 12, c: 1, f: 10 }] },
+          moodAm: 4,
+        },
+      });
+    // Another user's row must not leak in.
+    repo.days.set('u2|2026-07-10', { water: 9 });
+
+    const res = await request(app).get(
+      '/api/v1/daily-plan/metrics?start=2026-07-01&end=2026-07-31',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0]).toMatchObject({
+      date: '2026-07-09',
+      water: 5,
+      kcal: 156,
+      protein: 12,
+      mealCount: 1,
+      prioritiesDone: 1,
+      prioritiesTotal: 1,
+      moodAm: 4,
+      moodPm: null,
+      habits: { fajr: true, gym: 'skip' },
+    });
+  });
+
+  it('rejects a range wider than 400 days and a reversed range', async () => {
+    expectProblem(
+      await request(app).get('/api/v1/daily-plan/metrics?start=2025-01-01&end=2026-06-01'),
+      400,
+      'validation_failed',
+    );
+    expectProblem(
+      await request(app).get('/api/v1/daily-plan/metrics?start=2026-07-10&end=2026-07-01'),
+      400,
+      'validation_failed',
+    );
+  });
+
+  it('a corrupt stored row is skipped, not a 500', async () => {
+    repo.days.set('u1|2026-07-08', { water: 'not-a-number' });
+    await request(app)
+      .put('/api/v1/daily-plan/2026-07-09')
+      .send({ data: { water: 2 } });
+    const res = await request(app).get(
+      '/api/v1/daily-plan/metrics?start=2026-07-01&end=2026-07-31',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0].date).toBe('2026-07-09');
+  });
+});
 
 describe('PUT /api/v1/daily-plan/:date → GET range roundtrip', () => {
   it('upserts a normalized day blob and returns it in a range query', async () => {
@@ -157,7 +228,11 @@ describe('auth gate', () => {
   it('401 problem when unauthenticated', async () => {
     const anonApp = makeApp(
       '/api/v1/daily-plan',
-      buildDailyPlanRouter({ dailyPlans: repo, registry: new OpenApiRegistry() }),
+      buildDailyPlanRouter({
+        dailyPlans: repo,
+        getPlanMetrics: new GetPlanMetrics({ dailyPlans: repo }),
+        registry: new OpenApiRegistry(),
+      }),
       null,
     );
     expectProblem(

@@ -256,6 +256,11 @@ export default function DashboardPage() {
     [navigate],
   );
 
+  const handleOpenReview = useCallback(
+    (weekStart: string) => void navigate(`/review/${weekStart}`),
+    [navigate],
+  );
+
   if (todosQuery.isLoading) {
     return (
       <div className={styles.loadingWrap}>
@@ -388,6 +393,7 @@ export default function DashboardPage() {
           allTags={allTags}
           onOpenTask={handleOpenPlanTask}
           onSelectDay={handleSelectPlanDay}
+          onOpenReview={handleOpenReview}
         />
       ) : (
         <>
