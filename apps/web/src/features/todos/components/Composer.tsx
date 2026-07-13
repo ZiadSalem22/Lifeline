@@ -375,11 +375,12 @@ export function Composer({
                 const hasProgress = todo.subtasks.some((subtask) => subtask.isCompleted);
                 // onMouseDown (not onClick) + preventDefault so the title input
                 // does not blur-and-hide the list before the action lands.
-                const pick =
-                  (keepProgress: boolean) => (event: ReactMouseEvent<HTMLButtonElement>) => {
-                    event.preventDefault();
-                    applyTemplate(todo, keepProgress);
-                  };
+                // stopPropagation so a specific button beats the row's default.
+                const pick = (keepProgress: boolean) => (event: ReactMouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  applyTemplate(todo, keepProgress);
+                };
                 return (
                   <li
                     key={todo.id}
@@ -391,6 +392,13 @@ export function Composer({
                         : styles.suggestion
                     }
                     onMouseEnter={() => setHighlight(index)}
+                    // The WHOLE row reuses the task (fresh copy — the common
+                    // case): a tiny copy button on the right was too fiddly.
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      applyTemplate(todo, false);
+                    }}
+                    title="Click to reuse this task"
                   >
                     <span className={styles.suggestionInfo}>
                       <span className={styles.suggestionNum}>#{todo.taskNumber}</span>
@@ -410,32 +418,18 @@ export function Composer({
                     </span>
                     <span className={styles.suggestionActions}>
                       {hasProgress ? (
-                        <>
-                          <button
-                            type="button"
-                            className={styles.suggestionAction}
-                            onMouseDown={pick(false)}
-                            title="New task with subtasks unchecked"
-                          >
-                            Fresh copy
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.suggestionAction}
-                            onMouseDown={pick(true)}
-                            title="New task keeping subtask progress"
-                          >
-                            Keep progress
-                          </button>
-                        </>
-                      ) : (
                         <button
                           type="button"
                           className={styles.suggestionAction}
-                          onMouseDown={pick(false)}
+                          onMouseDown={pick(true)}
+                          title="Reuse and keep subtask progress (the row itself makes a fresh copy)"
                         >
-                          Copy
+                          Keep progress
                         </button>
+                      ) : (
+                        <span className={styles.suggestionHint} aria-hidden="true">
+                          copy ↵
+                        </span>
                       )}
                     </span>
                   </li>

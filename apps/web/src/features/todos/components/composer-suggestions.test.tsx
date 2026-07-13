@@ -43,7 +43,7 @@ const weeklyWithDoneSubtask = makeTodo({
 });
 
 describe('Composer type-ahead suggestions', () => {
-  it('offers Fresh copy + Keep progress for a task with completed subtasks; Fresh copy unchecks them', async () => {
+  it('completed-subtask task: the row copies fresh (subtasks unchecked); Keep progress is offered', async () => {
     const user = userEvent.setup();
     renderComposer([weeklyWithDoneSubtask, makeTodo({ taskNumber: 13, title: 'Buy groceries' })]);
 
@@ -54,13 +54,14 @@ describe('Composer type-ahead suggestions', () => {
     expect(within(listbox).getByText('Weekly report review')).toBeInTheDocument();
     expect(within(listbox).queryByText('Buy groceries')).not.toBeInTheDocument();
 
-    // A task with a ticked subtask exposes both actions.
-    const fresh = within(listbox).getByRole('button', { name: 'Fresh copy' });
+    // Progress case keeps a secondary "Keep progress" button; the row itself
+    // makes a fresh copy, so there is no separate "Fresh copy"/"Copy" button.
     expect(within(listbox).getByRole('button', { name: 'Keep progress' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('button', { name: 'Fresh copy' })).not.toBeInTheDocument();
 
-    await user.click(fresh);
+    // Clicking the whole row copies fresh — the subtask carries over unchecked.
+    await user.click(within(listbox).getByRole('option'));
 
-    // Full template loaded; the subtask carried over but RESET to unchecked.
     expect(screen.getByLabelText('Task title')).toHaveValue('Weekly report review');
     expect(screen.getByLabelText('Task description')).toHaveValue('summarize wins');
     expect(screen.getByLabelText('Toggle subtask Collect data')).not.toBeChecked();
@@ -79,16 +80,17 @@ describe('Composer type-ahead suggestions', () => {
     expect(screen.getByLabelText('Toggle subtask Collect data')).toBeChecked();
   });
 
-  it('shows a single Copy button when the task has no completed subtasks', async () => {
+  it('no-progress task: no action buttons — clicking the whole row copies it', async () => {
     const user = userEvent.setup();
     renderComposer([makeTodo({ taskNumber: 20, title: 'Buy groceries' })]);
 
     await user.type(screen.getByLabelText('Task title'), 'Buy');
     const listbox = await screen.findByRole('listbox');
-    expect(within(listbox).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
-    expect(within(listbox).queryByRole('button', { name: 'Fresh copy' })).not.toBeInTheDocument();
-    expect(
-      within(listbox).queryByRole('button', { name: 'Keep progress' }),
-    ).not.toBeInTheDocument();
+    // The row is the click target — no Copy / Fresh / Keep buttons at all.
+    expect(within(listbox).queryByRole('button')).not.toBeInTheDocument();
+
+    await user.click(within(listbox).getByRole('option'));
+    expect(screen.getByLabelText('Task title')).toHaveValue('Buy groceries');
+    expect(screen.queryByText('Reuse a previous task')).not.toBeInTheDocument();
   });
 });

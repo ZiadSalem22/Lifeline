@@ -36,6 +36,7 @@ import { Masthead } from './Masthead';
 import { PlanCard } from './PlanCard';
 import { PlanSettingsModal } from './PlanSettingsModal';
 import { ComposerModal } from './ComposerModal';
+import { TaskPreviewModal } from './TaskPreviewModal';
 import {
   FocusBody,
   GratitudeBody,
@@ -211,6 +212,12 @@ export function DailyPlanView({
     [],
   );
   const closeComposer = useCallback(() => setComposerTarget((t) => ({ ...t, open: false })), []);
+
+  // Task preview popup — clicking a task on a card opens a read-first detail
+  // view (check it / its subtasks) rather than jumping to the Tasks editor.
+  // Held by id and re-derived from the live list so toggles reflect at once.
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const previewTodo = previewId ? (todos.find((t) => t.id === previewId) ?? null) : null;
 
   // Quick-add in the To-Do card creates a REAL task due the selected day.
   const createTodo = useCreateTodo();
@@ -564,7 +571,7 @@ export function DailyPlanView({
           suggestionsFor={suggestionsForHour}
           todos={dayTodos}
           onToggleTodo={toggleTask}
-          onOpenTask={(todo) => openTask(todo, dateStr)}
+          onOpenTask={(todo) => setPreviewId(todo.id)}
           onAddTaskAt={(hour) => openComposer(dateStr, hour)}
           onToggleSubtask={toggleSubtask}
         />
@@ -584,7 +591,7 @@ export function DailyPlanView({
           suggestions={prioSugs}
           highTodos={highTodos}
           onToggleTodo={toggleTask}
-          onOpenTask={(todo) => openTask(todo, dateStr)}
+          onOpenTask={(todo) => setPreviewId(todo.id)}
           onToggleSubtask={toggleSubtask}
         />
       ),
@@ -628,7 +635,7 @@ export function DailyPlanView({
           patch={patchDay}
           todos={dayTodos}
           onToggleTodo={toggleTask}
-          onOpenTask={(todo) => openTask(todo, dateStr)}
+          onOpenTask={(todo) => setPreviewId(todo.id)}
           onAddTask={() => openComposer(dateStr)}
           quickDraft={quickDraft}
           onQuickDraft={setQuickDraft}
@@ -656,7 +663,7 @@ export function DailyPlanView({
           count={settings.tomorrowCount}
           todos={tomorrowTodos}
           onToggleTodo={toggleTask}
-          onOpenTask={(todo) => openTask(todo, tomorrowStr)}
+          onOpenTask={(todo) => setPreviewId(todo.id)}
           onAddTask={() => openComposer(tomorrowStr)}
           onToggleSubtask={toggleSubtask}
         />
@@ -942,6 +949,17 @@ export function DailyPlanView({
         initialDueDate={composerTarget.date}
         initialDueTime={composerTarget.time}
         onClose={closeComposer}
+      />
+
+      <TaskPreviewModal
+        todo={previewTodo}
+        onClose={() => setPreviewId(null)}
+        onToggleComplete={toggleTask}
+        onToggleSubtask={toggleSubtask}
+        onEdit={(todo) => {
+          setPreviewId(null);
+          openTask(todo, todo.dueDate ?? dateStr);
+        }}
       />
     </div>
   );

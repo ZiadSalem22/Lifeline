@@ -53,15 +53,20 @@ describe('To-Do card', () => {
     await waitFor(() => expect(input).toHaveValue(''));
   });
 
-  it('renders the day tasks; open titles fire onOpenTask, completed titles do not link', async () => {
+  it('clicking a title previews the task; Edit in Tasks hands off via onOpenTask', async () => {
     const open = makeTodo({ title: 'Ship report', dueDate: '2026-07-09' });
     const done = makeTodo({ title: 'Old chore', dueDate: '2026-07-09', isCompleted: true });
     const { onOpenTask } = renderPlan([open, done]);
 
     const user = userEvent.setup();
+    // Clicking the title opens the preview popup (no navigation yet).
     await user.click(await screen.findByRole('button', { name: 'Ship report' }));
+    const dialog = await screen.findByRole('dialog', { name: /Task/ });
+    expect(onOpenTask).not.toHaveBeenCalled();
+    // Edit in Tasks hands off to the full editor with the task + its day.
+    await user.click(within(dialog).getByRole('button', { name: 'Edit in Tasks →' }));
     expect(onOpenTask).toHaveBeenCalledWith(expect.objectContaining({ id: open.id }), '2026-07-09');
-    // Completed task title is plain text (the Tasks editor refuses them).
+    // Completed task title stays plain text (no preview link).
     expect(screen.queryByRole('button', { name: 'Old chore' })).not.toBeInTheDocument();
     expect(screen.getByText('Old chore')).toBeInTheDocument();
   });
@@ -124,6 +129,8 @@ describe('Tomorrow card', () => {
     const user = userEvent.setup();
     // The task renders in the Tomorrow card (not the To-Do card: count is 1).
     await user.click(await screen.findByRole('button', { name: 'Prep slides' }));
+    const preview = await screen.findByRole('dialog', { name: /Task/ });
+    await user.click(within(preview).getByRole('button', { name: 'Edit in Tasks →' }));
     expect(onOpenTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: tomorrowTask.id }),
       '2026-07-10',

@@ -143,6 +143,7 @@
   flex-wrap: wrap;
   gap: var(--space-6) var(--space-8);
   padding: var(--space-8) var(--space-10);
+  cursor: pointer;
   border-radius: var(--radius-8);
   color: var(--color-text);
   transition: background var(--transition-fast);
@@ -210,6 +211,21 @@
 .suggestionAction:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+/* Muted affordance shown when a row has no subtask progress — the row click
+   already copies, so no button is needed. */
+.suggestionHint {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.suggestion:hover .suggestionHint,
+.suggestionActive .suggestionHint {
+  opacity: 1;
 }
 
 .descriptionInput {

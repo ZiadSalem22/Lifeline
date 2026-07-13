@@ -1,0 +1,241 @@
+/** Task preview popup — portaled to <body>, so it uses the global --color-*
+    tokens (plan tokens are container-scoped and unavailable here). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-24) var(--space-16);
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+}
+
+.sheet {
+  width: min(440px, 100%);
+  margin-top: min(10vh, 80px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background: var(--color-surface);
+  box-shadow: 0 24px 60px var(--shadow-dark);
+}
+
+/* ── header ──────────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.num {
+  padding: 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.priority {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-on-primary);
+}
+
+.priority[data-priority='high'] {
+  background: var(--priority-high);
+}
+
+.priority[data-priority='medium'] {
+  background: var(--priority-medium);
+}
+
+.priority[data-priority='low'] {
+  background: var(--priority-low);
+}
+
+.flag {
+  color: var(--color-warning, #b45309);
+  font-size: 0.9rem;
+}
+
+.close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus-visible {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* ── title ───────────────────────────────────────────────────────────────── */
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+}
+
+.title,
+.titleDone {
+  margin: 0;
+  font-family: var(--font-family-heading);
+  font-size: 1.3rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.titleDone {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.meta {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── tags ────────────────────────────────────────────────────────────────── */
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--color-text);
+}
+
+.tagChipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.desc {
+  margin: 0;
+  padding: var(--space-10) var(--space-12);
+  border-left: 2px solid var(--color-border);
+  background: var(--color-surface-light);
+  border-radius: 0 var(--radius-8) var(--radius-8) 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+/* ── subtasks ────────────────────────────────────────────────────────────── */
+
+.subs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.subsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.subsCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-surface-light);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: width var(--transition-base);
+}
+
+.subList {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.subRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: 0.85rem;
+}
+
+.subDone {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+/* ── footer ──────────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-4);
+}
+
+.editBtn {
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editBtn:hover,
+.editBtn:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface-light);
+}

@@ -57,6 +57,19 @@ export function SquareCheck(props: { on: boolean; label: string; onToggle: () =>
 
 type SubtaskToggle = (todo: Todo, subtaskId: string) => void;
 
+/** Up to 3 tag dots + "+N"; full names in the tooltip. Compact for card rows. */
+function TagCluster({ tags }: { tags: Todo['tags'] }) {
+  if (tags.length === 0) return null;
+  return (
+    <span className={styles.tagCluster} title={tags.map((tag) => tag.name).join(', ')}>
+      {tags.slice(0, 3).map((tag) => (
+        <span key={tag.id} className={styles.tagDot} style={{ background: tag.color }} />
+      ))}
+      {tags.length > 3 && <span className={styles.tagMore}>+{tags.length - 3}</span>}
+    </span>
+  );
+}
+
 /** Expandable subtask checklist shared by task rows and schedule chips. */
 function SubtaskDisclosure(props: { todo: Todo; expanded: boolean; onToggleExpand: () => void }) {
   const done = props.todo.subtasks.filter((s) => s.isCompleted).length;
@@ -135,7 +148,7 @@ function TaskRow(props: {
             type="button"
             dir="auto"
             className={styles.todoTitleBtn}
-            title="Open in Tasks"
+            title="Preview task"
             onClick={() => props.onOpen(todo)}
           >
             {todo.title}
@@ -154,9 +167,7 @@ function TaskRow(props: {
             </span>
           )
         )}
-        {todo.tags[0] && (
-          <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-        )}
+        <TagCluster tags={todo.tags} />
       </div>
       {expandable && expanded && props.onToggleSubtask && (
         <SubtaskList todo={todo} onToggleSubtask={props.onToggleSubtask} />
@@ -228,7 +239,7 @@ function SchedChip(props: {
             type="button"
             dir="auto"
             className={styles.todoTitleBtn}
-            title="Open in Tasks"
+            title="Preview task"
             onClick={() => props.onOpen(todo)}
           >
             {todo.title}
@@ -242,9 +253,7 @@ function SchedChip(props: {
           />
         )}
         {showTime && <span className={styles.chipTime}>{todo.dueTime}</span>}
-        {todo.tags[0] && (
-          <span className={styles.tagDot} style={{ background: todo.tags[0].color }} />
-        )}
+        <TagCluster tags={todo.tags} />
       </div>
       {expandable && expanded && props.onToggleSubtask && (
         <div className={styles.schedChipSubs}>
