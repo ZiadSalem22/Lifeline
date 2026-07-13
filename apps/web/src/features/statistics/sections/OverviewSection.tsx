@@ -2,6 +2,8 @@ import type { StatsResponse } from '@lifeline/shared';
 import { CalendarHeatmap, StatTile, TrendLine } from '../../../shared/ui/charts/charts';
 import type { HeatDay } from '../../../shared/ui/charts/charts';
 import { weekIndexOf } from '../../daily-plan/lib/plan-model';
+import { toWeightDisplay } from '../../daily-plan/lib/units';
+import type { WeightUnit } from '../../daily-plan/lib/units';
 import { formatDelta, type PlanAggregates } from '../plan-metrics-lib';
 import styles from '../Statistics.module.css';
 
@@ -12,10 +14,18 @@ export interface OverviewSectionProps {
   taskStats: StatsResponse | null;
   /** Heatmap only makes sense beyond a handful of days. */
   showHeatmap: boolean;
+  /** Weight display unit — storage is kg, this only formats. */
+  weightUnit: WeightUnit;
 }
 
 /** The executive page: headline tiles with deltas, score trend, score heat. */
-export function OverviewSection({ agg, prev, taskStats, showHeatmap }: OverviewSectionProps) {
+export function OverviewSection({
+  agg,
+  prev,
+  taskStats,
+  showHeatmap,
+  weightUnit,
+}: OverviewSectionProps) {
   if (agg.daysWithData === 0) {
     return (
       <div className={styles.chartEmpty}>
@@ -38,9 +48,10 @@ export function OverviewSection({ agg, prev, taskStats, showHeatmap }: OverviewS
   // Weight change across the period, first → last weigh-in. Neutral tone on
   // purpose: whether losing or gaining is "good" is the user's goal, not ours.
   const w = agg.weight;
+  const wDisp = (kg: number) => toWeightDisplay(kg, weightUnit);
   const weightDelta =
     w.first && w.last && w.first.date !== w.last.date
-      ? formatDelta(w.last.kg, w.first.kg, ' kg')
+      ? formatDelta(wDisp(w.last.kg), wDisp(w.first.kg), ` ${weightUnit}`)
       : undefined;
 
   // Pad to a Monday start so heat columns are calendar weeks.
@@ -94,7 +105,7 @@ export function OverviewSection({ agg, prev, taskStats, showHeatmap }: OverviewS
         {w.last && (
           <StatTile
             label="Weight"
-            value={`${w.last.kg} kg`}
+            value={`${wDisp(w.last.kg)} ${weightUnit}`}
             delta={weightDelta?.text}
             deltaTone="neutral"
             deltaTitle="since the first weigh-in this period"
@@ -123,21 +134,27 @@ export function OverviewSection({ agg, prev, taskStats, showHeatmap }: OverviewS
           <TrendLine
             label="Weight trend"
             height={140}
-            yMin={Math.floor(w.min - 1)}
-            yMax={Math.ceil(w.max + 1)}
+            yMin={Math.floor(wDisp(w.min) - 1)}
+            yMax={Math.ceil(wDisp(w.max) + 1)}
             series={[
               {
-                label: 'Weight (kg)',
-                points: agg.dates.map((date, i) => ({ x: date, y: w.series[i] ?? null })),
+                label: `Weight (${weightUnit})`,
+                points: agg.dates.map((date, i) => {
+                  const kg = w.series[i];
+                  return { x: date, y: kg != null ? wDisp(kg) : null };
+                }),
               },
             ]}
           />
           <div className={styles.legend}>
             <span>
-              {w.first ? `${w.first.kg} kg → ${w.last?.kg} kg` : ''} · {w.count} weigh-ins
+              {w.first
+                ? `${wDisp(w.first.kg)} ${weightUnit} → ${wDisp(w.last?.kg ?? 0)} ${weightUnit}`
+                : ''}{' '}
+              · {w.count} weigh-ins
             </span>
             <span>
-              low {w.min} · high {w.max}
+              low {wDisp(w.min)} · high {wDisp(w.max)}
             </span>
           </div>
         </div>

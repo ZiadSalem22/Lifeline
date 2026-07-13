@@ -654,7 +654,15 @@ export function DailyPlanView({
     },
     weight: {
       ...(day.weight > 0 ? { badge: `${Math.round(day.weight * 10) / 10} kg` } : {}),
-      body: <WeightBody day={day} patch={patchDay} lastWeighIn={lastWeighIn} />,
+      body: (
+        <WeightBody
+          day={day}
+          patch={patchDay}
+          lastWeighIn={lastWeighIn}
+          settings={settings}
+          patchSettings={patchSettings}
+        />
+      ),
     },
     tomorrow: {
       body: (

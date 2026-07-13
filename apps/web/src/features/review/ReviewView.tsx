@@ -14,6 +14,8 @@ import {
   weekDatesOf,
   weekStartOf,
 } from '../daily-plan/lib/plan-model';
+import { toWeightDisplay } from '../daily-plan/lib/units';
+import type { WeightUnit } from '../daily-plan/lib/units';
 import { DonutChart } from '../../shared/ui/charts/charts';
 import styles from './Review.module.css';
 
@@ -296,23 +298,34 @@ function JournalWall({
 function WeightCard({
   weight,
   spanDays,
+  unit,
 }: {
   weight: ReturnType<typeof weightOf>;
   spanDays: number;
+  unit: WeightUnit;
 }) {
   if (weight.count === 0 || !weight.last) return null;
+  // Convert first/last separately, then re-subtract, so the shown delta matches
+  // the shown endpoints exactly in the chosen unit.
+  const dispLast = toWeightDisplay(weight.last.kg, unit);
+  const dispDelta =
+    weight.delta !== null && weight.first
+      ? Math.round((dispLast - toWeightDisplay(weight.first.kg, unit)) * 10) / 10
+      : null;
   return (
     <section className={styles.card}>
       <h2 className={styles.cardTitle}>Weight</h2>
       <div className={styles.statRow}>
         <span>
-          <span className={styles.bigStat}>{weight.last.kg} kg</span>
+          <span className={styles.bigStat}>
+            {dispLast} {unit}
+          </span>
           <span className={styles.miniLabel}>latest · {fmtDay(weight.last.date, 'MMM d')}</span>
         </span>
-        {weight.delta !== null && (
+        {dispDelta !== null && (
           <span>
             <span className={styles.bigStat}>
-              {weight.delta > 0 ? '▲' : weight.delta < 0 ? '▼' : '±'} {Math.abs(weight.delta)}
+              {dispDelta > 0 ? '▲' : dispDelta < 0 ? '▼' : '±'} {Math.abs(dispDelta)}
             </span>
             <span className={styles.miniLabel}>
               since {weight.first ? fmtDay(weight.first.date, 'MMM d') : ''}
@@ -344,6 +357,7 @@ function WeeklyReview({ token }: { token?: string | undefined }) {
   const { days: prevDays } = useDailyPlanWeek(daysBefore(weekStart, 7));
   const { settings } = usePlanSettings();
   const scoreBits = useScoreBits();
+  const { settings: planSettings } = usePlanSettings();
   const todosQuery = useAllTodos();
   const todos = useMemo(() => todosQuery.data ?? [], [todosQuery.data]);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -667,7 +681,7 @@ function WeeklyReview({ token }: { token?: string | undefined }) {
           </div>
         </section>
 
-        <WeightCard weight={weight} spanDays={7} />
+        <WeightCard weight={weight} spanDays={7} unit={planSettings.units.weight} />
       </div>
 
       {/* ── journal wall ─────────────────────────────────────────────────────── */}
@@ -705,6 +719,7 @@ function MonthlyReview({ token }: { token: string }) {
   );
   const { settings } = usePlanSettings();
   const scoreBits = useScoreBits();
+  const { settings: planSettings } = usePlanSettings();
   const todosQuery = useAllTodos();
   const todos = useMemo(() => todosQuery.data ?? [], [todosQuery.data]);
   const monthInputRef = useRef<HTMLInputElement | null>(null);
@@ -1054,7 +1069,7 @@ function MonthlyReview({ token }: { token: string }) {
           )}
         </section>
 
-        <WeightCard weight={weight} spanDays={dates.length} />
+        <WeightCard weight={weight} spanDays={dates.length} unit={planSettings.units.weight} />
       </div>
 
       {/* ── journal wall (only days that were written) ─────────────────────── */}

@@ -1281,6 +1281,121 @@ button.weekBarBtn:hover .weekBarFill {
   font-size: 0.8rem;
 }
 
+/* kg|lb and cm|in preference toggles (persist to settings.units). */
+.unitToggle {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+  padding: 2px;
+  align-self: center;
+}
+
+.unitToggleBtn {
+  padding: 2px 9px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.unitToggleOn {
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  font-weight: 600;
+}
+
+/* "+ Body measurements" disclosure — weight stays prominent above it. */
+.moreBtn {
+  align-self: flex-start;
+  margin: 2px var(--pad) 0;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: var(--plan-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.moreBtn:hover,
+.moreBtn:focus-visible {
+  color: var(--color-text);
+}
+
+.measureBlock {
+  margin: 2px var(--pad) 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--plan-rule);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.measureHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.measureHead {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+}
+
+.measureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
+}
+
+.measureRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.measureLabel {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.measureInput {
+  width: 4.5ch;
+  border: none;
+  border-bottom: 1px solid var(--plan-rule);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 0;
+}
+
+.measureInput::-webkit-outer-spin-button,
+.measureInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.measureInput:focus {
+  outline: none;
+  border-bottom-color: var(--plan-primary);
+}
+
+.measureUnit {
+  color: var(--plan-muted);
+  font-size: 10px;
+  width: 2.4ch;
+}
+
 /* ── workout ─────────────────────────────────────────────────────────────── */
 
 .gymHeadRow {

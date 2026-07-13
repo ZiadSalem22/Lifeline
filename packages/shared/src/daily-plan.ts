@@ -111,6 +111,21 @@ export const dailyPlanDataSchema = z.object({
   water: z.number().int().min(0).max(24).default(0),
   /** Body weight (kg) logged for THIS day; 0 = not weighed (0-as-unset). */
   weight: z.number().min(0).max(500).default(0),
+  /**
+   * Body measurements for THIS day (0 = unset, like weight). Circumferences are
+   * CM (canonical) and fat is a percentage; the UI shows them in the user's
+   * unit. Entered occasionally, so most days stay 0 — a sparse trend.
+   */
+  body: z
+    .object({
+      fat: z.number().min(0).max(100).default(0),
+      waist: z.number().min(0).max(500).default(0),
+      chest: z.number().min(0).max(500).default(0),
+      hips: z.number().min(0).max(500).default(0),
+      thigh: z.number().min(0).max(500).default(0),
+      arm: z.number().min(0).max(500).default(0),
+    })
+    .default({ fat: 0, waist: 0, chest: 0, hips: 0, thigh: 0, arm: 0 }),
   focusText: planLongText.default(''),
   gratitude: z.array(planText).max(8).default(['', '', '']),
   reviewWell: planLongText.default(''),
@@ -356,6 +371,15 @@ export const dailyPlanSettingsSchema = z.object({
       water: z.number().int().min(1).max(24).default(8),
     })
     .default({ kcal: 2400, protein: 180, carbs: 250, water: 8 }),
+  /** Display units — storage stays canonical (weight kg, lengths cm). */
+  units: z
+    .object({
+      weight: z.enum(['kg', 'lb']).default('kg'),
+      length: z.enum(['cm', 'in']).default('cm'),
+    })
+    .default({ weight: 'kg', length: 'cm' }),
+  /** Height in cm (canonical); 0 = unset. Near-static, so it lives in settings. */
+  height: z.number().min(0).max(300).default(0),
   /** Real task auto-completed when today's workout finishes (null = off). */
   gymTaskNumber: z.number().int().min(1).nullable().default(null),
   /** Habit row auto-checked when today's workout finishes. */

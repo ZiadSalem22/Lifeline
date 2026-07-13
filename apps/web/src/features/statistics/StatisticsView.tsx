@@ -441,6 +441,7 @@ export function StatisticsView() {
           prev={prevAgg}
           taskStats={stats}
           showHeatmap={period === 'month' || period === 'year' || period === 'all'}
+          weightUnit={planSettings.units.weight}
         />
       )}
       {section === 'tasks' && !loading && !error && stats && (

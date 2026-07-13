@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
-import type { DailyPlanData, HabitMark, PlanHabit, Todo } from '@lifeline/shared';
+import type {
+  DailyPlanData,
+  DailyPlanSettings,
+  HabitMark,
+  PlanHabit,
+  Todo,
+} from '@lifeline/shared';
 import {
   WEEK_DAY_NAMES,
   dividerBelowAt,
@@ -8,6 +14,12 @@ import {
   scheduleHours,
   withDividerAt,
 } from './lib/plan-model';
+import {
+  fromLengthDisplay,
+  fromWeightDisplay,
+  toLengthDisplay,
+  toWeightDisplay,
+} from './lib/units';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -1106,25 +1118,110 @@ export function WaterBody({
   );
 }
 
-/* ── Weight Log ──────────────────────────────────────────────────────────── */
+/* ── Weight & Body ───────────────────────────────────────────────────────── */
 
-const fmtWeight = (kg: number): string => String(Math.round(kg * 10) / 10);
+const fmt1 = (v: number): string => String(Math.round(v * 10) / 10);
+
+/** One measurement input — drafts in the display unit, stores canonical. */
+function MeasureField(props: {
+  label: string;
+  canonical: number;
+  unitLabel: string;
+  max: number;
+  toDisplay: (v: number) => number;
+  fromDisplay: (v: number) => number;
+  onCommit: (canonical: number) => void;
+}) {
+  const shown = () => (props.canonical > 0 ? String(props.toDisplay(props.canonical)) : '');
+  const [draft, setDraft] = useState(shown);
+  const [seen, setSeen] = useState(props.canonical);
+  if (props.canonical !== seen) {
+    setSeen(props.canonical);
+    setDraft(shown());
+  }
+  const commit = (raw: string) => {
+    if (raw.trim() === '') {
+      if (props.canonical !== 0) props.onCommit(0);
+      return;
+    }
+    const parsed = Number.parseFloat(raw);
+    if (Number.isNaN(parsed) || parsed < 0) return;
+    const canonical = Math.min(props.max, props.fromDisplay(parsed));
+    if (canonical !== props.canonical) props.onCommit(canonical);
+  };
+  return (
+    <label className={styles.measureRow}>
+      <span className={styles.measureLabel}>{props.label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step={0.1}
+        className={styles.measureInput}
+        value={draft}
+        placeholder="—"
+        aria-label={props.label}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          commit(e.target.value);
+        }}
+        onBlur={() => setDraft(shown())}
+      />
+      <span className={styles.measureUnit}>{props.unitLabel}</span>
+    </label>
+  );
+}
+
+function UnitToggle<T extends string>(props: {
+  label: string;
+  value: T;
+  options: readonly T[];
+  onPick: (value: T) => void;
+}) {
+  return (
+    <div className={styles.unitToggle} role="group" aria-label={props.label}>
+      {props.options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={
+            option === props.value
+              ? `${styles.unitToggleBtn} ${styles.unitToggleOn}`
+              : styles.unitToggleBtn
+          }
+          aria-pressed={option === props.value}
+          onClick={() => props.onPick(option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export interface WeightBodyProps {
   day: DailyPlanData;
   patch: Patch;
   /** Most recent earlier weigh-in (28-day window) — the comparison line. */
   lastWeighIn: { date: string; kg: number } | null;
+  settings: DailyPlanSettings;
+  patchSettings: (patch: Partial<DailyPlanSettings>) => void;
 }
 
-export function WeightBody({ day, patch, lastWeighIn }: WeightBodyProps) {
-  // Draft locally so clearing the field to retype doesn't snap to 0 mid-edit
-  // (the DraftNumber idiom); an empty field on purpose = "not weighed".
-  const [draft, setDraft] = useState(day.weight > 0 ? fmtWeight(day.weight) : '');
-  const [seen, setSeen] = useState(day.weight);
-  if (day.weight !== seen) {
-    setSeen(day.weight);
-    setDraft(day.weight > 0 ? fmtWeight(day.weight) : '');
+export function WeightBody({ day, patch, lastWeighIn, settings, patchSettings }: WeightBodyProps) {
+  const wUnit = settings.units.weight;
+  const lUnit = settings.units.length;
+  const [showMore, setShowMore] = useState(false);
+
+  // Draft locally so clearing to retype doesn't snap to 0 mid-edit; the draft
+  // is in the DISPLAY unit and re-syncs when the stored value OR unit changes.
+  const shownWeight = () => (day.weight > 0 ? String(toWeightDisplay(day.weight, wUnit)) : '');
+  const [draft, setDraft] = useState(shownWeight);
+  const sig = `${day.weight}|${wUnit}`;
+  const [seen, setSeen] = useState(sig);
+  if (sig !== seen) {
+    setSeen(sig);
+    setDraft(shownWeight());
   }
   const commit = (raw: string) => {
     if (raw.trim() === '') {
@@ -1133,11 +1230,31 @@ export function WeightBody({ day, patch, lastWeighIn }: WeightBodyProps) {
     }
     const parsed = Number.parseFloat(raw);
     if (Number.isNaN(parsed) || parsed <= 0) return;
-    const kg = Math.min(500, Math.round(parsed * 10) / 10);
+    const kg = Math.min(500, fromWeightDisplay(parsed, wUnit));
     if (kg !== day.weight) patch({ weight: kg });
   };
   const delta =
-    day.weight > 0 && lastWeighIn ? Math.round((day.weight - lastWeighIn.kg) * 10) / 10 : null;
+    day.weight > 0 && lastWeighIn
+      ? Math.round(
+          (toWeightDisplay(day.weight, wUnit) - toWeightDisplay(lastWeighIn.kg, wUnit)) * 10,
+        ) / 10
+      : null;
+
+  const setBody = (key: keyof DailyPlanData['body'], value: number) =>
+    patch({ body: { ...day.body, [key]: value } });
+
+  const lengthField = (label: string, key: Exclude<keyof DailyPlanData['body'], 'fat'>) => (
+    <MeasureField
+      label={label}
+      canonical={day.body[key]}
+      unitLabel={lUnit}
+      max={500}
+      toDisplay={(v) => toLengthDisplay(v, lUnit)}
+      fromDisplay={(v) => fromLengthDisplay(v, lUnit)}
+      onCommit={(v) => setBody(key, v)}
+    />
+  );
+
   return (
     <div className={styles.cardBody} style={{ gap: 8 }}>
       <div className={styles.weightRow}>
@@ -1145,32 +1262,84 @@ export function WeightBody({ day, patch, lastWeighIn }: WeightBodyProps) {
           type="number"
           inputMode="decimal"
           min={0}
-          max={500}
           step={0.1}
           className={styles.weightInput}
           value={draft}
           placeholder="—"
-          aria-label="Today's weight in kilograms"
+          aria-label={`Today's weight in ${wUnit === 'lb' ? 'pounds' : 'kilograms'}`}
           onChange={(e) => {
             setDraft(e.target.value);
             commit(e.target.value);
           }}
-          onBlur={() => setDraft(day.weight > 0 ? fmtWeight(day.weight) : '')}
+          onBlur={() => setDraft(shownWeight())}
         />
-        <span className={styles.weightUnit}>kg</span>
+        <UnitToggle
+          label="Weight unit"
+          value={wUnit}
+          options={['kg', 'lb'] as const}
+          onPick={(u) => patchSettings({ units: { ...settings.units, weight: u } })}
+        />
         {delta !== null && delta !== 0 && (
           <span className={styles.weightDelta} data-up={delta > 0 ? 'true' : undefined}>
-            {delta > 0 ? '▲' : '▼'} {fmtWeight(Math.abs(delta))}
+            {delta > 0 ? '▲' : '▼'} {fmt1(Math.abs(delta))}
           </span>
         )}
       </div>
       <span className={styles.weightHint}>
         {lastWeighIn
-          ? `Last weigh-in ${fmtWeight(lastWeighIn.kg)} kg · ${shortDate(lastWeighIn.date)}`
+          ? `Last weigh-in ${fmt1(toWeightDisplay(lastWeighIn.kg, wUnit))} ${wUnit} · ${shortDate(lastWeighIn.date)}`
           : day.weight > 0
             ? 'First weigh-in on record'
             : 'Step on the scale and log it'}
       </span>
+
+      <button
+        type="button"
+        className={styles.moreBtn}
+        aria-expanded={showMore}
+        onClick={() => setShowMore((v) => !v)}
+      >
+        {showMore ? '− Body measurements' : '+ Body measurements'}
+      </button>
+
+      {showMore && (
+        <div className={styles.measureBlock}>
+          <div className={styles.measureHeadRow}>
+            <span className={styles.measureHead}>Measurements</span>
+            <UnitToggle
+              label="Length unit"
+              value={lUnit}
+              options={['cm', 'in'] as const}
+              onPick={(u) => patchSettings({ units: { ...settings.units, length: u } })}
+            />
+          </div>
+          <div className={styles.measureGrid}>
+            <MeasureField
+              label="Height"
+              canonical={settings.height}
+              unitLabel={lUnit}
+              max={300}
+              toDisplay={(v) => toLengthDisplay(v, lUnit)}
+              fromDisplay={(v) => fromLengthDisplay(v, lUnit)}
+              onCommit={(v) => patchSettings({ height: v })}
+            />
+            <MeasureField
+              label="Body fat"
+              canonical={day.body.fat}
+              unitLabel="%"
+              max={100}
+              toDisplay={(v) => v}
+              fromDisplay={(v) => Math.round(v * 10) / 10}
+              onCommit={(v) => setBody('fat', v)}
+            />
+            {lengthField('Waist', 'waist')}
+            {lengthField('Chest', 'chest')}
+            {lengthField('Hips', 'hips')}
+            {lengthField('Thigh', 'thigh')}
+            {lengthField('Arm', 'arm')}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
