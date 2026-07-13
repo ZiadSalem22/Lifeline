@@ -108,6 +108,7 @@
 
 .chipRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--gap-sm);
 }
 
@@ -306,6 +307,12 @@
   align-items: center;
   gap: var(--gap-sm);
   flex-wrap: wrap;
+}
+
+/* Six section tabs exceed a 375px viewport as a single row — let them wrap. */
+.sectionTabs {
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .stepBtns {

@@ -317,7 +317,7 @@ export function StatisticsView() {
       </div>
 
       <div
-        className={styles.toggleGroup}
+        className={`${styles.toggleGroup} ${styles.sectionTabs}`}
         role="tablist"
         aria-label="Stats section"
         style={{ marginBottom: 'var(--gap-lg)' }}
