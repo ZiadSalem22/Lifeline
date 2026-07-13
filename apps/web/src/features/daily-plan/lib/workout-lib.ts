@@ -1,6 +1,59 @@
-import type { DailyPlanData, DailyPlanSettings, GymRoutine } from '@lifeline/shared';
+import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '@lifeline/shared';
 
 /** Workout card domain helpers (pure — shared by the card, view, and tests). */
+
+/** MET (metabolic equivalent) per cardio intensity — 2011 Compendium values. */
+export const CARDIO_MET: Record<GymExercise['effort'], number> = {
+  walk: 3.5,
+  jog: 7.0,
+  run: 9.8,
+};
+
+/**
+ * Calories for `minutes` of cardio at a given effort and body weight, via the
+ * standard MET formula: kcal/min = MET × 3.5 × kg / 200. Honest to ±, so
+ * callers round and prefix "~". Returns 0 when weight is unknown (never fake it).
+ */
+export function cardioKcal(
+  effort: GymExercise['effort'],
+  weightKg: number,
+  minutes: number,
+): number {
+  if (weightKg <= 0 || minutes <= 0) return 0;
+  return ((CARDIO_MET[effort] * 3.5 * weightKg) / 200) * minutes;
+}
+
+export interface CardioSnapshot {
+  min: number;
+  km: number;
+  kcal: number;
+}
+
+/**
+ * Recompute a routine's cardio snapshot (minutes/km/kcal) from its COMPLETED
+ * timed exercises — one dot = one round of `min` minutes. Written into the day
+ * blob on every timed-dot change so the settings-free metrics extractor can
+ * read cardio, and so later routine edits never rewrite this day's history.
+ */
+export function computeCardio(
+  routine: GymRoutine,
+  done: number[],
+  weightKg: number,
+): CardioSnapshot {
+  let min = 0;
+  let km = 0;
+  let kcal = 0;
+  routine.ex.forEach((ex, i) => {
+    if (ex.type !== 'time') return;
+    const rounds = Math.min(done[i] ?? 0, ex.sets);
+    if (rounds <= 0) return;
+    const minutes = rounds * ex.min;
+    min += minutes;
+    km += rounds * ex.km;
+    kcal += cardioKcal(ex.effort, weightKg, minutes);
+  });
+  return { min, km: Math.round(km * 100) / 100, kcal: Math.round(kcal) };
+}
 
 export interface WorkoutState {
   day: DailyPlanData;

@@ -11,7 +11,7 @@ export function WorkoutSection({
   agg: PlanAggregates;
   settings: DailyPlanSettings;
 }) {
-  if (agg.workout.sessions === 0) {
+  if (agg.workout.sessions === 0 && agg.cardio.minutes === 0) {
     return (
       <div className={styles.chartEmpty}>
         No workouts logged in this period — the Workout card writes here.
@@ -42,6 +42,13 @@ export function WorkoutSection({
               : '—'
           }
         />
+        {agg.cardio.minutes > 0 && (
+          <StatTile
+            label="Cardio min"
+            value={agg.cardio.minutes}
+            delta={agg.cardio.kcal > 0 ? `~${agg.cardio.kcal.toLocaleString()} kcal` : undefined}
+          />
+        )}
       </div>
 
       <div className={styles.sectionCard}>

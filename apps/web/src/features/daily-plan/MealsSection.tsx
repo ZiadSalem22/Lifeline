@@ -74,6 +74,12 @@ export function MealsSection(props: MealsSectionProps) {
   const totCal = Math.round(totals.cal);
   const targets = settings.targets;
   const kcalLeft = Math.max(0, targets.kcal - totCal);
+  // Cardio burned today (from the Workout card's snapshot) — shown as its own
+  // informational line, NEVER credited back into the intake ring/target (the
+  // "eat back exercise calories" trap). Deficit lives in weight-trend vs intake.
+  const burnedKcal = Math.round(
+    Object.values(day.cardioDone).reduce((sum, cardio) => sum + cardio.kcal, 0),
+  );
   const CIRC = 2 * Math.PI * 30;
   const calDash = `${(Math.min(1, totCal / targets.kcal) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
 
@@ -559,6 +565,11 @@ export function MealsSection(props: MealsSectionProps) {
               <span className={styles.kcalLeftSub}>
                 kcal left of {targets.kcal.toLocaleString()}
               </span>
+              {burnedKcal > 0 && (
+                <span className={styles.burnedLine}>
+                  ~{burnedKcal.toLocaleString()} kcal burned
+                </span>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>

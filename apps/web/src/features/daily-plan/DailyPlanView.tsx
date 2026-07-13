@@ -623,6 +623,7 @@ export function DailyPlanView({
           patchDay={patchDay}
           patchSettings={patchSettings}
           onCompletionChange={onWorkoutCompletion}
+          bodyWeightKg={day.weight > 0 ? day.weight : (lastWeighIn?.kg ?? 0)}
         />
       ),
     },

@@ -2,7 +2,14 @@ import { useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { WEEK_DAY_NAMES } from './lib/plan-model';
-import { isRoutineComplete, newRoutineKey, resolveRoutineKey, routineOf } from './lib/workout-lib';
+import {
+  cardioKcal,
+  computeCardio,
+  isRoutineComplete,
+  newRoutineKey,
+  resolveRoutineKey,
+  routineOf,
+} from './lib/workout-lib';
 import type { WorkoutState } from './lib/workout-lib';
 import { CircleCheck } from './cards';
 import styles from './DailyPlan.module.css';
@@ -60,6 +67,9 @@ export interface WorkoutBodyProps extends WorkoutState {
   patchSettings: (patch: Partial<DailyPlanSettings>) => void;
   /** Fired when today's workout flips complete ⇄ incomplete (habit/task sync). */
   onCompletionChange: (complete: boolean) => void;
+  /** Effective body weight (today's weigh-in or most recent) for the cardio
+   *  calorie estimate; 0 = unknown → kcal hidden rather than faked. */
+  bodyWeightKg: number;
 }
 
 export function WorkoutBody(props: WorkoutBodyProps) {
@@ -70,6 +80,18 @@ export function WorkoutBody(props: WorkoutBodyProps) {
   const totalSets = routine.ex.reduce((a, x) => a + x.sets, 0);
   const doneSets = routine.ex.reduce((a, x, i) => a + Math.min(done[i] ?? 0, x.sets), 0);
   const complete = isRoutineComplete(routine, done);
+  const burned = props.day.cardioDone[key];
+
+  // Recompute today's cardio snapshot from the routine's completed timed
+  // exercises whenever dots or minutes change — stored on the day blob so the
+  // settings-free metrics extractor can read cardio.
+  const withCardio = (nextRoutine: GymRoutine, nextDone: number[]): DailyPlanData['cardioDone'] => {
+    const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
+    const cardioDone = { ...props.day.cardioDone };
+    if (cardio.min > 0 || cardio.kcal > 0) cardioDone[key] = cardio;
+    else delete cardioDone[key];
+    return cardioDone;
+  };
 
   const tapSet = (exIdx: number, dotIdx: number) => {
     const current = Math.min(done[exIdx] ?? 0, routine.ex[exIdx]?.sets ?? 0);
@@ -77,7 +99,10 @@ export function WorkoutBody(props: WorkoutBodyProps) {
     const nextDone = routine.ex.map((_, i) => (i === exIdx ? nextCount : (done[i] ?? 0)));
     const wasComplete = isRoutineComplete(routine, done);
     const nowComplete = isRoutineComplete(routine, nextDone);
-    props.patchDay({ workoutDone: { ...props.day.workoutDone, [key]: nextDone } });
+    props.patchDay({
+      workoutDone: { ...props.day.workoutDone, [key]: nextDone },
+      cardioDone: withCardio(routine, nextDone),
+    });
     if (wasComplete !== nowComplete) props.onCompletionChange(nowComplete);
   };
 
@@ -92,6 +117,20 @@ export function WorkoutBody(props: WorkoutBodyProps) {
     props.patchSettings({ gym: { ...props.settings.gym, routines } });
   };
 
+  const setMin = (exIdx: number, min: number) => {
+    const nextRoutine = {
+      ...routine,
+      ex: routine.ex.map((x, i) => (i === exIdx ? { ...x, min } : x)),
+    };
+    props.patchSettings({
+      gym: {
+        ...props.settings.gym,
+        routines: { ...props.settings.gym.routines, [key]: nextRoutine },
+      },
+    });
+    props.patchDay({ cardioDone: withCardio(nextRoutine, done) });
+  };
+
   const setPr = (i: number, field: 'n' | 'v', value: string) => {
     const prs = props.settings.gym.prs.map((p, j) => (j === i ? { ...p, [field]: value } : p));
     props.patchSettings({ gym: { ...props.settings.gym, prs } });
@@ -100,14 +139,19 @@ export function WorkoutBody(props: WorkoutBodyProps) {
   return (
     <div className={styles.cardBody} style={{ gap: 8 }}>
       <div className={styles.gymHeadRow}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <button
+          type="button"
+          className={styles.gymTitleBtn}
+          onClick={() => setSetupOpen(true)}
+          title="Edit routines, exercises & weekly split"
+        >
           <span className={styles.gymTitle}>
             {routine.ex.length === 0 ? 'Rest Day' : `${routine.name} Day`}
           </span>
           <span className={styles.gymSubtitle}>
             {routine.ex.length === 0 ? 'Recovery' : `${doneSets} / ${totalSets} sets done`}
           </span>
-        </div>
+        </button>
         <button type="button" className={styles.pillBtn} onClick={() => setSetupOpen(true)}>
           <svg
             width="12"
@@ -123,7 +167,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
             <path d="M4 12h16" />
             <path d="M4 18h10" />
           </svg>
-          ROUTINES
+          EDIT ROUTINES
         </button>
       </div>
 
@@ -133,6 +177,8 @@ export function WorkoutBody(props: WorkoutBodyProps) {
 
       {routine.ex.map((ex, i) => {
         const exDone = Math.min(done[i] ?? 0, ex.sets);
+        const timed = ex.type === 'time';
+        const exKcal = timed ? cardioKcal(ex.effort, props.bodyWeightKg, exDone * ex.min) : 0;
         return (
           <div key={i} className={styles.exRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -150,12 +196,14 @@ export function WorkoutBody(props: WorkoutBodyProps) {
               >
                 <DraftNumber
                   className={styles.kgInput}
-                  value={ex.kg}
-                  ariaLabel={`${ex.n} kg`}
-                  commit={(raw) => Math.max(0, raw)}
-                  onCommit={(v) => setKg(i, v)}
+                  value={timed ? ex.min : ex.kg}
+                  ariaLabel={`${ex.n} ${timed ? 'minutes' : 'kg'}`}
+                  commit={(raw) => (timed ? Math.max(0, Math.round(raw)) : Math.max(0, raw))}
+                  onCommit={(v) => (timed ? setMin(i, v) : setKg(i, v))}
                 />
-                <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>kg</span>
+                <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>
+                  {timed ? 'min' : 'kg'}
+                </span>
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -165,23 +213,38 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                     key={k}
                     on={k < exDone}
                     size={17}
-                    label={`${ex.n} set ${k + 1}`}
+                    label={`${ex.n} ${timed ? 'round' : 'set'} ${k + 1}`}
                     onToggle={() => tapSet(i, k)}
                   />
                 ))}
               </span>
               <span className={styles.setsLabel}>
-                {ex.sets} × {ex.reps}
+                {timed
+                  ? `${ex.sets > 1 ? `${ex.sets} × ` : ''}${ex.min} min`
+                  : `${ex.sets} × ${ex.reps}`}
               </span>
-              {ex.last > 0 && (
+              {timed ? (
                 <span className={styles.overloadHint}>
-                  Last {fmtKg(ex.last)}kg → try {fmtKg(ex.last + 2.5)}
+                  {ex.effort}
+                  {exKcal > 0 ? ` · ~${Math.round(exKcal)} kcal` : ''}
                 </span>
+              ) : (
+                ex.last > 0 && (
+                  <span className={styles.overloadHint}>
+                    Last {fmtKg(ex.last)}kg → try {fmtKg(ex.last + 2.5)}
+                  </span>
+                )
               )}
             </div>
           </div>
         );
       })}
+
+      {burned && burned.min > 0 && (
+        <div className={styles.cardioBurn}>
+          {burned.min} min cardio{burned.kcal > 0 ? ` · ~${burned.kcal} kcal burned` : ''}
+        </div>
+      )}
 
       {complete && (
         <div className={styles.gymDone}>
@@ -241,6 +304,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
         selectedIdx={props.selectedIdx}
         patchDay={props.patchDay}
         patchSettings={props.patchSettings}
+        bodyWeightKg={props.bodyWeightKg}
         activeKey={key}
       />
     </div>
@@ -256,6 +320,7 @@ interface SetupProps {
   settings: DailyPlanSettings;
   selectedIdx: number;
   activeKey: string;
+  bodyWeightKg: number;
   patchDay: (patch: Partial<DailyPlanData>) => void;
   patchSettings: (patch: Partial<DailyPlanSettings>) => void;
 }
@@ -275,6 +340,65 @@ export function WorkoutSetupModal(props: SetupProps) {
 
   const updateEx = (i: number, patch: Partial<GymExercise>) =>
     updateEdit({ ex: editRoutine.ex.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+
+  // Today's cardio snapshot for a routine, recomputed from its timed exercises.
+  const recomputeCardio = (routineKey: string, nextRoutine: GymRoutine, nextDone: number[]) => {
+    const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
+    const cardioDone = { ...props.day.cardioDone };
+    if (cardio.min > 0 || cardio.kcal > 0) cardioDone[routineKey] = cardio;
+    else delete cardioDone[routineKey];
+    return cardioDone;
+  };
+
+  // Edits that change minutes/effort/type re-snapshot today's cardio.
+  const updateExTimed = (i: number, patch: Partial<GymExercise>) => {
+    const nextRoutine = {
+      ...editRoutine,
+      ex: editRoutine.ex.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+    };
+    updateEdit({ ex: nextRoutine.ex });
+    const doneArr = props.day.workoutDone[editKey];
+    if (doneArr) props.patchDay({ cardioDone: recomputeCardio(editKey, nextRoutine, doneArr) });
+  };
+
+  // workoutDone is index-keyed, so removing an exercise must splice today's
+  // logged dots at the same index or they shift onto the wrong exercises.
+  const removeEx = (i: number) => {
+    const nextEx = editRoutine.ex.filter((_, j) => j !== i);
+    updateEdit({ ex: nextEx });
+    const doneArr = props.day.workoutDone[editKey];
+    if (doneArr) {
+      const nextDone = doneArr.filter((_, j) => j !== i);
+      props.patchDay({
+        workoutDone: { ...props.day.workoutDone, [editKey]: nextDone },
+        cardioDone: recomputeCardio(editKey, { ...editRoutine, ex: nextEx }, nextDone),
+      });
+    }
+  };
+
+  // Shrinking sets must clamp today's logged dots (the extractor doesn't clamp,
+  // so a stale high count would show phantom sets in Statistics).
+  const setEditSets = (i: number, sets: number) => {
+    const nextRoutine = {
+      ...editRoutine,
+      ex: editRoutine.ex.map((x, j) => (j === i ? { ...x, sets } : x)),
+    };
+    updateEdit({ ex: nextRoutine.ex });
+    const doneArr = props.day.workoutDone[editKey];
+    if (doneArr) {
+      const clamped = doneArr.map((v, j) => (j === i ? Math.min(v, sets) : v));
+      props.patchDay({
+        workoutDone: { ...props.day.workoutDone, [editKey]: clamped },
+        cardioDone: recomputeCardio(editKey, nextRoutine, clamped),
+      });
+    }
+  };
+
+  const createRoutine = () => {
+    const key = newRoutineKey(gym.routines);
+    patchGym({ routines: { ...gym.routines, [key]: { name: 'New Routine', ex: [] } } });
+    setEditKey(key);
+  };
 
   const deleteRoutine = () => {
     if (editKey === 'rest' || keys.length <= 2) return;
@@ -309,7 +433,7 @@ export function WorkoutSetupModal(props: SetupProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, order: 3 }}>
           <div className={styles.sectionMiniMuted}>Weekly Split</div>
           <div className={styles.weekSplitGrid}>
             {gym.week.map((value, di) => (
@@ -338,7 +462,7 @@ export function WorkoutSetupModal(props: SetupProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, order: 2 }}>
           <div
             style={{
               display: 'flex',
@@ -348,17 +472,8 @@ export function WorkoutSetupModal(props: SetupProps) {
               flexWrap: 'wrap',
             }}
           >
-            <div className={styles.sectionMiniMuted}>Edit Routines</div>
-            <button
-              type="button"
-              className={styles.tinyPill}
-              style={{ borderColor: 'transparent' }}
-              onClick={() => {
-                const key = newRoutineKey(gym.routines);
-                patchGym({ routines: { ...gym.routines, [key]: { name: 'New Routine', ex: [] } } });
-                setEditKey(key);
-              }}
-            >
+            <div className={styles.sectionMiniRuled}>Edit Routines</div>
+            <button type="button" className={styles.presetChipDashed} onClick={createRoutine}>
               + NEW ROUTINE
             </button>
           </div>
@@ -373,6 +488,14 @@ export function WorkoutSetupModal(props: SetupProps) {
                 {gym.routines[k]?.name ?? k}
               </button>
             ))}
+            <button
+              type="button"
+              className={styles.presetChipDashed}
+              aria-label="New routine"
+              onClick={createRoutine}
+            >
+              + NEW
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
@@ -431,63 +554,114 @@ export function WorkoutSetupModal(props: SetupProps) {
             </span>
             <span />
           </div>
-          {editRoutine.ex.map((ex, i) => (
-            <div key={i} className={styles.exEditGrid}>
-              <input
-                dir="auto"
-                className={styles.smallInput}
-                maxLength={100}
-                value={ex.n}
-                aria-label={`Exercise ${i + 1} name`}
-                onChange={(e) => updateEx(i, { n: e.target.value })}
-              />
-              <DraftNumber
-                className={styles.smallInput}
-                style={{ textAlign: 'center', padding: '6px 4px' }}
-                value={ex.sets}
-                ariaLabel={`Exercise ${i + 1} sets`}
-                commit={(raw) => Math.max(1, Math.min(10, Math.round(raw)))}
-                onCommit={(sets) => updateEx(i, { sets })}
-              />
-              <input
-                className={styles.smallInput}
-                style={{ textAlign: 'center', padding: '6px 4px' }}
-                value={ex.reps}
-                maxLength={100}
-                aria-label={`Exercise ${i + 1} reps`}
-                onChange={(e) => updateEx(i, { reps: e.target.value })}
-              />
-              <DraftNumber
-                className={styles.smallInput}
-                style={{ textAlign: 'center', padding: '6px 4px' }}
-                value={ex.kg}
-                ariaLabel={`Exercise ${i + 1} kg`}
-                commit={(raw) => Math.max(0, raw)}
-                onCommit={(kg) => updateEx(i, { kg })}
-              />
-              <button
-                type="button"
-                className={styles.iconBtn}
-                title="Remove exercise"
-                aria-label={`Remove exercise ${i + 1}`}
-                onClick={() => updateEdit({ ex: editRoutine.ex.filter((_, j) => j !== i) })}
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.6"
-                  strokeLinecap="round"
-                  aria-hidden="true"
+          {editRoutine.ex.map((ex, i) => {
+            const timed = ex.type === 'time';
+            return (
+              <div key={i} className={styles.exEditGrid}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                  <input
+                    dir="auto"
+                    className={styles.smallInput}
+                    style={{ flex: 1, minWidth: 0 }}
+                    maxLength={100}
+                    value={ex.n}
+                    aria-label={`Exercise ${i + 1} name`}
+                    onChange={(e) => updateEx(i, { n: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className={styles.typeToggle}
+                    aria-label={`Exercise ${i + 1} type: ${timed ? 'timed' : 'strength'}`}
+                    title={
+                      timed
+                        ? 'Timed / cardio — tap for strength'
+                        : 'Strength — tap for timed / cardio'
+                    }
+                    onClick={() =>
+                      updateExTimed(
+                        i,
+                        timed ? { type: 'str' } : { type: 'time', min: ex.min > 0 ? ex.min : 15 },
+                      )
+                    }
+                  >
+                    {timed ? 'TIME' : 'STR'}
+                  </button>
+                </span>
+                <DraftNumber
+                  className={styles.smallInput}
+                  style={{ textAlign: 'center', padding: '6px 4px' }}
+                  value={ex.sets}
+                  ariaLabel={`Exercise ${i + 1} ${timed ? 'rounds' : 'sets'}`}
+                  commit={(raw) => Math.max(1, Math.min(10, Math.round(raw)))}
+                  onCommit={(sets) => setEditSets(i, sets)}
+                />
+                {timed ? (
+                  <DraftNumber
+                    className={styles.smallInput}
+                    style={{ textAlign: 'center', padding: '6px 4px' }}
+                    value={ex.min}
+                    ariaLabel={`Exercise ${i + 1} minutes`}
+                    commit={(raw) => Math.max(0, Math.round(raw))}
+                    onCommit={(min) => updateExTimed(i, { min })}
+                  />
+                ) : (
+                  <input
+                    className={styles.smallInput}
+                    style={{ textAlign: 'center', padding: '6px 4px' }}
+                    value={ex.reps}
+                    maxLength={20}
+                    aria-label={`Exercise ${i + 1} reps`}
+                    onChange={(e) => updateEx(i, { reps: e.target.value })}
+                  />
+                )}
+                {timed ? (
+                  <select
+                    className={styles.smallInput}
+                    style={{ textAlign: 'center', padding: '6px 2px' }}
+                    value={ex.effort}
+                    aria-label={`Exercise ${i + 1} effort`}
+                    onChange={(e) =>
+                      updateExTimed(i, { effort: e.target.value as GymExercise['effort'] })
+                    }
+                  >
+                    <option value="walk">walk</option>
+                    <option value="jog">jog</option>
+                    <option value="run">run</option>
+                  </select>
+                ) : (
+                  <DraftNumber
+                    className={styles.smallInput}
+                    style={{ textAlign: 'center', padding: '6px 4px' }}
+                    value={ex.kg}
+                    ariaLabel={`Exercise ${i + 1} kg`}
+                    commit={(raw) => Math.max(0, raw)}
+                    onCommit={(kg) => updateEx(i, { kg })}
+                  />
+                )}
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  title="Remove exercise"
+                  aria-label={`Remove exercise ${i + 1}`}
+                  onClick={() => removeEx(i)}
                 >
-                  <path d="M5 5l14 14" />
-                  <path d="M19 5L5 19" />
-                </svg>
-              </button>
-            </div>
-          ))}
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 5l14 14" />
+                    <path d="M19 5L5 19" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
           <button
             type="button"
             className={styles.presetChipDashed}
@@ -496,7 +670,17 @@ export function WorkoutSetupModal(props: SetupProps) {
               updateEdit({
                 ex: [
                   ...editRoutine.ex,
-                  { n: 'New Exercise', sets: 3, reps: '10', kg: 20, last: 0 },
+                  {
+                    n: 'New Exercise',
+                    type: 'str',
+                    sets: 3,
+                    reps: '10',
+                    kg: 20,
+                    last: 0,
+                    min: 0,
+                    km: 0,
+                    effort: 'walk',
+                  },
                 ],
               })
             }

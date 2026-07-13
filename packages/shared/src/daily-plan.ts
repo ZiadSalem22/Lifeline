@@ -148,6 +148,21 @@ export const dailyPlanDataSchema = z.object({
     z.array(z.number().int().min(0).max(20)).max(PLAN_LIMITS.exercisesMax),
     PLAN_LIMITS.routinesMax,
   ).default({}),
+  /**
+   * routineKey → cardio SNAPSHOT for THIS day (minutes/km/kcal completed). The
+   * card recomputes it from the routine's timed exercises on every dot change
+   * (recompute-on-write): the metrics extractor is settings-free and cannot
+   * see an exercise's `min`, so cardio has to be denormalized here — and
+   * freezing it means later routine edits never rewrite this day's history.
+   */
+  cardioDone: boundedRecord(
+    z.object({
+      min: z.number().min(0).max(1440).default(0),
+      km: z.number().min(0).max(300).default(0),
+      kcal: z.number().min(0).max(5000).default(0),
+    }),
+    PLAN_LIMITS.routinesMax,
+  ).default({}),
   /** Per-day override of the weekly split ("today's routine" chip). */
   workoutRoutine: planKey.nullable().default(null),
   /** Carry-over bar handled (added-as-tasks or dismissed) — survives reloads. */
@@ -196,10 +211,23 @@ export const DEFAULT_PLAN_HABITS: PlanHabit[] = [
 
 export const gymExerciseSchema = z.object({
   n: z.string().max(PLAN_LIMITS.labelMax).default(''),
+  /**
+   * 'str' = strength (sets × reps × kg). 'time' = timed/cardio (sets = rounds,
+   * `min` = minutes per round, optional `km`, `effort` → MET for the calorie
+   * estimate). Absent on legacy blobs → defaults to 'str', so every stored
+   * routine keeps parsing byte-compatibly.
+   */
+  type: z.enum(['str', 'time']).default('str'),
   sets: z.number().int().min(1).max(10).default(3),
   reps: z.string().max(20).default('10'),
   kg: z.number().min(0).max(2000).default(0),
   last: z.number().min(0).max(2000).default(0),
+  /** 'time' only: minutes per round (dot). */
+  min: z.number().int().min(0).max(600).default(0),
+  /** 'time' only: km per round (0 = untracked). */
+  km: z.number().min(0).max(200).default(0),
+  /** 'time' only: intensity class → MET for the calorie estimate. */
+  effort: z.enum(['walk', 'jog', 'run']).default('walk'),
 });
 export type GymExercise = z.infer<typeof gymExerciseSchema>;
 
@@ -224,8 +252,10 @@ export const gymSettingsSchema = z.object({
 });
 export type GymSettings = z.infer<typeof gymSettingsSchema>;
 
+// Parsed through the schema so every default exercise carries the full shape
+// (type/min/km/effort) rather than a partial literal.
 export const DEFAULT_GYM_ROUTINES: Record<string, GymRoutine> = {
-  push: {
+  push: gymRoutineSchema.parse({
     name: 'Push',
     ex: [
       { n: 'Bench Press', sets: 4, reps: '8', kg: 60, last: 57.5 },
@@ -234,8 +264,8 @@ export const DEFAULT_GYM_ROUTINES: Record<string, GymRoutine> = {
       { n: 'Lateral Raises', sets: 3, reps: '12', kg: 10, last: 10 },
       { n: 'Triceps Pushdown', sets: 3, reps: '12', kg: 25, last: 22.5 },
     ],
-  },
-  pull: {
+  }),
+  pull: gymRoutineSchema.parse({
     name: 'Pull',
     ex: [
       { n: 'Deadlift', sets: 3, reps: '5', kg: 100, last: 95 },
@@ -244,8 +274,8 @@ export const DEFAULT_GYM_ROUTINES: Record<string, GymRoutine> = {
       { n: 'Face Pulls', sets: 3, reps: '15', kg: 15, last: 15 },
       { n: 'Biceps Curl', sets: 3, reps: '12', kg: 12.5, last: 12.5 },
     ],
-  },
-  legs: {
+  }),
+  legs: gymRoutineSchema.parse({
     name: 'Legs',
     ex: [
       { n: 'Squat', sets: 4, reps: '6', kg: 80, last: 77.5 },
@@ -253,7 +283,7 @@ export const DEFAULT_GYM_ROUTINES: Record<string, GymRoutine> = {
       { n: 'Leg Press', sets: 3, reps: '12', kg: 120, last: 115 },
       { n: 'Calf Raises', sets: 4, reps: '15', kg: 40, last: 40 },
     ],
-  },
+  }),
   rest: { name: 'Rest', ex: [] },
 };
 

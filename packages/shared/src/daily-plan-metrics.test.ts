@@ -34,6 +34,21 @@ describe('extractDayMetrics', () => {
     expect(extractDayMetrics('2026-07-13', weighed).weight).toBe(82.4);
   });
 
+  it('cardioDone snapshots sum into cardio minutes / km / kcal', () => {
+    const empty = extractDayMetrics('2026-07-13', emptyDailyPlanData());
+    expect(empty.cardioMinutes).toBe(0);
+    const day = dailyPlanDataSchema.parse({
+      cardioDone: {
+        legs: { min: 20, km: 3, kcal: 180 },
+        cardio: { min: 10, km: 0, kcal: 90 },
+      },
+    });
+    const m = extractDayMetrics('2026-07-13', day);
+    expect(m.cardioMinutes).toBe(30);
+    expect(m.cardioKm).toBe(3);
+    expect(m.cardioKcal).toBe(270);
+  });
+
   it('a lived day sums meals, counts sets per routine, and keeps raw habit marks', () => {
     const day = dailyPlanDataSchema.parse({
       habits: { fajr: true, gym: 'skip', deletedHabit: true, reading: false },

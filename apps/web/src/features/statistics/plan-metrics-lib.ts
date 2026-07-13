@@ -46,6 +46,7 @@ export interface PlanAggregates {
     worstDay: { date: string; kcal: number } | null;
   };
   workout: { sessions: number; totalSets: number; byRoutine: RoutineAggRow[] };
+  cardio: { minutes: number; km: number; kcal: number; sessions: number };
   weight: {
     /** kg per date of the range; null = not weighed that day. */
     series: (number | null)[];
@@ -227,6 +228,12 @@ export function aggregatePlanMetrics(
           ...row,
         }))
         .sort((a, b) => b.sessions - a.sessions),
+    },
+    cardio: {
+      minutes: metrics.reduce((a, m) => a + m.cardioMinutes, 0),
+      km: round1(metrics.reduce((a, m) => a + m.cardioKm, 0)),
+      kcal: metrics.reduce((a, m) => a + m.cardioKcal, 0),
+      sessions: metrics.filter((m) => m.cardioMinutes > 0).length,
     },
     weight: {
       series: weightSeries,

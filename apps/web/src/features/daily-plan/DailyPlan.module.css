@@ -1305,6 +1305,54 @@ button.weekBarBtn:hover .weekBarFill {
   text-transform: uppercase;
 }
 
+/* The routine title is a button (second, obvious way into the setup editor). */
+.gymTitleBtn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.gymTitleBtn:hover .gymTitle,
+.gymTitleBtn:focus-visible .gymTitle {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* Quiet "N min cardio · ~X kcal burned" line under the workout exercises. */
+.cardioBurn {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-exercise STR ⇄ TIME mode toggle in the routine editor. */
+.typeToggle {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.typeToggle:hover {
+  border-color: var(--plan-primary);
+  color: var(--plan-primary);
+}
+
 .gymRest {
   padding: 12px;
   border: 1px dashed var(--plan-card-border);
@@ -1750,6 +1798,14 @@ button.weekBarBtn:hover .weekBarFill {
 .kcalLeftSub {
   font-size: 10.5px;
   color: var(--plan-muted);
+}
+
+/* Cardio burned — informational only, deliberately NOT netted into kcal-left. */
+.burnedLine {
+  font-size: 10px;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
 }
 
 .barRow {

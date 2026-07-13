@@ -25,7 +25,22 @@ describe('workout completion sync', () => {
     // One-exercise, one-set Push routine everywhere + sync to task #613.
     const settings = defaultDailyPlanSettings();
     settings.gym.routines = {
-      push: { name: 'Push', ex: [{ n: 'Bench Press', sets: 1, reps: '8', kg: 60, last: 0 }] },
+      push: {
+        name: 'Push',
+        ex: [
+          {
+            n: 'Bench Press',
+            type: 'str',
+            sets: 1,
+            reps: '8',
+            kg: 60,
+            last: 0,
+            min: 0,
+            km: 0,
+            effort: 'walk',
+          },
+        ],
+      },
       rest: { name: 'Rest', ex: [] },
     };
     settings.gym.week = ['push', 'push', 'push', 'push', 'push', 'push', 'push'];
@@ -71,5 +86,50 @@ describe('workout completion sync', () => {
       'aria-pressed',
       'false',
     );
+  });
+
+  it('a timed exercise logs cardio minutes and shows a burned estimate', async () => {
+    const user = userEvent.setup();
+
+    const settings = defaultDailyPlanSettings();
+    settings.gym.routines = {
+      cardio: {
+        name: 'Cardio',
+        ex: [
+          {
+            n: 'Morning Run',
+            type: 'time',
+            sets: 1,
+            reps: '',
+            kg: 0,
+            last: 0,
+            min: 20,
+            km: 0,
+            effort: 'run',
+          },
+        ],
+      },
+      rest: { name: 'Rest', ex: [] },
+    };
+    settings.gym.week = Array.from({ length: 7 }, () => 'cardio');
+    window.localStorage.setItem('daily_plan_settings', JSON.stringify(settings));
+    // A weigh-in on the day so the calorie estimate has a body weight.
+    window.localStorage.setItem('daily_plan:2026-07-09', JSON.stringify({ weight: 80 }));
+
+    renderWithProviders(
+      <ThemeProvider>
+        <DailyPlanView dayToken="2026-07-09" todos={[]} />
+      </ThemeProvider>,
+    );
+
+    // The timed row shows a minutes label, not sets × reps.
+    expect(await screen.findByText('20 min')).toBeInTheDocument();
+
+    // Logging the round records cardio + the burned estimate (run, 20 min, 80 kg ≈ 274 kcal).
+    await user.click(screen.getByRole('button', { name: 'Morning Run round 1' }));
+    // Workout card footer (unique "min cardio" phrasing) …
+    expect(await screen.findByText(/min cardio/)).toBeInTheDocument();
+    // … and the Meals card shows the burned line (never netted into the ring).
+    expect(screen.getByText('~274 kcal burned')).toBeInTheDocument();
   });
 });

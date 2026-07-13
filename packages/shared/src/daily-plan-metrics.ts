@@ -53,6 +53,10 @@ export const dayMetricsSchema = z.object({
   workoutSets: z.number().int(),
   /** routineKey → sets done (only keys with > 0). */
   workoutByRoutine: z.record(z.string(), z.number().int()),
+  /** Cardio minutes / km / kcal completed (from the day's cardioDone snapshot). */
+  cardioMinutes: z.number().default(0),
+  cardioKm: z.number().default(0),
+  cardioKcal: z.number().default(0),
   /** Storage uses 0-as-unset — null here so averages never see fake zeros. */
   moodAm: z.number().int().min(1).max(5).nullable(),
   moodPm: z.number().int().min(1).max(5).nullable(),
@@ -111,6 +115,15 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
     }
   }
 
+  let cardioMinutes = 0;
+  let cardioKm = 0;
+  let cardioKcal = 0;
+  for (const cardio of Object.values(data.cardioDone)) {
+    cardioMinutes += cardio.min;
+    cardioKm += cardio.km;
+    cardioKcal += cardio.kcal;
+  }
+
   return {
     date,
     habits: { ...data.habits },
@@ -129,6 +142,9 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
     mealCount,
     workoutSets,
     workoutByRoutine,
+    cardioMinutes,
+    cardioKm,
+    cardioKcal,
     moodAm: nullIfUnset(data.moodAm),
     moodPm: nullIfUnset(data.moodPm),
     rating: nullIfUnset(data.rating),
