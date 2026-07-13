@@ -52,7 +52,14 @@ export function computeCardio(
     km += rounds * ex.km;
     kcal += cardioKcal(ex.effort, weightKg, minutes);
   });
-  return { min, km: Math.round(km * 100) / 100, kcal: Math.round(kcal) };
+  // Clamp to the cardioDone schema caps — per-exercise input caps don't
+  // compose to the day caps (10 rounds × 600 min = 6000 > 1440), and an
+  // over-cap snapshot would throw on save and silently drop the whole day.
+  return {
+    min: Math.min(1440, min),
+    km: Math.min(300, Math.round(km * 100) / 100),
+    kcal: Math.min(5000, Math.round(kcal)),
+  };
 }
 
 export interface WorkoutState {

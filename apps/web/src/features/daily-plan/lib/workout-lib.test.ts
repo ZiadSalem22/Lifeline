@@ -52,4 +52,15 @@ describe('computeCardio', () => {
     // 5 taps but only 1 round configured → counts 1 × 20 min, not 5.
     expect(computeCardio(routine, [5, 0, 0], 80).min).toBe(20);
   });
+
+  it('clamps the snapshot to the day-blob schema caps (else the save throws)', () => {
+    // 10 rounds × 600 min = 6000 min (> 1440 cap); kcal well past 5000.
+    const ultra = gymRoutineSchema.parse({
+      name: 'Ultra',
+      ex: [{ n: 'Long', type: 'time', sets: 10, min: 600, effort: 'run' }],
+    });
+    const c = computeCardio(ultra, [10], 120);
+    expect(c.min).toBe(1440);
+    expect(c.kcal).toBe(5000);
+  });
 });

@@ -118,7 +118,9 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
   let cardioMinutes = 0;
   let cardioKm = 0;
   let cardioKcal = 0;
-  for (const cardio of Object.values(data.cardioDone)) {
+  // `?? {}`: this extractor is documented to run over STORED blobs, and a
+  // pre-cardioDone historical blob reaches it unparsed via the Review page.
+  for (const cardio of Object.values(data.cardioDone ?? {})) {
     cardioMinutes += cardio.min;
     cardioKm += cardio.km;
     cardioKcal += cardio.kcal;

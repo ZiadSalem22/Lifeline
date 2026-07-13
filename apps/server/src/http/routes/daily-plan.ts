@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
+  dailyPlanDataSchema,
   dailyPlanDaySchema,
   dailyPlanRangeQuerySchema,
   dailyPlanRangeResponseSchema,
@@ -70,7 +71,15 @@ export function buildDailyPlanRouter(deps: DailyPlanRouterDeps): Router {
       throw new DomainValidationError(`Range too wide — at most ${MAX_RANGE_DAYS} days`);
     }
     const rows = await deps.dailyPlans.getRange(user.id, start, end);
-    res.json({ items: rows.map((row) => ({ date: row.planDate, data: row.data })) });
+    // Parse each stored blob so old rows self-heal to the current shape (same
+    // as GET /settings). Additive fields (e.g. cardioDone) otherwise reach the
+    // client undefined and crash consumers that read them without a guard.
+    res.json({
+      items: rows.map((row) => ({
+        date: row.planDate,
+        data: dailyPlanDataSchema.parse(row.data),
+      })),
+    });
   });
 
   deps.registry.register({

@@ -49,6 +49,16 @@ describe('extractDayMetrics', () => {
     expect(m.cardioKcal).toBe(270);
   });
 
+  it('tolerates a historical blob written before cardioDone existed (no crash)', () => {
+    // Server day blobs reach the Review-page extractor UNPARSED, so a
+    // pre-cardioDone row arrives with the field absent. It must not throw.
+    const raw = emptyDailyPlanData();
+    delete (raw as { cardioDone?: unknown }).cardioDone;
+    const m = extractDayMetrics('2026-07-13', raw);
+    expect(m.cardioMinutes).toBe(0);
+    expect(m.cardioKcal).toBe(0);
+  });
+
   it('a lived day sums meals, counts sets per routine, and keeps raw habit marks', () => {
     const day = dailyPlanDataSchema.parse({
       habits: { fajr: true, gym: 'skip', deletedHabit: true, reading: false },

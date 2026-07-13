@@ -3,7 +3,6 @@ import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '
 import { Modal } from '../../shared/ui/Modal';
 import { WEEK_DAY_NAMES } from './lib/plan-model';
 import {
-  cardioKcal,
   computeCardio,
   isRoutineComplete,
   newRoutineKey,
@@ -80,15 +79,21 @@ export function WorkoutBody(props: WorkoutBodyProps) {
   const totalSets = routine.ex.reduce((a, x) => a + x.sets, 0);
   const doneSets = routine.ex.reduce((a, x, i) => a + Math.min(done[i] ?? 0, x.sets), 0);
   const complete = isRoutineComplete(routine, done);
-  const burned = props.day.cardioDone[key];
+  // Footer sums the WHOLE day's cardio (matches the Meals card + Statistics,
+  // which sum all routines) so switching today's routine can't make the card
+  // disagree with them. `?? {}` guards pre-cardioDone historical blobs.
+  const dayCardio = Object.values(props.day.cardioDone ?? {}).reduce(
+    (acc, cardio) => ({ min: acc.min + cardio.min, kcal: acc.kcal + cardio.kcal }),
+    { min: 0, kcal: 0 },
+  );
 
   // Recompute today's cardio snapshot from the routine's completed timed
   // exercises whenever dots or minutes change — stored on the day blob so the
   // settings-free metrics extractor can read cardio.
   const withCardio = (nextRoutine: GymRoutine, nextDone: number[]): DailyPlanData['cardioDone'] => {
     const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
-    const cardioDone = { ...props.day.cardioDone };
-    if (cardio.min > 0 || cardio.kcal > 0) cardioDone[key] = cardio;
+    const cardioDone = { ...(props.day.cardioDone ?? {}) };
+    if (cardio.min > 0 || cardio.kcal > 0 || cardio.km > 0) cardioDone[key] = cardio;
     else delete cardioDone[key];
     return cardioDone;
   };
@@ -178,7 +183,6 @@ export function WorkoutBody(props: WorkoutBodyProps) {
       {routine.ex.map((ex, i) => {
         const exDone = Math.min(done[i] ?? 0, ex.sets);
         const timed = ex.type === 'time';
-        const exKcal = timed ? cardioKcal(ex.effort, props.bodyWeightKg, exDone * ex.min) : 0;
         return (
           <div key={i} className={styles.exRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -198,7 +202,11 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                   className={styles.kgInput}
                   value={timed ? ex.min : ex.kg}
                   ariaLabel={`${ex.n} ${timed ? 'minutes' : 'kg'}`}
-                  commit={(raw) => (timed ? Math.max(0, Math.round(raw)) : Math.max(0, raw))}
+                  commit={(raw) =>
+                    timed
+                      ? Math.max(0, Math.min(600, Math.round(raw)))
+                      : Math.max(0, Math.min(2000, raw))
+                  }
                   onCommit={(v) => (timed ? setMin(i, v) : setKg(i, v))}
                 />
                 <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>
@@ -224,10 +232,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                   : `${ex.sets} × ${ex.reps}`}
               </span>
               {timed ? (
-                <span className={styles.overloadHint}>
-                  {ex.effort}
-                  {exKcal > 0 ? ` · ~${Math.round(exKcal)} kcal` : ''}
-                </span>
+                <span className={styles.overloadHint}>{ex.effort}</span>
               ) : (
                 ex.last > 0 && (
                   <span className={styles.overloadHint}>
@@ -240,9 +245,10 @@ export function WorkoutBody(props: WorkoutBodyProps) {
         );
       })}
 
-      {burned && burned.min > 0 && (
+      {dayCardio.min > 0 && (
         <div className={styles.cardioBurn}>
-          {burned.min} min cardio{burned.kcal > 0 ? ` · ~${burned.kcal} kcal burned` : ''}
+          {dayCardio.min} min cardio
+          {dayCardio.kcal > 0 ? ` · ~${dayCardio.kcal} kcal burned` : ''}
         </div>
       )}
 
@@ -331,6 +337,8 @@ export function WorkoutSetupModal(props: SetupProps) {
   const [editKeyState, setEditKey] = useState<string | null>(null);
   const editKey = editKeyState && gym.routines[editKeyState] ? editKeyState : (keys[0] ?? 'rest');
   const editRoutine = routineOf(props.settings, editKey);
+  // All-timed routine → the Sets/Reps/Kg headers read Rounds/Min/Effort.
+  const allTimed = editRoutine.ex.length > 0 && editRoutine.ex.every((e) => e.type === 'time');
 
   const patchGym = (patch: Partial<DailyPlanSettings['gym']>) =>
     props.patchSettings({ gym: { ...gym, ...patch } });
@@ -344,8 +352,8 @@ export function WorkoutSetupModal(props: SetupProps) {
   // Today's cardio snapshot for a routine, recomputed from its timed exercises.
   const recomputeCardio = (routineKey: string, nextRoutine: GymRoutine, nextDone: number[]) => {
     const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
-    const cardioDone = { ...props.day.cardioDone };
-    if (cardio.min > 0 || cardio.kcal > 0) cardioDone[routineKey] = cardio;
+    const cardioDone = { ...(props.day.cardioDone ?? {}) };
+    if (cardio.min > 0 || cardio.kcal > 0 || cardio.km > 0) cardioDone[routineKey] = cardio;
     else delete cardioDone[routineKey];
     return cardioDone;
   };
@@ -408,7 +416,16 @@ export function WorkoutSetupModal(props: SetupProps) {
       routines,
       week: gym.week.map((k) => (k === editKey ? 'rest' : k)),
     });
-    if (props.day.workoutRoutine === editKey) props.patchDay({ workoutRoutine: null });
+    // Drop the deleted routine's day state too, or its cardio would keep
+    // counting in Meals/Statistics with no card to surface it.
+    const dayPatch: Partial<DailyPlanData> = {};
+    if (props.day.workoutRoutine === editKey) dayPatch.workoutRoutine = null;
+    if (props.day.cardioDone?.[editKey]) {
+      const cardioDone = { ...props.day.cardioDone };
+      delete cardioDone[editKey];
+      dayPatch.cardioDone = cardioDone;
+    }
+    if (Object.keys(dayPatch).length > 0) props.patchDay(dayPatch);
     setEditKey(Object.keys(routines)[0] ?? 'rest');
   };
 
@@ -544,13 +561,13 @@ export function WorkoutSetupModal(props: SetupProps) {
           <div className={styles.exEditGrid}>
             <span className={styles.exEditHead}>Exercise</span>
             <span className={styles.exEditHead} style={{ textAlign: 'center' }}>
-              Sets
+              {allTimed ? 'Rounds' : 'Sets'}
             </span>
             <span className={styles.exEditHead} style={{ textAlign: 'center' }}>
-              Reps
+              {allTimed ? 'Min' : 'Reps'}
             </span>
             <span className={styles.exEditHead} style={{ textAlign: 'center' }}>
-              Kg
+              {allTimed ? 'Effort' : 'Kg'}
             </span>
             <span />
           </div>
@@ -601,7 +618,7 @@ export function WorkoutSetupModal(props: SetupProps) {
                     style={{ textAlign: 'center', padding: '6px 4px' }}
                     value={ex.min}
                     ariaLabel={`Exercise ${i + 1} minutes`}
-                    commit={(raw) => Math.max(0, Math.round(raw))}
+                    commit={(raw) => Math.max(0, Math.min(600, Math.round(raw)))}
                     onCommit={(min) => updateExTimed(i, { min })}
                   />
                 ) : (
@@ -634,7 +651,7 @@ export function WorkoutSetupModal(props: SetupProps) {
                     style={{ textAlign: 'center', padding: '6px 4px' }}
                     value={ex.kg}
                     ariaLabel={`Exercise ${i + 1} kg`}
-                    commit={(raw) => Math.max(0, raw)}
+                    commit={(raw) => Math.max(0, Math.min(2000, raw))}
                     onCommit={(kg) => updateEx(i, { kg })}
                   />
                 )}

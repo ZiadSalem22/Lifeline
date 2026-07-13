@@ -78,7 +78,7 @@ export function MealsSection(props: MealsSectionProps) {
   // informational line, NEVER credited back into the intake ring/target (the
   // "eat back exercise calories" trap). Deficit lives in weight-trend vs intake.
   const burnedKcal = Math.round(
-    Object.values(day.cardioDone).reduce((sum, cardio) => sum + cardio.kcal, 0),
+    Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0),
   );
   const CIRC = 2 * Math.PI * 30;
   const calDash = `${(Math.min(1, totCal / targets.kcal) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
