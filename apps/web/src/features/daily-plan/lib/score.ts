@@ -36,8 +36,12 @@ export function computeScore(input: ScoreInput): number {
     done += counted.filter((id) => day.habits[id] === true).length;
   }
   if (!hidden['todo']) {
-    total += taskTotal + day.quick.length;
-    done += taskDone + day.quick.filter((q) => q.done).length;
+    // Only quick items with text count — empty slots must not drag the ring
+    // down (same rule as priorities below, and the parity the metrics
+    // extractor already applies via quickTotal).
+    const usedQuick = day.quick.filter((q) => q.t.trim().length > 0);
+    total += taskTotal + usedQuick.length;
+    done += taskDone + usedQuick.filter((q) => q.done).length;
   }
   if (!hidden['priorities']) {
     const used = day.priorities.filter((p) => p.t.trim().length > 0);

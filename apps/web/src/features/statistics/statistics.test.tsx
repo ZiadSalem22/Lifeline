@@ -92,8 +92,8 @@ describe('StatisticsView (server mode)', () => {
     // The task content lives in its own section now.
     await user.click(await screen.findByRole('tab', { name: 'Tasks' }));
     expect(await screen.findByText('50%')).toBeInTheDocument();
-    expect(screen.getByText('25m')).toBeInTheDocument(); // avg duration
-    expect(screen.getByText('100m')).toBeInTheDocument(); // time spent
+    expect(screen.getByText('25m')).toBeInTheDocument(); // avg duration (< 1h)
+    expect(screen.getByText('1h 40m')).toBeInTheDocument(); // time spent (100m formatted)
     expect(screen.getByText('Work')).toBeInTheDocument(); // top tag
   });
 

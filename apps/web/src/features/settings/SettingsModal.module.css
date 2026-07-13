@@ -34,7 +34,7 @@
     color var(--transition-fast);
 }
 
-.tab:hover {
+.tab:hover:not(.tabActive) {
   color: var(--color-text);
 }
 
@@ -49,7 +49,7 @@
 
 .tabActive {
   background: var(--color-primary);
-  color: var(--color-bg);
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 

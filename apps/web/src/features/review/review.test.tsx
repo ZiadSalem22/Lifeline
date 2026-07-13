@@ -86,4 +86,60 @@ describe('Weekly Review', () => {
       expect(router?.state.location.pathname).toBe('/day/2026-07-09');
     });
   });
+
+  it('shows the week weight change when weigh-ins exist', async () => {
+    seedDay('2026-07-06', { weight: 83.0 });
+    seedDay('2026-07-10', { weight: 82.4 });
+    renderReview();
+
+    expect(await screen.findByText('82.4 kg')).toBeInTheDocument();
+    expect(screen.getByText('▼ 0.6')).toBeInTheDocument();
+    expect(screen.getByText('2/7')).toBeInTheDocument();
+  });
+});
+
+describe('Monthly Review', () => {
+  it('a YYYY-MM token renders the month with MoM delta and week links', async () => {
+    seedDay('2026-07-08', { habits: { fajr: true }, water: 6, reviewWell: 'Strong week.' });
+    seedDay('2026-07-16', { habits: { fajr: true }, water: 4 });
+    seedDay('2026-06-10', { water: 1 }); // previous month → MoM delta
+    const user = userEvent.setup();
+    const { router } = renderReview('/review/2026-07');
+
+    expect(await screen.findByText('MONTHLY REVIEW')).toBeInTheDocument();
+    expect(screen.getByText('July 2026')).toBeInTheDocument();
+    // Journal wall condenses to written days only.
+    expect(await screen.findByText(/Strong week\./)).toBeInTheDocument();
+    expect(await screen.findByText(/vs last month/)).toBeInTheDocument();
+    // A week card deep-links to that week's weekly review.
+    const weekCard = await screen.findByRole('button', {
+      name: /Open weekly review Jul 6/,
+    });
+    await user.click(weekCard);
+    await waitFor(() => {
+      expect(router?.state.location.pathname).toBe('/review/2026-07-06');
+    });
+  });
+
+  it('month navigation steps ‹ › across a year boundary', async () => {
+    const user = userEvent.setup();
+    renderReview('/review/2026-01');
+
+    expect(await screen.findByText('January 2026')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(await screen.findByText('December 2025')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(await screen.findByText('January 2026')).toBeInTheDocument();
+  });
+
+  it('the mode toggle switches between weekly and monthly', async () => {
+    const user = userEvent.setup();
+    renderReview('/review/2026-07-09');
+
+    expect(await screen.findByText('WEEKLY REVIEW')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Month' }));
+    expect(await screen.findByText('MONTHLY REVIEW')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Week' }));
+    expect(await screen.findByText('WEEKLY REVIEW')).toBeInTheDocument();
+  });
 });

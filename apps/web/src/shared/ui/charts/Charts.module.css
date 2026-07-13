@@ -11,8 +11,11 @@
   text-align: center;
 }
 
+/* display:block kills the inline-svg baseline gap; NO max-width — the svg
+   keeps its intrinsic width and the .lineWrap scroll wrapper handles overflow
+   (max-width:100% would letterbox the drawing down instead of scrolling). */
 .lineChart {
-  max-width: 100%;
+  display: block;
 }
 
 .chartScroll {
@@ -77,6 +80,18 @@
 }
 
 /* ── calendar heatmap ────────────────────────────────────────────────────── */
+
+.heatBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heatCaption {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 .heatWrap {
   display: flex;

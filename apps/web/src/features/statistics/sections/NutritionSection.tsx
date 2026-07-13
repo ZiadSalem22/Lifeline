@@ -43,7 +43,7 @@ export function NutritionSection({
         <StatTile label="Days logged" value={`${nutrition.loggedDays} / ${agg.dates.length}`} />
         <StatTile
           label="Avg kcal"
-          value={nutrition.avg?.kcal ?? '—'}
+          value={nutrition.avg ? nutrition.avg.kcal.toLocaleString() : '—'}
           delta={`target ${targets.kcal.toLocaleString()}`}
         />
         <StatTile
@@ -70,10 +70,11 @@ export function NutritionSection({
       {nutrition.bestDay && nutrition.worstDay && (
         <div className={styles.legend}>
           <span>
-            Closest to target: {nutrition.bestDay.date} ({nutrition.bestDay.kcal} kcal)
+            Closest to target: {nutrition.bestDay.date} ({nutrition.bestDay.kcal.toLocaleString()}{' '}
+            kcal)
           </span>
           <span>
-            Furthest: {nutrition.worstDay.date} ({nutrition.worstDay.kcal} kcal)
+            Furthest: {nutrition.worstDay.date} ({nutrition.worstDay.kcal.toLocaleString()} kcal)
           </span>
         </div>
       )}

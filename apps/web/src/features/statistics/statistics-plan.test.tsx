@@ -72,4 +72,22 @@ describe('Statistics life-metric sections (guest)', () => {
     await user.click(await screen.findByRole('tab', { name: 'Workout' }));
     expect(await screen.findByText(/No workouts logged in this period/)).toBeInTheDocument();
   });
+
+  it('Overview shows the weight tile + trend once weigh-ins exist', async () => {
+    const d1 = new Date();
+    d1.setDate(d1.getDate() - 1);
+    const d2 = new Date();
+    d2.setDate(d2.getDate() - 3);
+    seedDay(fmt(d2), { weight: 83.2 });
+    seedDay(fmt(d1), { weight: 82.6 });
+
+    renderWithProviders(<StatisticsView />);
+
+    // Tile: latest weigh-in; delta = last − first, neutral tone by design.
+    expect(await screen.findByText('82.6 kg')).toBeInTheDocument();
+    expect(screen.getByText('▼ 0.6 kg')).toBeInTheDocument();
+    // Trend card with the weigh-in legend.
+    expect(screen.getByRole('img', { name: 'Weight trend' })).toBeInTheDocument();
+    expect(screen.getByText(/2 weigh-ins/)).toBeInTheDocument();
+  });
 });

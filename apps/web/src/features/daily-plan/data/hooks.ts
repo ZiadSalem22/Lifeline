@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   defaultDailyPlanSettings,
   extractDayMetrics,
@@ -111,6 +111,28 @@ export function useDailyPlanWeek(dateStr: string) {
 }
 
 /**
+ * Stored plan rows for an arbitrary date range (≤ the raw endpoint's 62-day
+ * cap — a month fits). Read-only feed for the Monthly Review; unlike the
+ * week hook it is NOT patched by useSaveDay, so keep staleTime short.
+ */
+export function useDailyPlanRange(start: string, end: string) {
+  const { planApi, mode } = usePlanApi();
+  const { checkedIdentity } = useAuth();
+  const query = useQuery({
+    queryKey: ['daily-plan-range', mode, start, end],
+    enabled: checkedIdentity,
+    staleTime: 30_000,
+    queryFn: () => planApi.fetchRange(start, end),
+  });
+  const days = useMemo(() => {
+    const out: Record<string, DailyPlanData> = {};
+    for (const row of query.data ?? []) out[row.date] = row.data;
+    return out;
+  }, [query.data]);
+  return { days, isLoading: query.isLoading };
+}
+
+/**
  * The last `windowDays` of plan rows ENDING YESTERDAY (relative to dateStr) —
  * the source for personal suggestions, templates-from-history, and the
  * tomorrow→today / carry-over flows. Oldest → newest; missing days omitted.
@@ -154,11 +176,16 @@ export function usePlanMetrics(range: { startDate: string; endDate: string }) {
     queryKey: ['plan-metrics', mode, range.startDate, range.endDate],
     enabled: checkedIdentity,
     staleTime: 5 * 60_000,
+    // Keep the previous range's charts on screen while a new range loads —
+    // ‹ › chevron steps otherwise unmount every tile behind a spinner and
+    // collapse the page height on each press.
+    placeholderData: keepPreviousData,
     queryFn: () => planApi.fetchMetrics(range.startDate, range.endDate),
   });
   return {
     metrics: query.data?.items ?? [],
     isLoading: query.isLoading,
+    isError: query.isError,
     ready: query.data !== undefined,
   };
 }

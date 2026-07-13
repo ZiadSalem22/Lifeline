@@ -171,13 +171,35 @@ export function computeGuestStats(
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const perDay = new Map<string, number>();
-  for (const todo of inRange) {
-    if (todo.dueDate !== null) perDay.set(todo.dueDate, (perDay.get(todo.dueDate) ?? 0) + 1);
+  // Groups mirror the server EXACTLY so the "Tasks per …" line matches in both
+  // modes: All → one point per year with data; a range → one point per day
+  // in [start, end], zero-filled, so the x-axis is time-true (not collapsed
+  // over empty days).
+  let groups: StatsResponse['groups'];
+  if (query.mode === 'all') {
+    const perYear = new Map<string, number>();
+    for (const todo of inRange) {
+      if (todo.dueDate !== null) {
+        const year = todo.dueDate.slice(0, 4);
+        perYear.set(year, (perYear.get(year) ?? 0) + 1);
+      }
+    }
+    groups = [...perYear.entries()]
+      .map(([year, count]) => ({ period: year, date: year, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } else {
+    const perDay = new Map<string, number>();
+    for (const todo of inRange) {
+      if (todo.dueDate !== null) perDay.set(todo.dueDate, (perDay.get(todo.dueDate) ?? 0) + 1);
+    }
+    groups = [];
+    let date = query.range.startDate;
+    // 1100-day ceiling matches the server's max range guard.
+    for (let i = 0; i < 1100 && date <= query.range.endDate; i += 1) {
+      groups.push({ period: date, date, count: perDay.get(date) ?? 0 });
+      date = format(addDays(new Date(`${date}T00:00:00`), 1), 'yyyy-MM-dd');
+    }
   }
-  const groups = [...perDay.entries()]
-    .map(([date, count]) => ({ period: 'day', date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date));
 
   return {
     periodTotals: { totalTodos, completedCount, completionRate, avgDuration, timeSpentTotal },

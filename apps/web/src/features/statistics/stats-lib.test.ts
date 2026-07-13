@@ -97,10 +97,13 @@ describe('computeGuestStats', () => {
     });
     expect(stats.topTags[0]).toMatchObject({ id: work.id, name: 'Work', count: 2 });
     expect(stats.topTags[1]).toMatchObject({ id: play.id, count: 1 });
-    expect(stats.groups).toEqual([
-      { period: 'day', date: '2026-07-01', count: 2 },
-      { period: 'day', date: '2026-07-02', count: 1 },
-    ]);
+    // Zero-filled one group per day in [start, end] (matches the server), so
+    // the tasks-per-day line's x-axis is time-true, not collapsed over gaps.
+    expect(stats.groups).toHaveLength(31);
+    expect(stats.groups[0]).toEqual({ period: '2026-07-01', date: '2026-07-01', count: 2 });
+    expect(stats.groups[1]).toEqual({ period: '2026-07-02', date: '2026-07-02', count: 1 });
+    expect(stats.groups[2]).toEqual({ period: '2026-07-03', date: '2026-07-03', count: 0 });
+    expect(stats.groups[30]).toEqual({ period: '2026-07-31', date: '2026-07-31', count: 0 });
   });
 
   it('filters by range, excludes archived, and "all" keeps unscheduled todos', () => {
@@ -115,5 +118,8 @@ describe('computeGuestStats', () => {
 
     const overall = computeGuestStats(all, [], { mode: 'all' });
     expect(overall.periodTotals.totalTodos).toBe(3); // archived still excluded
+    // "All" buckets by YEAR (matching the server's ?period=year branch); the
+    // two dated todos fall in 2026, the unscheduled one has no year bucket.
+    expect(overall.groups).toEqual([{ period: '2026', date: '2026', count: 2 }]);
   });
 });

@@ -46,6 +46,15 @@ export interface PlanAggregates {
     worstDay: { date: string; kcal: number } | null;
   };
   workout: { sessions: number; totalSets: number; byRoutine: RoutineAggRow[] };
+  weight: {
+    /** kg per date of the range; null = not weighed that day. */
+    series: (number | null)[];
+    count: number;
+    first: { date: string; kg: number } | null;
+    last: { date: string; kg: number } | null;
+    min: number | null;
+    max: number | null;
+  };
   journalDays: number;
   gratitudeTotal: number;
   moodAm: (number | null)[];
@@ -80,6 +89,12 @@ export function aggregatePlanMetrics(
   settings: DailyPlanSettings,
   range: StatsRange,
   todayStr: string,
+  /**
+   * Per-date real-task counts, joined from the todos store. Without it the
+   * score would count only quick items and disagree with the plan ring and
+   * the Weekly Review, which both include real tasks.
+   */
+  taskCountFor?: (date: string) => { done: number; total: number },
 ): PlanAggregates {
   const dates = enumerateRange(range);
   const byDate = new Map(metrics.map((m) => [m.date, m]));
@@ -92,7 +107,7 @@ export function aggregatePlanMetrics(
 
   const scoreByDate = dates.map((date) => {
     const m = byDate.get(date);
-    return m ? planScoreFromMetrics(m, scoreSettings) : null;
+    return m ? planScoreFromMetrics(m, scoreSettings, taskCountFor?.(date)) : null;
   });
   const scored = scoreByDate.filter((s): s is number => s !== null);
 
@@ -157,6 +172,15 @@ export function aggregatePlanMetrics(
     }
   }
 
+  // Weight — weigh-ins are sparse by nature; first/last logged bound the
+  // period trend, min/max frame the chart's zoomed baseline.
+  const weightSeries = dates.map((d) => byDate.get(d)?.weight ?? null);
+  const weighIns = dates.flatMap((date) => {
+    const kg = byDate.get(date)?.weight;
+    return kg != null ? [{ date, kg }] : [];
+  });
+  const weightValues = weighIns.map((w) => w.kg);
+
   // Workout.
   const sessions = metrics.filter((m) => m.workoutSets > 0);
   const byRoutine = new Map<string, { sessions: number; sets: number }>();
@@ -203,6 +227,14 @@ export function aggregatePlanMetrics(
           ...row,
         }))
         .sort((a, b) => b.sessions - a.sessions),
+    },
+    weight: {
+      series: weightSeries,
+      count: weighIns.length,
+      first: weighIns[0] ?? null,
+      last: weighIns[weighIns.length - 1] ?? null,
+      min: weightValues.length > 0 ? Math.min(...weightValues) : null,
+      max: weightValues.length > 0 ? Math.max(...weightValues) : null,
     },
     journalDays: metrics.filter((m) => m.journal).length,
     gratitudeTotal: metrics.reduce((a, m) => a + m.gratitudeCount, 0),

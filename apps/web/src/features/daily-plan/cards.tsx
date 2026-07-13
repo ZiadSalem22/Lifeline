@@ -1097,6 +1097,95 @@ export function WaterBody({
   );
 }
 
+/* ── Weight Log ──────────────────────────────────────────────────────────── */
+
+const fmtWeight = (kg: number): string => String(Math.round(kg * 10) / 10);
+
+export interface WeightBodyProps {
+  day: DailyPlanData;
+  patch: Patch;
+  /** Most recent earlier weigh-in (28-day window) — the comparison line. */
+  lastWeighIn: { date: string; kg: number } | null;
+}
+
+export function WeightBody({ day, patch, lastWeighIn }: WeightBodyProps) {
+  // Draft locally so clearing the field to retype doesn't snap to 0 mid-edit
+  // (the DraftNumber idiom); an empty field on purpose = "not weighed".
+  const [draft, setDraft] = useState(day.weight > 0 ? fmtWeight(day.weight) : '');
+  const [seen, setSeen] = useState(day.weight);
+  if (day.weight !== seen) {
+    setSeen(day.weight);
+    setDraft(day.weight > 0 ? fmtWeight(day.weight) : '');
+  }
+  const commit = (raw: string) => {
+    if (raw.trim() === '') {
+      if (day.weight !== 0) patch({ weight: 0 });
+      return;
+    }
+    const parsed = Number.parseFloat(raw);
+    if (Number.isNaN(parsed) || parsed <= 0) return;
+    const kg = Math.min(500, Math.round(parsed * 10) / 10);
+    if (kg !== day.weight) patch({ weight: kg });
+  };
+  const delta =
+    day.weight > 0 && lastWeighIn ? Math.round((day.weight - lastWeighIn.kg) * 10) / 10 : null;
+  return (
+    <div className={styles.cardBody} style={{ gap: 8 }}>
+      <div className={styles.weightRow}>
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          max={500}
+          step={0.1}
+          className={styles.weightInput}
+          value={draft}
+          placeholder="—"
+          aria-label="Today's weight in kilograms"
+          onChange={(e) => {
+            setDraft(e.target.value);
+            commit(e.target.value);
+          }}
+          onBlur={() => setDraft(day.weight > 0 ? fmtWeight(day.weight) : '')}
+        />
+        <span className={styles.weightUnit}>kg</span>
+        {delta !== null && delta !== 0 && (
+          <span className={styles.weightDelta} data-up={delta > 0 ? 'true' : undefined}>
+            {delta > 0 ? '▲' : '▼'} {fmtWeight(Math.abs(delta))}
+          </span>
+        )}
+      </div>
+      <span className={styles.weightHint}>
+        {lastWeighIn
+          ? `Last weigh-in ${fmtWeight(lastWeighIn.kg)} kg · ${shortDate(lastWeighIn.date)}`
+          : day.weight > 0
+            ? 'First weigh-in on record'
+            : 'Step on the scale and log it'}
+      </span>
+    </div>
+  );
+}
+
+/** '2026-07-10' → 'Jul 10' without a Date round-trip surprise. */
+function shortDate(dateStr: string): string {
+  const [, m, d] = dateStr.split('-');
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return `${months[Number(m) - 1] ?? ''} ${Number(d)}`;
+}
+
 /* ── Tomorrow Plan ───────────────────────────────────────────────────────── */
 
 export interface TomorrowBodyProps {

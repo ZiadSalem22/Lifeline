@@ -18,6 +18,7 @@ import {
   PLAN_SECTIONS,
   WEEK_LETTERS,
   daysAfter,
+  daysBefore,
   sectionLabel,
   weekIndexOf,
   type PlanSectionKey,
@@ -47,6 +48,7 @@ import {
   TomorrowBody,
   WaterBody,
   WeekReviewBody,
+  WeightBody,
 } from './cards';
 import { WorkoutBody } from './WorkoutCard';
 import { workoutBadge } from './lib/workout-lib';
@@ -517,6 +519,20 @@ export function DailyPlanView({
   const daysHabits: Record<string, Record<string, HabitMark>> = {};
   for (const date of weekDates) daysHabits[date] = effectiveDays[date]?.habits ?? {};
 
+  // Most recent earlier weigh-in (28-day window) — the Weight card's
+  // comparison line. Same data horizon as streaks/history. Plain loop (no
+  // manual memo): the React Compiler auto-memoizes, and a manual useMemo here
+  // isn't preservable, which would make it skip optimizing the component.
+  let lastWeighIn: { date: string; kg: number } | null = null;
+  for (let back = 1; back <= 28; back += 1) {
+    const date = daysBefore(dateStr, back);
+    const row = effectiveDays[date] ?? recentByDate[date];
+    if (row && row.weight > 0) {
+      lastWeighIn = { date, kg: row.weight };
+      break;
+    }
+  }
+
   // Streaks + 28-day history: marks come from this week's cache plus the
   // recent window (28 days ending yesterday), all relative to the selected
   // day — a ~5-week horizon, plenty for the streaks that matter daily.
@@ -627,6 +643,10 @@ export function DailyPlanView({
     water: {
       badge: `${Math.min(day.water, settings.targets.water)} / ${settings.targets.water} cups`,
       body: <WaterBody day={day} patch={patchDay} goal={settings.targets.water} />,
+    },
+    weight: {
+      ...(day.weight > 0 ? { badge: `${Math.round(day.weight * 10) / 10} kg` } : {}),
+      body: <WeightBody day={day} patch={patchDay} lastWeighIn={lastWeighIn} />,
     },
     tomorrow: {
       body: (

@@ -1,15 +1,26 @@
 import type { StatsResponse } from '@lifeline/shared';
 import { DonutChart, LineChart } from '../../../shared/ui/charts/charts';
+import type { StatsPeriod } from '../stats-lib';
 import styles from '../Statistics.module.css';
 
+/** Minutes → "90m" / "1h 30m" so 4–5 digit totals stay readable. */
+function formatMinutes(total: number): string {
+  if (total < 60) return `${total}m`;
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
+
 /**
- * The original Statistics content, preserved 1:1 — metric tiles, completion
- * donut, tasks-per-day line, top tags.
+ * The original Statistics content — metric tiles, completion donut, tasks
+ * line, top tags. On the All tab the server groups by year, so the line is
+ * per-year (labelled accordingly) rather than per-day.
  */
-export function TasksSection({ stats }: { stats: StatsResponse }) {
+export function TasksSection({ stats, period }: { stats: StatsResponse; period: StatsPeriod }) {
   const totals = stats.periodTotals;
   const topTags = stats.topTags;
   const groups = stats.groups;
+  const perYear = period === 'all';
   const maxPerDay = groups.reduce((max, group) => Math.max(max, group.count), 0) || 1;
   const points = groups.map((group) => ({ x: group.date, y: group.count }));
   const maxTagCount = topTags[0]?.count ?? 1;
@@ -27,11 +38,11 @@ export function TasksSection({ stats }: { stats: StatsResponse }) {
         </div>
         <div className={styles.metric}>
           <div className={styles.metricLabel}>Avg. Duration</div>
-          <div className={styles.metricValue}>{totals.avgDuration}m</div>
+          <div className={styles.metricValue}>{formatMinutes(totals.avgDuration)}</div>
         </div>
         <div className={styles.metric}>
           <div className={styles.metricLabel}>Time Spent</div>
-          <div className={styles.metricValue}>{totals.timeSpentTotal}m</div>
+          <div className={styles.metricValue}>{formatMinutes(totals.timeSpentTotal)}</div>
         </div>
       </div>
 
@@ -48,13 +59,15 @@ export function TasksSection({ stats }: { stats: StatsResponse }) {
         </div>
 
         <div className={styles.sectionCard}>
-          <h3 className={styles.cardTitle}>Tasks per Day</h3>
+          <h3 className={styles.cardTitle}>{perYear ? 'Tasks per Year' : 'Tasks per Day'}</h3>
           <div className={styles.lineWrap}>
-            <LineChart points={points} />
+            <LineChart points={points} label={perYear ? 'Tasks per year' : 'Tasks per day'} />
           </div>
           <div className={styles.legend}>
             <span>Max: {maxPerDay}</span>
-            <span>Points: {points.length}</span>
+            <span>
+              {perYear ? 'Years' : 'Points'}: {points.length}
+            </span>
           </div>
         </div>
 

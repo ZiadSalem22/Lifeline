@@ -58,7 +58,9 @@
     color var(--transition-fast);
 }
 
-.toggle:hover {
+/* :not(.toggleActive) — a bare :hover (0-2-0) outranks .toggleActive (0-1-0)
+   and would paint --color-text over the on-primary ink on the primary fill. */
+.toggle:hover:not(.toggleActive) {
   color: var(--color-text);
 }
 
@@ -79,6 +81,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap-sm);
+  /* Reserve a little height so short pickers (day/month/year) don't jump the
+     section tabs relative to the taller week picker. */
+  min-height: 44px;
 }
 
 .pickerRow {
@@ -121,7 +126,7 @@
   font-size: 0.8rem;
 }
 
-.chip:hover {
+.chip:hover:not(.chipActive) {
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -235,10 +240,6 @@
   padding-bottom: var(--space-4);
 }
 
-.lineChart {
-  display: block;
-}
-
 .chartEmpty {
   padding: var(--space-16);
   text-align: center;
@@ -313,6 +314,7 @@
 .sectionTabs {
   flex-wrap: wrap;
   max-width: 100%;
+  margin-bottom: var(--gap-lg);
 }
 
 .stepBtns {
@@ -349,7 +351,9 @@
 
 .habitStatRow {
   display: grid;
-  grid-template-columns: minmax(90px, 1.2fr) auto 2fr 44px;
+  /* Fixed meta column (streak chip / "112 sets") so the progress bars start
+     at the SAME x across every row — an 'auto' column made them ragged. */
+  grid-template-columns: minmax(80px, 1.2fr) 58px 2fr 44px;
   align-items: center;
   gap: var(--gap-sm);
   padding: 6px 0;

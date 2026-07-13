@@ -33,7 +33,16 @@ export const dayMetricsSchema = z.object({
   quickTotal: z.number().int(),
   /** Total comes from settings.nonnegLabels at read time. */
   nonnegsDone: z.number().int(),
+  /**
+   * Raw non-neg flags in stored order — the score slices to the CURRENT
+   * nonnegCount (like computeScore), so orphan flags beyond the current
+   * labels never inflate it. nonnegsDone above is the unsliced convenience
+   * count; the score must use this array.
+   */
+  nonnegs: z.array(z.boolean()),
   water: z.number().int(),
+  /** Body weight in kg; storage uses 0-as-unset — null here. */
+  weight: z.number().positive().nullable(),
   kcal: z.number(),
   protein: z.number(),
   carbs: z.number(),
@@ -110,7 +119,9 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
     quickDone: usedQuick.filter((q) => q.done).length,
     quickTotal: usedQuick.length,
     nonnegsDone: data.nonnegs.filter(Boolean).length,
+    nonnegs: [...data.nonnegs],
     water: data.water,
+    weight: data.weight > 0 ? data.weight : null,
     kcal,
     protein,
     carbs,
@@ -141,8 +152,10 @@ export interface PlanScoreSettings {
  * The daily score ring's section math over DayMetrics — skip-neutral habits,
  * used-priorities-only, water clamped to goal, hidden cards excluded. Pass
  * `tasks` to include the real-task portion (the web joins it from the todos
- * store); omitted = plan-only score. A web parity test pins this to the plan
- * view's computeScore so the two can never drift.
+ * store); omitted = plan-only score. The web score-parity test
+ * (features/daily-plan/lib/score-parity.test.ts) feeds identical days through
+ * this and the plan view's computeScore and asserts equality, so the two can
+ * never drift.
  */
 export function planScoreFromMetrics(
   m: DayMetrics,
@@ -167,8 +180,10 @@ export function planScoreFromMetrics(
     done += m.prioritiesDone;
   }
   if (!s.hidden['nonneg']) {
+    // Slice to the current label count — matches computeScore exactly, so a
+    // stored flag beyond today's labels (an orphan) never counts.
     total += s.nonnegCount;
-    done += Math.min(m.nonnegsDone, s.nonnegCount);
+    done += m.nonnegs.slice(0, s.nonnegCount).filter(Boolean).length;
   }
   if (!s.hidden['water']) {
     total += s.waterGoal;

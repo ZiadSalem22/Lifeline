@@ -41,6 +41,46 @@
   line-height: 1;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Week | Month pill pair. The active pill fills with primary — its hover
+   must NOT be overridden by the base :hover (the on-primary contrast bug). */
+.modeToggle {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 999px;
+}
+
+.modeBtn {
+  padding: 2px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--plan-muted);
+  font-family: var(--plan-label-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.modeBtn:hover:not(.modeBtnActive) {
+  color: var(--color-text);
+}
+
+.modeBtnActive {
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+}
+
 .weekNav {
   position: relative;
   display: flex;
@@ -235,6 +275,78 @@
   white-space: nowrap;
 }
 
+/* ── weeks strip (monthly) ───────────────────────────────────────────────── */
+
+.weeksStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr));
+  gap: 8px;
+}
+
+.weekCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: var(--plan-rad);
+  background: var(--plan-card);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+  text-align: start;
+}
+
+.weekCard:hover {
+  border-color: var(--plan-primary);
+}
+
+.weekCardLabel {
+  font-family: var(--plan-display-font);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.weekBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 34px;
+}
+
+.weekBarTrack {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(to top, var(--plan-surface2), transparent 70%);
+  border-bottom: 1px solid var(--plan-rule);
+}
+
+.weekBarFill {
+  width: 100%;
+  background: var(--plan-primary);
+  opacity: 0.85;
+}
+
+.weekCardMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.weekCardAvg {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.weekCardDays {
+  font-size: 10px;
+  color: var(--plan-muted);
+}
+
 /* ── cards grid ──────────────────────────────────────────────────────────── */
 
 .grid {
@@ -319,6 +431,46 @@
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* monthly habit rows: % bar instead of 31 dots */
+.habitMonthRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 2fr 44px 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.pctTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--plan-surface2);
+  overflow: hidden;
+}
+
+.pctFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--plan-primary);
+  opacity: 0.85;
+}
+
+.habitCounts {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.routineRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--plan-rule);
+  font-size: 12.5px;
 }
 
 /* tasks */

@@ -109,6 +109,8 @@ export const dailyPlanDataSchema = z.object({
   habits: boundedRecord(habitMarkSchema, PLAN_LIMITS.listMax).default({}),
   quick: z.array(quickItemSchema).max(PLAN_LIMITS.listMax).default([]),
   water: z.number().int().min(0).max(24).default(0),
+  /** Body weight (kg) logged for THIS day; 0 = not weighed (0-as-unset). */
+  weight: z.number().min(0).max(500).default(0),
   focusText: planLongText.default(''),
   gratitude: z.array(planText).max(8).default(['', '', '']),
   reviewWell: planLongText.default(''),

@@ -80,7 +80,7 @@
     color var(--transition-fast);
 }
 
-.modeToggleBtn:hover {
+.modeToggleBtn:hover:not(.modeToggleBtnActive) {
   color: var(--color-text);
 }
 
@@ -91,7 +91,7 @@
 
 .modeToggleBtnActive {
   background: var(--color-primary);
-  color: var(--color-bg);
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 

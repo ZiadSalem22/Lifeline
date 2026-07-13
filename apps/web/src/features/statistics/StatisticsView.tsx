@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import type { StatsResponse } from '@lifeline/shared';
 import { useAuth } from '../../app/providers/auth-context';
@@ -7,6 +8,7 @@ import { api } from '../../shared/api/client';
 import { putSettings } from '../../shared/api/endpoints';
 import { StatsIcon } from '../../shared/ui/icons';
 import { Spinner } from '../../shared/ui/Spinner';
+import { filterTodosForDay } from '../todos/lib/day-filter';
 import { useAllTags, useAllTodos } from '../todos/data/hooks';
 import { usePlanMetrics, usePlanSettings } from '../daily-plan/data/hooks';
 import {
@@ -57,6 +59,33 @@ function toWeekStart(value: string): WeekStart {
   return lower === 'sunday' || lower === 'saturday' ? lower : 'monday';
 }
 
+/**
+ * ArrowLeft/Right/Home/End move focus AND selection between tabs in a
+ * roving-tabindex tablist (WAI-ARIA tabs pattern). Selected tab has
+ * tabIndex 0, the rest -1, so Tab reaches the strip once and arrows walk it.
+ */
+function tablistKeyDown<T>(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  items: readonly T[],
+  currentIndex: number,
+  select: (item: T) => void,
+): void {
+  const last = items.length - 1;
+  let next = -1;
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+    next = currentIndex >= last ? 0 : currentIndex + 1;
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+    next = currentIndex <= 0 ? last : currentIndex - 1;
+  else if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = last;
+  const target = next >= 0 ? items[next] : undefined;
+  if (target === undefined) return;
+  event.preventDefault();
+  select(target);
+  const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+  tabs[next]?.focus();
+}
+
 export function StatisticsView() {
   const { guestMode, currentUser, refreshIdentity } = useAuth();
 
@@ -68,9 +97,15 @@ export function StatisticsView() {
   );
   const [showWeekStartPicker, setShowWeekStartPicker] = useState(false);
   const [saveError, setSaveError] = useState('');
+  // Local draft so the year field can be edited digit-by-digit while staying
+  // controlled — an uncontrolled input desyncs from the ‹ › chevrons.
+  const [yearDraft, setYearDraft] = useState<string | null>(null);
 
   // The picker inputs edit an explicit range; "all" has no range to display.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Local date (NOT UTC): the streak anchor and Day view must match the Daily
+  // Plan, which is fully local — a UTC date reads a day off after midnight for
+  // east-of-UTC users (the owner is UTC+3).
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const range = query.mode === 'range' ? query.range : { startDate: todayStr, endDate: todayStr };
   const setRange = (next: StatsRange) => setQuery({ mode: 'range', range: next });
 
@@ -97,19 +132,41 @@ export function StatisticsView() {
   const error = !guestMode && serverQuery.isError ? 'Failed to load statistics.' : null;
 
   // Life metrics (habits / nutrition / workout / journal) from the plan
-  // store — 'All' maps to the trailing 366 days (the metrics cap).
-  const metricsRange = query.mode === 'range' ? query.range : allMetricsRange();
-  const prevMetricsRange = previousRange(metricsRange);
-  const { metrics, isLoading: metricsLoading } = usePlanMetrics(metricsRange);
+  // store — 'All' maps to the trailing 366 days (the metrics cap). Memoized
+  // so the range's object identity is stable across renders; a fresh object
+  // every render defeats the agg memos below.
+  const metricsRange = useMemo(
+    () => (query.mode === 'range' ? query.range : allMetricsRange()),
+    [query],
+  );
+  const prevMetricsRange = useMemo(() => previousRange(metricsRange), [metricsRange]);
+  const {
+    metrics,
+    isLoading: metricsLoading,
+    isError: metricsError,
+  } = usePlanMetrics(metricsRange);
   const { metrics: prevMetrics } = usePlanMetrics(prevMetricsRange);
   const { settings: planSettings } = usePlanSettings();
+
+  // Per-date real-task counts joined from the todos store — feeds the plan
+  // score so Statistics matches the plan ring and the Weekly Review (both
+  // count real tasks, not just quick items). useAllTodos serves guest+server,
+  // so the join keeps mode parity.
+  const taskCountFor = useMemo(() => {
+    const todos = todosQuery.data ?? [];
+    return (date: string) => {
+      const dayTodos = filterTodosForDay(todos, date);
+      return { done: dayTodos.filter((todo) => todo.isCompleted).length, total: dayTodos.length };
+    };
+  }, [todosQuery.data]);
+
   const agg = useMemo(
-    () => aggregatePlanMetrics(metrics, planSettings, metricsRange, todayStr),
-    [metrics, planSettings, metricsRange, todayStr],
+    () => aggregatePlanMetrics(metrics, planSettings, metricsRange, todayStr, taskCountFor),
+    [metrics, planSettings, metricsRange, todayStr, taskCountFor],
   );
   const prevAgg = useMemo(
-    () => aggregatePlanMetrics(prevMetrics, planSettings, prevMetricsRange, todayStr),
-    [prevMetrics, planSettings, prevMetricsRange, todayStr],
+    () => aggregatePlanMetrics(prevMetrics, planSettings, prevMetricsRange, todayStr, taskCountFor),
+    [prevMetrics, planSettings, prevMetricsRange, todayStr, taskCountFor],
   );
   const stepPeriod = (dir: -1 | 1) =>
     setQuery({ mode: 'range', range: stepRange(period, range, dir) });
@@ -148,13 +205,21 @@ export function StatisticsView() {
       {/* ── period tabs + pickers ────────────────────────────────────────── */}
       <div className={styles.toolbar}>
         <div className={styles.toggleRow}>
-          <div className={styles.toggleGroup} role="tablist" aria-label="Stats period">
+          <div
+            className={styles.toggleGroup}
+            role="tablist"
+            aria-label="Stats period"
+            onKeyDown={(event) =>
+              tablistKeyDown(event, PERIODS, PERIODS.indexOf(period), changePeriod)
+            }
+          >
             {PERIODS.map((p) => (
               <button
                 key={p}
                 type="button"
                 role="tab"
                 aria-selected={period === p}
+                tabIndex={period === p ? 0 : -1}
                 className={[styles.toggle, period === p ? styles.toggleActive : undefined]
                   .filter(Boolean)
                   .join(' ')}
@@ -300,10 +365,12 @@ export function StatisticsView() {
                 max={2100}
                 step={1}
                 placeholder={todayStr.slice(0, 4)}
-                defaultValue={range.startDate.slice(0, 4)}
+                value={yearDraft ?? range.startDate.slice(0, 4)}
                 onChange={(event) => {
+                  setYearDraft(event.target.value);
                   if (/^\d{4}$/.test(event.target.value)) setRange(yearRange(event.target.value));
                 }}
+                onBlur={() => setYearDraft(null)}
               />
             </div>
           )}
@@ -320,7 +387,14 @@ export function StatisticsView() {
         className={`${styles.toggleGroup} ${styles.sectionTabs}`}
         role="tablist"
         aria-label="Stats section"
-        style={{ marginBottom: 'var(--gap-lg)' }}
+        onKeyDown={(event) =>
+          tablistKeyDown(
+            event,
+            SECTIONS,
+            SECTIONS.findIndex(([key]) => key === section),
+            ([key]) => setSection(key),
+          )
+        }
       >
         {SECTIONS.map(([key, label]) => (
           <button
@@ -328,6 +402,7 @@ export function StatisticsView() {
             type="button"
             role="tab"
             aria-selected={section === key}
+            tabIndex={section === key ? 0 : -1}
             className={[styles.toggle, section === key ? styles.toggleActive : undefined]
               .filter(Boolean)
               .join(' ')}
@@ -343,13 +418,24 @@ export function StatisticsView() {
           <Spinner size={32} label="Loading statistics..." />
         </div>
       )}
-      {error && section === 'tasks' && (
+      {/* Errors surface on every section — not only Tasks — and a failed
+          metrics fetch must not masquerade as an empty "No plan data" state. */}
+      {section === 'tasks' && error && (
         <div className={styles.error} role="alert">
           {error}
         </div>
       )}
+      {section !== 'tasks' && metricsError && (
+        <div className={styles.error} role="alert">
+          Failed to load life metrics for this period.
+        </div>
+      )}
 
-      {section === 'overview' && !metricsLoading && (
+      {period === 'all' && section !== 'tasks' && !metricsError && (
+        <div className={styles.allHint}>Life metrics cover the last 12 months.</div>
+      )}
+
+      {section === 'overview' && !metricsLoading && !metricsError && (
         <OverviewSection
           agg={agg}
           prev={prevAgg}
@@ -357,15 +443,17 @@ export function StatisticsView() {
           showHeatmap={period === 'month' || period === 'year' || period === 'all'}
         />
       )}
-      {section === 'tasks' && !loading && !error && stats && <TasksSection stats={stats} />}
-      {section === 'habits' && !metricsLoading && <HabitsSection agg={agg} />}
-      {section === 'nutrition' && !metricsLoading && (
+      {section === 'tasks' && !loading && !error && stats && (
+        <TasksSection stats={stats} period={period} />
+      )}
+      {section === 'habits' && !metricsLoading && !metricsError && <HabitsSection agg={agg} />}
+      {section === 'nutrition' && !metricsLoading && !metricsError && (
         <NutritionSection agg={agg} settings={planSettings} />
       )}
-      {section === 'workout' && !metricsLoading && (
+      {section === 'workout' && !metricsLoading && !metricsError && (
         <WorkoutSection agg={agg} settings={planSettings} />
       )}
-      {section === 'journal' && !metricsLoading && <JournalSection agg={agg} />}
+      {section === 'journal' && !metricsLoading && !metricsError && <JournalSection agg={agg} />}
     </div>
   );
 }

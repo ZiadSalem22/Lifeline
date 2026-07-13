@@ -22,9 +22,16 @@ describe('extractDayMetrics', () => {
       moodAm: null,
       moodPm: null,
       rating: null,
+      weight: null,
       journal: false,
       gratitudeCount: 0,
     });
+  });
+
+  it('weight: 0-as-unset maps to null, a logged weigh-in passes through', () => {
+    expect(extractDayMetrics('2026-07-13', emptyDailyPlanData()).weight).toBeNull();
+    const weighed = dailyPlanDataSchema.parse({ weight: 82.4 });
+    expect(extractDayMetrics('2026-07-13', weighed).weight).toBe(82.4);
   });
 
   it('a lived day sums meals, counts sets per routine, and keeps raw habit marks', () => {

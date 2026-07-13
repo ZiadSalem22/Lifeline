@@ -20,6 +20,7 @@ export const PLAN_SECTIONS = [
   ['todo', 'To-Do List'],
   ['meals', 'Meals & Nutrition'],
   ['water', 'Water Tracker'],
+  ['weight', 'Weight Log'],
   ['tomorrow', 'Tomorrow Plan'],
   ['nonneg', 'Non-Negotiables'],
   ['week', 'Week Review'],
@@ -37,6 +38,7 @@ export const PLAN_GRID_KEYS: PlanSectionKey[] = [
   'review',
   'todo',
   'water',
+  'weight',
   'tomorrow',
   'week',
 ];
