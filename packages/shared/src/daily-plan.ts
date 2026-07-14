@@ -243,6 +243,13 @@ export const gymExerciseSchema = z.object({
   km: z.number().min(0).max(200).default(0),
   /** 'time' only: intensity class → MET for the calorie estimate. */
   effort: z.enum(['walk', 'jog', 'run']).default('walk'),
+  /**
+   * 'time' only: speed (km/h) and incline (% grade). When speed is set the
+   * calorie estimate upgrades from the flat MET table to the ACSM walking/
+   * running equations (incline-aware); 0 = unset → MET fallback.
+   */
+  kmh: z.number().min(0).max(25).default(0),
+  incline: z.number().min(0).max(20).default(0),
 });
 export type GymExercise = z.infer<typeof gymExerciseSchema>;
 
@@ -380,6 +387,35 @@ export const dailyPlanSettingsSchema = z.object({
     .default({ weight: 'kg', length: 'cm' }),
   /** Height in cm (canonical); 0 = unset. Near-static, so it lives in settings. */
   height: z.number().min(0).max(300).default(0),
+  /**
+   * Energy profile for BMR/TDEE (see energy.ts). Katch-McArdle needs only
+   * weight + fat%; Mifflin-St Jeor needs all four. 'unset'/0 = not provided —
+   * the engine returns null rather than guessing.
+   */
+  profile: z
+    .object({
+      sex: z.enum(['male', 'female', 'unset']).default('unset'),
+      /** Birth year (stable, unlike age); 0 = unset. */
+      birthYear: z.number().int().min(0).max(2100).default(0),
+      /**
+       * Lifestyle OUTSIDE logged workouts (job, steps, chores). Logged cardio
+       * is added on top of the multiplier, so picking "moderate" because you
+       * train would double-count — the UI copy must say this.
+       */
+      activity: z.enum(['sedentary', 'light', 'moderate', 'active', 'very']).default('light'),
+    })
+    .default({ sex: 'unset', birthYear: 0, activity: 'light' }),
+  /**
+   * Weight goal. rateKgPerWeek is a magnitude; the sign comes from mode.
+   * The engine PROPOSES a calorie target from this — accepting writes
+   * targets.kcal (no hidden mutation of the ring's target).
+   */
+  goal: z
+    .object({
+      mode: z.enum(['cut', 'maintain', 'bulk']).default('maintain'),
+      rateKgPerWeek: z.number().min(0).max(1.5).default(0.5),
+    })
+    .default({ mode: 'maintain', rateKgPerWeek: 0.5 }),
   /** Real task auto-completed when today's workout finishes (null = off). */
   gymTaskNumber: z.number().int().min(1).nullable().default(null),
   /** Habit row auto-checked when today's workout finishes. */

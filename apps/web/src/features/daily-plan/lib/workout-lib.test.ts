@@ -7,17 +7,25 @@ import { CARDIO_MET, cardioKcal, computeCardio } from './workout-lib';
  * snapshot the card writes into the day blob.
  */
 
+const flat = (effort: 'walk' | 'jog' | 'run') => ({ effort, kmh: 0, incline: 0 });
+
 describe('cardioKcal', () => {
-  it('uses kcal/min = MET × 3.5 × kg / 200', () => {
+  it('uses kcal/min = MET × 3.5 × kg / 200 when no speed is set', () => {
     // walk (3.5 MET), 80 kg, 15 min → 3.5 × 3.5 × 80 / 200 × 15 = 73.5
-    expect(cardioKcal('walk', 80, 15)).toBeCloseTo(73.5, 1);
+    expect(cardioKcal(flat('walk'), 80, 15)).toBeCloseTo(73.5, 1);
     expect(CARDIO_MET.run).toBeGreaterThan(CARDIO_MET.jog);
     expect(CARDIO_MET.jog).toBeGreaterThan(CARDIO_MET.walk);
   });
 
+  it('upgrades to the incline-aware ACSM estimate when a speed is set', () => {
+    const flatWalk = cardioKcal({ effort: 'walk', kmh: 5, incline: 0 }, 80, 30);
+    const hillWalk = cardioKcal({ effort: 'walk', kmh: 5, incline: 5 }, 80, 30);
+    expect(hillWalk).toBeGreaterThan(flatWalk);
+  });
+
   it('returns 0 when weight or minutes are unknown (never faked)', () => {
-    expect(cardioKcal('run', 0, 20)).toBe(0);
-    expect(cardioKcal('run', 80, 0)).toBe(0);
+    expect(cardioKcal(flat('run'), 0, 20)).toBe(0);
+    expect(cardioKcal(flat('run'), 80, 0)).toBe(0);
   });
 });
 

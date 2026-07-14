@@ -1449,6 +1449,80 @@ button.weekBarBtn:hover .weekBarFill {
   font-variant-numeric: tabular-nums;
 }
 
+/* Speed/incline sub-row (timed-exercise editor) + the quick-cardio logger. */
+.speedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 4px 2px;
+}
+.speedField {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--plan-muted);
+  white-space: nowrap;
+}
+.speedField input {
+  width: 52px;
+}
+.speedHint {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+/* Meals card: maintenance / balance ledger under the daily totals. */
+.energyLedger {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px dashed var(--plan-rule);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+}
+.energyLedger strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* Customize panel: BMR/maintenance/target readout for the energy goal. */
+.energyReadout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--plan-card-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.energyReadoutLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.energyReadoutLine span:first-child {
+  color: var(--plan-muted);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.energyWarn {
+  font-size: 11px;
+  color: var(--plan-muted);
+  font-style: italic;
+}
+
 /* Per-exercise STR ⇄ TIME mode toggle in the routine editor. */
 .typeToggle {
   flex: 0 0 auto;

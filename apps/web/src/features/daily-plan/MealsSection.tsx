@@ -7,7 +7,7 @@ import type {
   MealItem,
   MealSlot,
 } from '@lifeline/shared';
-import { MEAL_SLOTS } from '@lifeline/shared';
+import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { detectMeal, guessSlot, logSummary, parseFood, photoFoods } from './lib/food-parser';
 import styles from './DailyPlan.module.css';
@@ -31,6 +31,12 @@ export interface MealsSectionProps {
   onHide: () => void;
   /** Recently logged items from past days — 1-tap re-log. */
   recentItems: MealItem[];
+  /** Effective body weight (today's or most recent weigh-in); 0 = unknown. */
+  weightKg: number;
+  /** Most recent logged body-fat %; 0 = unknown. */
+  fatPct: number;
+  /** Opens the Customize panel (energy profile lives there). */
+  onOpenSettings: () => void;
 }
 
 const SLOT_LABELS: Record<MealSlot, string> = {
@@ -80,6 +86,19 @@ export function MealsSection(props: MealsSectionProps) {
   const burnedKcal = Math.round(
     Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0),
   );
+  // Energy ledger: BMR → maintenance (base + logged cardio) → realized balance.
+  // Null when the profile can't support an estimate — nothing is guessed.
+  const bmrRes = bmr({
+    weightKg: props.weightKg,
+    fatPct: props.fatPct,
+    heightCm: settings.height,
+    birthYear: settings.profile.birthYear,
+    sex: settings.profile.sex,
+    currentYear: new Date().getFullYear(),
+  });
+  const maintBase = bmrRes ? maintenanceBase(bmrRes.kcal, settings.profile.activity) : null;
+  const mealCount = MEAL_SLOTS.reduce((a, slot) => a + day.meals[slot].length, 0);
+  const balance = maintBase !== null ? dayBalance(totCal, mealCount, maintBase, burnedKcal) : null;
   const CIRC = 2 * Math.PI * 30;
   const calDash = `${(Math.min(1, totCal / targets.kcal) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
 
@@ -601,6 +620,37 @@ export function MealsSection(props: MealsSectionProps) {
             </div>
           </div>
         </div>
+        {maintBase !== null && bmrRes !== null ? (
+          <div className={styles.energyLedger}>
+            <span
+              title={
+                bmrRes.method === 'katch' ? 'Katch-McArdle (from body fat %)' : 'Mifflin-St Jeor'
+              }
+            >
+              BMR <strong>~{bmrRes.kcal.toLocaleString()}</strong>
+            </span>
+            <span title="BMR × lifestyle + logged cardio">
+              MAINTENANCE <strong>~{(maintBase + burnedKcal).toLocaleString()}</strong>
+            </span>
+            {balance !== null ? (
+              <span>
+                {balance > 0 ? 'SURPLUS' : balance < 0 ? 'DEFICIT' : 'EVEN'}{' '}
+                <strong>~{Math.abs(balance).toLocaleString()} kcal</strong>
+              </span>
+            ) : (
+              <span>log meals to see today's balance</span>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={styles.moreBtn}
+            style={{ margin: 0, padding: '6px 0 0' }}
+            onClick={props.onOpenSettings}
+          >
+            + Set up energy tracking (BMR · maintenance · deficit)
+          </button>
+        )}
       </div>
 
       <SavedMealsModal

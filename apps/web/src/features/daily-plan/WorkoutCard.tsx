@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { WEEK_DAY_NAMES } from './lib/plan-model';
 import {
+  cardioKcal,
   computeCardio,
   isRoutineComplete,
   newRoutineKey,
@@ -69,6 +70,113 @@ export interface WorkoutBodyProps extends WorkoutState {
   /** Effective body weight (today's weigh-in or most recent) for the cardio
    *  calorie estimate; 0 = unknown → kcal hidden rather than faked. */
   bodyWeightKg: number;
+}
+
+/**
+ * Ad-hoc cardio logger doubling as the walk calculator: minutes + speed +
+ * incline → live "~N kcal" (ACSM via the shared energy lib), LOG adds it to
+ * today's cardioDone under the 'quick' key (sums with earlier quick entries)
+ * so the burned line, Meals card, and Statistics all pick it up.
+ */
+function QuickCardio(props: {
+  day: DailyPlanData;
+  patchDay: (patch: Partial<DailyPlanData>) => void;
+  bodyWeightKg: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [min, setMin] = useState(30);
+  const [kmh, setKmh] = useState(5);
+  const [incline, setIncline] = useState(0);
+  const kcal =
+    props.bodyWeightKg > 0 && min > 0
+      ? Math.round(cardioKcal({ effort: 'walk', kmh, incline }, props.bodyWeightKg, min))
+      : 0;
+
+  const log = () => {
+    if (min <= 0) return;
+    const prev = (props.day.cardioDone ?? {}).quick;
+    const km = kmh > 0 ? Math.round(((kmh * min) / 60) * 100) / 100 : 0;
+    // Same caps as computeCardio — an over-cap snapshot throws on save.
+    const next = {
+      min: Math.min(1440, (prev?.min ?? 0) + min),
+      km: Math.min(300, Math.round(((prev?.km ?? 0) + km) * 100) / 100),
+      kcal: Math.min(5000, (prev?.kcal ?? 0) + kcal),
+    };
+    props.patchDay({ cardioDone: { ...(props.day.cardioDone ?? {}), quick: next } });
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={styles.moreBtn}
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+      >
+        + Quick cardio
+      </button>
+    );
+  }
+  return (
+    <div className={styles.speedRow} style={{ flexWrap: 'wrap' }}>
+      <label className={styles.speedField}>
+        <span>min</span>
+        <DraftNumber
+          className={styles.smallInput}
+          style={{ textAlign: 'center', padding: '4px 4px' }}
+          value={min}
+          ariaLabel="Quick cardio minutes"
+          commit={(raw) => Math.max(0, Math.min(600, Math.round(raw)))}
+          onCommit={setMin}
+        />
+      </label>
+      <label className={styles.speedField}>
+        <span>km/h</span>
+        <DraftNumber
+          className={styles.smallInput}
+          style={{ textAlign: 'center', padding: '4px 4px' }}
+          value={kmh}
+          ariaLabel="Quick cardio speed km/h"
+          commit={(raw) => Math.max(0, Math.min(25, Math.round(raw * 10) / 10))}
+          onCommit={setKmh}
+        />
+      </label>
+      <label className={styles.speedField}>
+        <span>incline %</span>
+        <DraftNumber
+          className={styles.smallInput}
+          style={{ textAlign: 'center', padding: '4px 4px' }}
+          value={incline}
+          ariaLabel="Quick cardio incline %"
+          commit={(raw) => Math.max(0, Math.min(20, Math.round(raw * 10) / 10))}
+          onCommit={setIncline}
+        />
+      </label>
+      <span className={styles.speedHint}>
+        {props.bodyWeightKg <= 0 ? 'log a weigh-in first' : kcal > 0 ? `~${kcal} kcal` : '—'}
+      </span>
+      <button
+        type="button"
+        className={styles.pillBtn}
+        aria-label="Log quick cardio"
+        onClick={log}
+        // Weight required: a 0-kcal quick entry is never re-snapshotted (unlike
+        // routine cardio), so it would undercount the day forever.
+        disabled={min <= 0 || props.bodyWeightKg <= 0}
+      >
+        LOG
+      </button>
+      <button
+        type="button"
+        className={styles.iconBtn}
+        aria-label="Close quick cardio"
+        onClick={() => setOpen(false)}
+      >
+        ×
+      </button>
+    </div>
+  );
 }
 
 export function WorkoutBody(props: WorkoutBodyProps) {
@@ -232,7 +340,11 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                   : `${ex.sets} × ${ex.reps}`}
               </span>
               {timed ? (
-                <span className={styles.overloadHint}>{ex.effort}</span>
+                <span className={styles.overloadHint}>
+                  {ex.kmh > 0
+                    ? `${ex.kmh} km/h${ex.incline > 0 ? ` · ${ex.incline}%` : ''}`
+                    : ex.effort}
+                </span>
               ) : (
                 ex.last > 0 && (
                   <span className={styles.overloadHint}>
@@ -244,6 +356,8 @@ export function WorkoutBody(props: WorkoutBodyProps) {
           </div>
         );
       })}
+
+      <QuickCardio day={props.day} patchDay={props.patchDay} bodyWeightKg={props.bodyWeightKg} />
 
       {dayCardio.min > 0 && (
         <div className={styles.cardioBurn}>
@@ -573,110 +687,149 @@ export function WorkoutSetupModal(props: SetupProps) {
           </div>
           {editRoutine.ex.map((ex, i) => {
             const timed = ex.type === 'time';
+            // Per-round estimate with the CURRENT speed/incline — live feedback
+            // while tuning ("walk 30 min at this speed and incline → ~N kcal").
+            const roundKcal =
+              timed && ex.min > 0 ? Math.round(cardioKcal(ex, props.bodyWeightKg, ex.min)) : 0;
             return (
-              <div key={i} className={styles.exEditGrid}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                  <input
-                    dir="auto"
+              <Fragment key={i}>
+                <div className={styles.exEditGrid}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                    <input
+                      dir="auto"
+                      className={styles.smallInput}
+                      style={{ flex: 1, minWidth: 0 }}
+                      maxLength={100}
+                      value={ex.n}
+                      aria-label={`Exercise ${i + 1} name`}
+                      onChange={(e) => updateEx(i, { n: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      className={styles.typeToggle}
+                      aria-label={`Exercise ${i + 1} type: ${timed ? 'timed' : 'strength'}`}
+                      title={
+                        timed
+                          ? 'Timed / cardio — tap for strength'
+                          : 'Strength — tap for timed / cardio'
+                      }
+                      onClick={() =>
+                        updateExTimed(
+                          i,
+                          timed ? { type: 'str' } : { type: 'time', min: ex.min > 0 ? ex.min : 15 },
+                        )
+                      }
+                    >
+                      {timed ? 'TIME' : 'STR'}
+                    </button>
+                  </span>
+                  <DraftNumber
                     className={styles.smallInput}
-                    style={{ flex: 1, minWidth: 0 }}
-                    maxLength={100}
-                    value={ex.n}
-                    aria-label={`Exercise ${i + 1} name`}
-                    onChange={(e) => updateEx(i, { n: e.target.value })}
+                    style={{ textAlign: 'center', padding: '6px 4px' }}
+                    value={ex.sets}
+                    ariaLabel={`Exercise ${i + 1} ${timed ? 'rounds' : 'sets'}`}
+                    commit={(raw) => Math.max(1, Math.min(10, Math.round(raw)))}
+                    onCommit={(sets) => setEditSets(i, sets)}
                   />
+                  {timed ? (
+                    <DraftNumber
+                      className={styles.smallInput}
+                      style={{ textAlign: 'center', padding: '6px 4px' }}
+                      value={ex.min}
+                      ariaLabel={`Exercise ${i + 1} minutes`}
+                      commit={(raw) => Math.max(0, Math.min(600, Math.round(raw)))}
+                      onCommit={(min) => updateExTimed(i, { min })}
+                    />
+                  ) : (
+                    <input
+                      className={styles.smallInput}
+                      style={{ textAlign: 'center', padding: '6px 4px' }}
+                      value={ex.reps}
+                      maxLength={20}
+                      aria-label={`Exercise ${i + 1} reps`}
+                      onChange={(e) => updateEx(i, { reps: e.target.value })}
+                    />
+                  )}
+                  {timed ? (
+                    <select
+                      className={styles.smallInput}
+                      style={{ textAlign: 'center', padding: '6px 2px' }}
+                      value={ex.effort}
+                      aria-label={`Exercise ${i + 1} effort`}
+                      onChange={(e) =>
+                        updateExTimed(i, { effort: e.target.value as GymExercise['effort'] })
+                      }
+                    >
+                      <option value="walk">walk</option>
+                      <option value="jog">jog</option>
+                      <option value="run">run</option>
+                    </select>
+                  ) : (
+                    <DraftNumber
+                      className={styles.smallInput}
+                      style={{ textAlign: 'center', padding: '6px 4px' }}
+                      value={ex.kg}
+                      ariaLabel={`Exercise ${i + 1} kg`}
+                      commit={(raw) => Math.max(0, Math.min(2000, raw))}
+                      onCommit={(kg) => updateEx(i, { kg })}
+                    />
+                  )}
                   <button
                     type="button"
-                    className={styles.typeToggle}
-                    aria-label={`Exercise ${i + 1} type: ${timed ? 'timed' : 'strength'}`}
-                    title={
-                      timed
-                        ? 'Timed / cardio — tap for strength'
-                        : 'Strength — tap for timed / cardio'
-                    }
-                    onClick={() =>
-                      updateExTimed(
-                        i,
-                        timed ? { type: 'str' } : { type: 'time', min: ex.min > 0 ? ex.min : 15 },
-                      )
-                    }
+                    className={styles.iconBtn}
+                    title="Remove exercise"
+                    aria-label={`Remove exercise ${i + 1}`}
+                    onClick={() => removeEx(i)}
                   >
-                    {timed ? 'TIME' : 'STR'}
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 5l14 14" />
+                      <path d="M19 5L5 19" />
+                    </svg>
                   </button>
-                </span>
-                <DraftNumber
-                  className={styles.smallInput}
-                  style={{ textAlign: 'center', padding: '6px 4px' }}
-                  value={ex.sets}
-                  ariaLabel={`Exercise ${i + 1} ${timed ? 'rounds' : 'sets'}`}
-                  commit={(raw) => Math.max(1, Math.min(10, Math.round(raw)))}
-                  onCommit={(sets) => setEditSets(i, sets)}
-                />
-                {timed ? (
-                  <DraftNumber
-                    className={styles.smallInput}
-                    style={{ textAlign: 'center', padding: '6px 4px' }}
-                    value={ex.min}
-                    ariaLabel={`Exercise ${i + 1} minutes`}
-                    commit={(raw) => Math.max(0, Math.min(600, Math.round(raw)))}
-                    onCommit={(min) => updateExTimed(i, { min })}
-                  />
-                ) : (
-                  <input
-                    className={styles.smallInput}
-                    style={{ textAlign: 'center', padding: '6px 4px' }}
-                    value={ex.reps}
-                    maxLength={20}
-                    aria-label={`Exercise ${i + 1} reps`}
-                    onChange={(e) => updateEx(i, { reps: e.target.value })}
-                  />
+                </div>
+                {timed && (
+                  <div className={styles.speedRow}>
+                    <label className={styles.speedField}>
+                      <span>km/h</span>
+                      <DraftNumber
+                        className={styles.smallInput}
+                        style={{ textAlign: 'center', padding: '4px 4px' }}
+                        value={ex.kmh}
+                        ariaLabel={`Exercise ${i + 1} speed km/h`}
+                        commit={(raw) => Math.max(0, Math.min(25, Math.round(raw * 10) / 10))}
+                        onCommit={(kmh) => updateExTimed(i, { kmh })}
+                      />
+                    </label>
+                    <label className={styles.speedField}>
+                      <span>incline %</span>
+                      <DraftNumber
+                        className={styles.smallInput}
+                        style={{ textAlign: 'center', padding: '4px 4px' }}
+                        value={ex.incline}
+                        ariaLabel={`Exercise ${i + 1} incline %`}
+                        commit={(raw) => Math.max(0, Math.min(20, Math.round(raw * 10) / 10))}
+                        onCommit={(incline) => updateExTimed(i, { incline })}
+                      />
+                    </label>
+                    <span className={styles.speedHint}>
+                      {props.bodyWeightKg <= 0
+                        ? 'log a weigh-in for calorie estimates'
+                        : roundKcal > 0
+                          ? `~${roundKcal} kcal / round${ex.kmh > 0 ? ' (speed + incline)' : ` (${ex.effort})`}`
+                          : 'set minutes for an estimate'}
+                    </span>
+                  </div>
                 )}
-                {timed ? (
-                  <select
-                    className={styles.smallInput}
-                    style={{ textAlign: 'center', padding: '6px 2px' }}
-                    value={ex.effort}
-                    aria-label={`Exercise ${i + 1} effort`}
-                    onChange={(e) =>
-                      updateExTimed(i, { effort: e.target.value as GymExercise['effort'] })
-                    }
-                  >
-                    <option value="walk">walk</option>
-                    <option value="jog">jog</option>
-                    <option value="run">run</option>
-                  </select>
-                ) : (
-                  <DraftNumber
-                    className={styles.smallInput}
-                    style={{ textAlign: 'center', padding: '6px 4px' }}
-                    value={ex.kg}
-                    ariaLabel={`Exercise ${i + 1} kg`}
-                    commit={(raw) => Math.max(0, Math.min(2000, raw))}
-                    onCommit={(kg) => updateEx(i, { kg })}
-                  />
-                )}
-                <button
-                  type="button"
-                  className={styles.iconBtn}
-                  title="Remove exercise"
-                  aria-label={`Remove exercise ${i + 1}`}
-                  onClick={() => removeEx(i)}
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.6"
-                    strokeLinecap="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M5 5l14 14" />
-                    <path d="M19 5L5 19" />
-                  </svg>
-                </button>
-              </div>
+              </Fragment>
             );
           })}
           <button
@@ -697,6 +850,8 @@ export function WorkoutSetupModal(props: SetupProps) {
                     min: 0,
                     km: 0,
                     effort: 'walk',
+                    kmh: 0,
+                    incline: 0,
                   },
                 ],
               })

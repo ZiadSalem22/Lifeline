@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, PlanHabit, TemplateKey } from '@lifeline/shared';
-import { TEMPLATE_KEYS } from '@lifeline/shared';
+import { TEMPLATE_KEYS, bmr, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { templateFromDay } from './lib/templates';
 import { dividerBelowAt, newHabitId, templateKeyOf, withDividerAt } from './lib/plan-model';
@@ -21,6 +21,10 @@ export interface PlanSettingsModalProps {
   /** The selected day (template snapshots + "this weekday" default). */
   day: DailyPlanData;
   dateStr: string;
+  /** Effective body weight (today's or most recent weigh-in); 0 = unknown. */
+  weightKg: number;
+  /** Most recent logged body-fat %; 0 = unknown. */
+  fatPct: number;
 }
 
 const TEMPLATE_LABELS: Record<TemplateKey, string> = {
@@ -79,6 +83,178 @@ function NumberField(props: {
         onBlur={() => setDraft(String(props.value))}
       />
     </label>
+  );
+}
+
+const ACTIVITY_LABELS: Record<DailyPlanSettings['profile']['activity'], string> = {
+  // Lifestyle EXCLUDING logged workouts — cardio kcal is added on top, so
+  // picking a level "because I train" would double-count.
+  sedentary: 'Sedentary — desk job, little walking',
+  light: 'Light — on your feet a few hours',
+  moderate: 'Moderate — active job / lots of walking',
+  active: 'Active — physically demanding job',
+  very: 'Very active — hard labor',
+};
+
+const GOAL_LABELS: Record<DailyPlanSettings['goal']['mode'], string> = {
+  cut: 'Cut (lose)',
+  maintain: 'Maintain',
+  bulk: 'Bulk (gain)',
+};
+
+/**
+ * BODY & GOAL: energy profile (sex / birth year / lifestyle), goal mode +
+ * rate, and a live readout — BMR, maintenance, proposed daily target. The
+ * proposal only lands in targets.kcal when the user taps USE (no hidden
+ * rewrites of the ring's target).
+ */
+function BodyGoalSection(props: {
+  settings: DailyPlanSettings;
+  patchSettings: (patch: Partial<DailyPlanSettings>) => void;
+  weightKg: number;
+  fatPct: number;
+}) {
+  const { settings } = props;
+  const profile = settings.profile;
+  const patchProfile = (patch: Partial<DailyPlanSettings['profile']>) =>
+    props.patchSettings({ profile: { ...profile, ...patch } });
+  const patchGoal = (patch: Partial<DailyPlanSettings['goal']>) =>
+    props.patchSettings({ goal: { ...settings.goal, ...patch } });
+
+  const currentYear = new Date().getFullYear();
+  const bmrRes = bmr({
+    weightKg: props.weightKg,
+    fatPct: props.fatPct,
+    heightCm: settings.height,
+    birthYear: profile.birthYear,
+    sex: profile.sex,
+    currentYear,
+  });
+  const proposal = bmrRes
+    ? proposeTarget(bmrRes.kcal, profile.activity, settings.goal, props.weightKg)
+    : null;
+
+  return (
+    <Section title="Body & goal — powers the energy ledger">
+      <div className={styles.macroGrid}>
+        <label className={styles.macroLabel}>
+          SEX
+          <select
+            className={styles.smallInput}
+            value={profile.sex}
+            aria-label="Sex"
+            onChange={(e) => patchProfile({ sex: e.target.value as typeof profile.sex })}
+          >
+            <option value="unset">—</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </label>
+        <label className={styles.macroLabel}>
+          BIRTH YEAR
+          <select
+            className={styles.smallInput}
+            value={profile.birthYear}
+            aria-label="Birth year"
+            onChange={(e) => patchProfile({ birthYear: Number.parseInt(e.target.value, 10) })}
+          >
+            <option value={0}>—</option>
+            {Array.from({ length: 90 }, (_, i) => currentYear - 10 - i).map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.macroLabel}>
+          LIFESTYLE (EXCL. WORKOUTS)
+          <select
+            className={styles.smallInput}
+            value={profile.activity}
+            aria-label="Lifestyle activity"
+            onChange={(e) => patchProfile({ activity: e.target.value as typeof profile.activity })}
+          >
+            {(Object.keys(ACTIVITY_LABELS) as Array<keyof typeof ACTIVITY_LABELS>).map((k) => (
+              <option key={k} value={k}>
+                {ACTIVITY_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.macroLabel}>
+          GOAL
+          <select
+            className={styles.smallInput}
+            value={settings.goal.mode}
+            aria-label="Weight goal"
+            onChange={(e) => patchGoal({ mode: e.target.value as typeof settings.goal.mode })}
+          >
+            {(Object.keys(GOAL_LABELS) as Array<keyof typeof GOAL_LABELS>).map((k) => (
+              <option key={k} value={k}>
+                {GOAL_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        {settings.goal.mode !== 'maintain' && (
+          <label className={styles.macroLabel}>
+            RATE KG / WEEK
+            <select
+              className={styles.smallInput}
+              value={settings.goal.rateKgPerWeek}
+              aria-label="Goal rate kg per week"
+              onChange={(e) => patchGoal({ rateKgPerWeek: Number.parseFloat(e.target.value) })}
+            >
+              {[0.25, 0.5, 0.75, 1].map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {bmrRes && proposal ? (
+        <div className={styles.energyReadout}>
+          <div className={styles.energyReadoutLine}>
+            <span>
+              BMR ({bmrRes.method === 'katch' ? 'Katch-McArdle, from fat %' : 'Mifflin-St Jeor'})
+            </span>
+            <span>~{bmrRes.kcal.toLocaleString()} kcal</span>
+          </div>
+          <div className={styles.energyReadoutLine}>
+            <span>Maintenance (before workouts)</span>
+            <span>~{maintenanceBase(bmrRes.kcal, profile.activity).toLocaleString()} kcal</span>
+          </div>
+          <div className={styles.energyReadoutLine}>
+            <span>Proposed daily target</span>
+            <span>~{proposal.kcal.toLocaleString()} kcal</span>
+          </div>
+          {proposal.warnings.map((w) => (
+            <div key={w} className={styles.energyWarn}>
+              {w}
+            </div>
+          ))}
+          {settings.targets.kcal !== proposal.kcal && (
+            <button
+              type="button"
+              className={styles.chip}
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() =>
+                props.patchSettings({ targets: { ...settings.targets, kcal: proposal.kcal } })
+              }
+            >
+              USE ~{proposal.kcal.toLocaleString()} AS DAILY KCAL TARGET
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className={styles.energyWarn}>
+          Needs a weigh-in plus either a body-fat % (best) or height + birth year + sex — weight and
+          measurements live on the Weight card.
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -301,6 +477,13 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
             />
           </div>
         </Section>
+
+        <BodyGoalSection
+          settings={settings}
+          patchSettings={props.patchSettings}
+          weightKg={props.weightKg}
+          fatPct={props.fatPct}
+        />
 
         <Section title="Schedule & rows">
           <div className={styles.macroGrid}>

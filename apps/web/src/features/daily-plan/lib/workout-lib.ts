@@ -1,27 +1,11 @@
-import type { DailyPlanData, DailyPlanSettings, GymExercise, GymRoutine } from '@lifeline/shared';
+import type { DailyPlanData, DailyPlanSettings, GymRoutine } from '@lifeline/shared';
+import { cardioKcal } from '@lifeline/shared';
 
 /** Workout card domain helpers (pure — shared by the card, view, and tests). */
 
-/** MET (metabolic equivalent) per cardio intensity — 2011 Compendium values. */
-export const CARDIO_MET: Record<GymExercise['effort'], number> = {
-  walk: 3.5,
-  jog: 7.0,
-  run: 9.8,
-};
-
-/**
- * Calories for `minutes` of cardio at a given effort and body weight, via the
- * standard MET formula: kcal/min = MET × 3.5 × kg / 200. Honest to ±, so
- * callers round and prefix "~". Returns 0 when weight is unknown (never fake it).
- */
-export function cardioKcal(
-  effort: GymExercise['effort'],
-  weightKg: number,
-  minutes: number,
-): number {
-  if (weightKg <= 0 || minutes <= 0) return 0;
-  return ((CARDIO_MET[effort] * 3.5 * weightKg) / 200) * minutes;
-}
+// Calorie math (MET table + ACSM speed/incline equations) lives in the shared
+// energy lib so the server's MCP tools compute identical numbers.
+export { CARDIO_MET, acsmKcalPerMin, cardioKcal } from '@lifeline/shared';
 
 export interface CardioSnapshot {
   min: number;
@@ -50,7 +34,7 @@ export function computeCardio(
     const minutes = rounds * ex.min;
     min += minutes;
     km += rounds * ex.km;
-    kcal += cardioKcal(ex.effort, weightKg, minutes);
+    kcal += cardioKcal(ex, weightKg, minutes);
   });
   // Clamp to the cardioDone schema caps — per-exercise input caps don't
   // compose to the day caps (10 rounds × 600 min = 6000 > 1440), and an

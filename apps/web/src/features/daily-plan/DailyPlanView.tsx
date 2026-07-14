@@ -539,6 +539,20 @@ export function DailyPlanView({
       break;
     }
   }
+  // Effective body weight + most recent fat% — inputs to the energy ledger
+  // (BMR/maintenance) and the cardio calorie estimates. 0 = unknown.
+  const effectiveWeightKg = day.weight > 0 ? day.weight : (lastWeighIn?.kg ?? 0);
+  let lastFatPct = day.body.fat;
+  if (lastFatPct <= 0) {
+    for (let back = 1; back <= 28; back += 1) {
+      const date = daysBefore(dateStr, back);
+      const row = effectiveDays[date] ?? recentByDate[date];
+      if (row && row.body.fat > 0) {
+        lastFatPct = row.body.fat;
+        break;
+      }
+    }
+  }
 
   // Streaks + 28-day history: marks come from this week's cache plus the
   // recent window (28 days ending yesterday), all relative to the selected
@@ -623,7 +637,7 @@ export function DailyPlanView({
           patchDay={patchDay}
           patchSettings={patchSettings}
           onCompletionChange={onWorkoutCompletion}
-          bodyWeightKg={day.weight > 0 ? day.weight : (lastWeighIn?.kg ?? 0)}
+          bodyWeightKg={effectiveWeightKg}
         />
       ),
     },
@@ -869,6 +883,9 @@ export function DailyPlanView({
           patchSettings={patchSettings}
           onHide={() => hide('meals')}
           recentItems={recentMeals}
+          weightKg={effectiveWeightKg}
+          fatPct={lastFatPct}
+          onOpenSettings={() => setCustomizeOpen(true)}
         />
       )}
 
@@ -948,6 +965,8 @@ export function DailyPlanView({
         patchSettings={patchSettings}
         day={day}
         dateStr={dateStr}
+        weightKg={effectiveWeightKg}
+        fatPct={lastFatPct}
       />
 
       <ComposerModal

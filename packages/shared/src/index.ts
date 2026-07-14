@@ -9,3 +9,4 @@ export * from './mcp-keys.js';
 export * from './export-import.js';
 export * from './daily-plan.js';
 export * from './daily-plan-metrics.js';
+export * from './energy.js';
