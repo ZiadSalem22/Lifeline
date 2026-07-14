@@ -178,6 +178,18 @@ export const dailyPlanDataSchema = z.object({
     }),
     PLAN_LIMITS.routinesMax,
   ).default({}),
+  /**
+   * routineKey → completed STRENGTH sets + their kcal estimate for THIS day.
+   * Snapshotted like cardioDone (same reasons: the settings-free metrics
+   * extractor, and frozen history across later routine/weight edits).
+   */
+  strengthDone: boundedRecord(
+    z.object({
+      sets: z.number().int().min(0).max(320).default(0),
+      kcal: z.number().min(0).max(5000).default(0),
+    }),
+    PLAN_LIMITS.routinesMax,
+  ).default({}),
   /** Per-day override of the weekly split ("today's routine" chip). */
   workoutRoutine: planKey.nullable().default(null),
   /** Carry-over bar handled (added-as-tasks or dismissed) — survives reloads. */
@@ -407,15 +419,23 @@ export const dailyPlanSettingsSchema = z.object({
     .default({ sex: 'unset', birthYear: 0, activity: 'light' }),
   /**
    * Weight goal. rateKgPerWeek is a magnitude; the sign comes from mode.
-   * The engine PROPOSES a calorie target from this — accepting writes
-   * targets.kcal (no hidden mutation of the ring's target).
+   * autoTarget=true hands targets.kcal to the engine: the plan view
+   * materializes the goal-derived target into targets.kcal whenever it
+   * drifts (weight change, rate change), so every consumer — ring,
+   * masthead, Statistics — stays consistent without threading weight
+   * around. false = targets.kcal is hand-set (the pre-goal behavior).
+   * creditPct: % of logged exercise kcal credited into TODAY's budget
+   * (0 = never eat back exercise, the recommended default; 50/100 for
+   * people who insist — the realized deficit in the ledger is unaffected).
    */
   goal: z
     .object({
       mode: z.enum(['cut', 'maintain', 'bulk']).default('maintain'),
       rateKgPerWeek: z.number().min(0).max(1.5).default(0.5),
+      autoTarget: z.boolean().default(false),
+      creditPct: z.number().int().min(0).max(100).default(0),
     })
-    .default({ mode: 'maintain', rateKgPerWeek: 0.5 }),
+    .default({ mode: 'maintain', rateKgPerWeek: 0.5, autoTarget: false, creditPct: 0 }),
   /** Real task auto-completed when today's workout finishes (null = off). */
   gymTaskNumber: z.number().int().min(1).nullable().default(null),
   /** Habit row auto-checked when today's workout finishes. */

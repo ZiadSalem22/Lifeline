@@ -57,6 +57,8 @@ export const dayMetricsSchema = z.object({
   cardioMinutes: z.number().default(0),
   cardioKm: z.number().default(0),
   cardioKcal: z.number().default(0),
+  /** Strength kcal estimate (from the day's strengthDone snapshot). */
+  strengthKcal: z.number().default(0),
   /** Storage uses 0-as-unset — null here so averages never see fake zeros. */
   moodAm: z.number().int().min(1).max(5).nullable(),
   moodPm: z.number().int().min(1).max(5).nullable(),
@@ -125,6 +127,10 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
     cardioKm += cardio.km;
     cardioKcal += cardio.kcal;
   }
+  let strengthKcalSum = 0;
+  for (const strength of Object.values(data.strengthDone ?? {})) {
+    strengthKcalSum += strength.kcal;
+  }
 
   return {
     date,
@@ -147,6 +153,7 @@ export function extractDayMetrics(date: string, data: DailyPlanData): DayMetrics
     cardioMinutes,
     cardioKm,
     cardioKcal,
+    strengthKcal: strengthKcalSum,
     moodAm: nullIfUnset(data.moodAm),
     moodPm: nullIfUnset(data.moodPm),
     rating: nullIfUnset(data.rating),

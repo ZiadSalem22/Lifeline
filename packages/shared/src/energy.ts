@@ -113,7 +113,7 @@ export interface TargetProposal {
 export function proposeTarget(
   bmrKcal: number,
   activity: keyof typeof ACTIVITY_FACTOR,
-  goal: DailyPlanSettings['goal'],
+  goal: Pick<DailyPlanSettings['goal'], 'mode' | 'rateKgPerWeek'>,
   weightKg: number,
 ): TargetProposal {
   const base = maintenanceBase(bmrKcal, activity);
@@ -194,6 +194,20 @@ export const CARDIO_MET: Record<GymExercise['effort'], number> = {
 /** Flat MET estimate: kcal/min = MET × 3.5 × kg / 200. */
 export function metKcalPerMin(effort: GymExercise['effort'], weightKg: number): number {
   return (CARDIO_MET[effort] * 3.5 * weightKg) / 200;
+}
+
+/**
+ * Strength-session estimate. Compendium "resistance training, multiple
+ * exercises, 8-15 reps" = 3.5 MET; a completed set ≈ 3 minutes of work +
+ * rest. ~15 kcal/set at 80 kg, ~235 kcal for a 16-set session — matches
+ * measured lifting sessions. Deliberately conservative (no EPOC): a modest
+ * honest number beats zero and beats flattery. 0 without a body weight.
+ */
+export const STRENGTH_MET = 3.5;
+export const STRENGTH_MIN_PER_SET = 3;
+export function strengthKcal(sets: number, weightKg: number): number {
+  if (weightKg <= 0 || sets <= 0) return 0;
+  return ((STRENGTH_MET * 3.5 * weightKg) / 200) * sets * STRENGTH_MIN_PER_SET;
 }
 
 /**

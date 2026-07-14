@@ -9,6 +9,7 @@ import {
   maintenanceBase,
   metKcalPerMin,
   proposeTarget,
+  strengthKcal,
   trendWeight,
 } from './energy.js';
 
@@ -171,5 +172,17 @@ describe('cardio kcal (MET + ACSM)', () => {
 
   it('never fakes a number without body weight', () => {
     expect(cardioKcal({ effort: 'run', kmh: 10, incline: 0 }, 0, 30)).toBe(0);
+  });
+});
+
+describe('strengthKcal', () => {
+  it('≈15 kcal/set at 80 kg (3.5 MET × 3 min/set) — ~235 for a 16-set session', () => {
+    expect(strengthKcal(1, 80)).toBeCloseTo(14.7, 1);
+    expect(strengthKcal(16, 80)).toBeCloseTo(235.2, 1);
+  });
+
+  it('0 without body weight or sets', () => {
+    expect(strengthKcal(16, 0)).toBe(0);
+    expect(strengthKcal(0, 80)).toBe(0);
   });
 });

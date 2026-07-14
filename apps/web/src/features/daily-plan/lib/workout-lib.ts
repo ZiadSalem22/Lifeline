@@ -1,11 +1,11 @@
 import type { DailyPlanData, DailyPlanSettings, GymRoutine } from '@lifeline/shared';
-import { cardioKcal } from '@lifeline/shared';
+import { cardioKcal, strengthKcal } from '@lifeline/shared';
 
 /** Workout card domain helpers (pure — shared by the card, view, and tests). */
 
 // Calorie math (MET table + ACSM speed/incline equations) lives in the shared
 // energy lib so the server's MCP tools compute identical numbers.
-export { CARDIO_MET, acsmKcalPerMin, cardioKcal } from '@lifeline/shared';
+export { CARDIO_MET, acsmKcalPerMin, cardioKcal, strengthKcal } from '@lifeline/shared';
 
 export interface CardioSnapshot {
   min: number;
@@ -43,6 +43,33 @@ export function computeCardio(
     min: Math.min(1440, min),
     km: Math.min(300, Math.round(km * 100) / 100),
     kcal: Math.min(5000, Math.round(kcal)),
+  };
+}
+
+export interface StrengthSnapshot {
+  sets: number;
+  kcal: number;
+}
+
+/**
+ * Strength counterpart of computeCardio: completed sets across the routine's
+ * strength exercises + their kcal estimate. Same snapshot rationale (frozen
+ * history, settings-free metrics), same cap discipline (schema: sets ≤ 320,
+ * kcal ≤ 5000).
+ */
+export function computeStrength(
+  routine: GymRoutine,
+  done: number[],
+  weightKg: number,
+): StrengthSnapshot {
+  let sets = 0;
+  routine.ex.forEach((ex, i) => {
+    if (ex.type !== 'str') return;
+    sets += Math.min(done[i] ?? 0, ex.sets);
+  });
+  return {
+    sets: Math.min(320, sets),
+    kcal: Math.min(5000, Math.round(strengthKcal(Math.min(320, sets), weightKg))),
   };
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 import type { DailyPlanData, DailyPlanSettings, HabitMark, Tag, Todo } from '@lifeline/shared';
-import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase } from '@lifeline/shared';
+import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
 import { useCreateTodo, useToggleComplete, useUpdateSubtasks } from '../todos/data/hooks';
@@ -554,7 +554,7 @@ export function DailyPlanView({
       }
     }
   }
-  // Masthead energy summary: kcal-left ring always works off intake vs target;
+  // Masthead energy summary: kcal-left ring always works off intake vs budget;
   // the deficit/surplus label needs a BMR-capable profile. Hidden with the
   // Meals card (no food tracking → no kcal summary).
   const intakeKcal = Math.round(
@@ -563,30 +563,53 @@ export function DailyPlanView({
       0,
     ),
   );
+  const energyBmr = bmr({
+    weightKg: effectiveWeightKg,
+    fatPct: lastFatPct,
+    heightCm: settings.height,
+    birthYear: settings.profile.birthYear,
+    sex: settings.profile.sex,
+    currentYear: new Date().getFullYear(),
+  });
+  const burnedKcalDay = Math.round(
+    Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0) +
+      Object.values(day.strengthDone ?? {}).reduce((sum, strength) => sum + strength.kcal, 0),
+  );
+  // AUTO target: the goal owns targets.kcal — materialize the goal-derived
+  // proposal into it whenever it drifts (weight change, rate change) so every
+  // consumer (ring, masthead, Statistics, metrics) stays consistent. TODAY
+  // only: viewing an old day must never let that day's stale weight rewrite
+  // the current target. Converges in one pass (patch → equal → no-op).
+  const goalProposal =
+    settings.goal.autoTarget && energyBmr
+      ? proposeTarget(energyBmr.kcal, settings.profile.activity, settings.goal, effectiveWeightKg)
+      : null;
+  // One attempt per distinct proposal value: if a save FAILS the cache reverts
+  // and the inequality re-arms — without this ref the effect would retry the
+  // same write forever against a failing backend (a non-user writer must not
+  // out-stubborn the save layer's revert-and-stop recovery).
+  const attemptedAutoTarget = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isToday || !goalProposal) return;
+    if (goalProposal.kcal === settings.targets.kcal) return;
+    if (attemptedAutoTarget.current === goalProposal.kcal) return;
+    attemptedAutoTarget.current = goalProposal.kcal;
+    patchSettings({ targets: { ...settings.targets, kcal: goalProposal.kcal } });
+  }, [isToday, goalProposal, settings.targets, patchSettings]);
+  const exerciseCreditDay = Math.round((burnedKcalDay * (settings.goal.creditPct ?? 0)) / 100);
   const mastheadEnergy = settings.hidden['meals']
     ? null
     : (() => {
-        const bmrRes = bmr({
-          weightKg: effectiveWeightKg,
-          fatPct: lastFatPct,
-          heightCm: settings.height,
-          birthYear: settings.profile.birthYear,
-          sex: settings.profile.sex,
-          currentYear: new Date().getFullYear(),
-        });
-        const burned = Math.round(
-          Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0),
-        );
         const mealCount = MEAL_SLOTS.reduce((a, slot) => a + day.meals[slot].length, 0);
-        const balance = bmrRes
+        const balance = energyBmr
           ? dayBalance(
               intakeKcal,
               mealCount,
-              maintenanceBase(bmrRes.kcal, settings.profile.activity),
-              burned,
+              maintenanceBase(energyBmr.kcal, settings.profile.activity),
+              burnedKcalDay,
             )
           : null;
-        return { intake: intakeKcal, target: settings.targets.kcal, balance };
+        return { intake: intakeKcal, target: settings.targets.kcal + exerciseCreditDay, balance };
       })();
 
   // Streaks + 28-day history: marks come from this week's cache plus the

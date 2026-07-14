@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gymRoutineSchema } from '@lifeline/shared';
-import { CARDIO_MET, cardioKcal, computeCardio } from './workout-lib';
+import { CARDIO_MET, cardioKcal, computeCardio, computeStrength } from './workout-lib';
 
 /**
  * Cardio math for the timed-exercise type: MET-based calories and the per-day
@@ -70,5 +70,28 @@ describe('computeCardio', () => {
     const c = computeCardio(ultra, [10], 120);
     expect(c.min).toBe(1440);
     expect(c.kcal).toBe(5000);
+  });
+});
+
+describe('computeStrength', () => {
+  const routine = gymRoutineSchema.parse({
+    name: 'Mixed',
+    ex: [
+      { n: 'Bench Press', type: 'str', sets: 4, reps: '8', kg: 60 },
+      { n: 'Walk', type: 'time', sets: 1, min: 20, effort: 'walk' },
+      { n: 'Rows', type: 'str', sets: 3, reps: '10', kg: 50 },
+    ],
+  });
+
+  it('counts only completed STRENGTH sets and prices them at ~15 kcal/set @ 80 kg', () => {
+    // Bench 4/4 + Walk (ignored — timed) + Rows 2/3 → 6 sets ≈ 88 kcal.
+    const s = computeStrength(routine, [4, 1, 2], 80);
+    expect(s.sets).toBe(6);
+    expect(s.kcal).toBe(88);
+  });
+
+  it('clamps taps to configured sets and is zero without weight', () => {
+    expect(computeStrength(routine, [9, 0, 9], 80).sets).toBe(7);
+    expect(computeStrength(routine, [4, 0, 0], 0)).toEqual({ sets: 4, kcal: 0 });
   });
 });

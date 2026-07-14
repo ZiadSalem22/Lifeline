@@ -79,13 +79,17 @@ export function MealsSection(props: MealsSectionProps) {
   );
   const totCal = Math.round(totals.cal);
   const targets = settings.targets;
-  const kcalLeft = Math.max(0, targets.kcal - totCal);
-  // Cardio burned today (from the Workout card's snapshot) — shown as its own
-  // informational line, NEVER credited back into the intake ring/target (the
-  // "eat back exercise calories" trap). Deficit lives in weight-trend vs intake.
+  // Whole-day burn: cardio + strength snapshots. By default it NEVER inflates
+  // the intake budget (the "eat back exercise calories" trap) — the realized
+  // deficit in the ledger is where burn belongs. goal.creditPct lets users
+  // who insist credit a fraction of it into today's budget explicitly.
   const burnedKcal = Math.round(
-    Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0),
+    Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0) +
+      Object.values(day.strengthDone ?? {}).reduce((sum, strength) => sum + strength.kcal, 0),
   );
+  const exerciseCredit = Math.round((burnedKcal * (settings.goal.creditPct ?? 0)) / 100);
+  const budgetKcal = targets.kcal + exerciseCredit;
+  const kcalLeft = Math.max(0, budgetKcal - totCal);
   // Energy ledger: BMR → maintenance (base + logged cardio) → realized balance.
   // Null when the profile can't support an estimate — nothing is guessed.
   const bmrRes = bmr({
@@ -100,7 +104,7 @@ export function MealsSection(props: MealsSectionProps) {
   const mealCount = MEAL_SLOTS.reduce((a, slot) => a + day.meals[slot].length, 0);
   const balance = maintBase !== null ? dayBalance(totCal, mealCount, maintBase, burnedKcal) : null;
   const CIRC = 2 * Math.PI * 30;
-  const calDash = `${(Math.min(1, totCal / targets.kcal) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
+  const calDash = `${(Math.min(1, totCal / budgetKcal) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
 
   const lastAi = [...day.chat].reverse().find((m) => m.who === 'ai');
   const lastAiIndex = lastAi ? day.chat.lastIndexOf(lastAi) : -1;
@@ -283,7 +287,7 @@ export function MealsSection(props: MealsSectionProps) {
       <div className={styles.secbar}>
         <span>Meals &amp; Nutrition</span>
         <span className={styles.secbarBadge}>
-          {totCal.toLocaleString()} / {targets.kcal.toLocaleString()} KCAL
+          {totCal.toLocaleString()} / {budgetKcal.toLocaleString()} KCAL
         </span>
       </div>
 
@@ -542,7 +546,7 @@ export function MealsSection(props: MealsSectionProps) {
               viewBox="0 0 72 72"
               style={{ flex: '0 0 auto' }}
               role="img"
-              aria-label={`${totCal} of ${targets.kcal} kcal`}
+              aria-label={`${totCal} of ${budgetKcal} kcal`}
             >
               <circle
                 cx="36"
@@ -581,8 +585,16 @@ export function MealsSection(props: MealsSectionProps) {
             </svg>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               <span className={styles.kcalLeftBig}>{kcalLeft.toLocaleString()}</span>
-              <span className={styles.kcalLeftSub}>
-                kcal left of {targets.kcal.toLocaleString()}
+              <span
+                className={styles.kcalLeftSub}
+                title={
+                  exerciseCredit > 0
+                    ? `${targets.kcal.toLocaleString()} target + ${exerciseCredit.toLocaleString()} exercise credit (${settings.goal.creditPct}%)`
+                    : undefined
+                }
+              >
+                kcal left of {budgetKcal.toLocaleString()}
+                {exerciseCredit > 0 ? ` (+${exerciseCredit.toLocaleString()} exercise)` : ''}
               </span>
               {burnedKcal > 0 && (
                 <span className={styles.burnedLine}>
@@ -631,12 +643,27 @@ export function MealsSection(props: MealsSectionProps) {
                 <span>BMR</span>
                 <span className={styles.energyVal}>~{bmrRes.kcal.toLocaleString()}</span>
               </div>
-              <div className={styles.energyRow} title="BMR × lifestyle + logged cardio">
+              <div className={styles.energyRow} title="BMR × lifestyle + logged exercise">
                 <span>Maintenance</span>
                 <span className={styles.energyVal}>
                   ~{(maintBase + burnedKcal).toLocaleString()}
                 </span>
               </div>
+              {settings.goal.mode !== 'maintain' && (
+                // The ENFORCED daily gap (target vs pre-workout maintenance),
+                // not the nominal −rate×7700/7 — a floored auto target would
+                // otherwise sit next to a plan number it doesn't deliver.
+                <div
+                  className={styles.energyRow}
+                  title={`What your daily target enforces vs maintenance (${settings.goal.mode} ${settings.goal.rateKgPerWeek} kg/week)`}
+                >
+                  <span>Plan</span>
+                  <span className={styles.energyVal}>
+                    {targets.kcal - maintBase < 0 ? '−' : '+'}
+                    {Math.abs(targets.kcal - maintBase).toLocaleString()}
+                  </span>
+                </div>
+              )}
               {balance !== null ? (
                 <div className={styles.energyRow}>
                   <span>{balance > 0 ? 'Surplus' : balance < 0 ? 'Deficit' : 'Even'}</span>

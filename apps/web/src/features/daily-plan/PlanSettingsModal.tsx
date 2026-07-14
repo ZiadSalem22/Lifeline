@@ -187,7 +187,11 @@ function BodyGoalSection(props: {
             className={styles.smallInput}
             value={settings.goal.mode}
             aria-label="Weight goal"
-            onChange={(e) => patchGoal({ mode: e.target.value as typeof settings.goal.mode })}
+            onChange={(e) =>
+              // Declaring a goal hands the target to the engine — that's the
+              // whole point of declaring one. The TARGET select opts back out.
+              patchGoal({ mode: e.target.value as typeof settings.goal.mode, autoTarget: true })
+            }
           >
             {(Object.keys(GOAL_LABELS) as Array<keyof typeof GOAL_LABELS>).map((k) => (
               <option key={k} value={k}>
@@ -213,6 +217,34 @@ function BodyGoalSection(props: {
             </select>
           </label>
         )}
+        <label className={styles.macroLabel}>
+          DAILY KCAL TARGET
+          <select
+            className={styles.smallInput}
+            value={settings.goal.autoTarget ? 'auto' : 'manual'}
+            aria-label="Daily kcal target mode"
+            onChange={(e) => patchGoal({ autoTarget: e.target.value === 'auto' })}
+          >
+            <option value="auto">Auto — follows my goal</option>
+            <option value="manual">Manual — I set the number</option>
+          </select>
+        </label>
+        <label
+          className={styles.macroLabel}
+          title="Percentage of logged exercise calories added to TODAY's budget. 0% keeps the budget fixed (recommended for a cut — exercise deepens the deficit instead)."
+        >
+          EAT BACK EXERCISE
+          <select
+            className={styles.smallInput}
+            value={settings.goal.creditPct}
+            aria-label="Exercise calories credited into the daily budget"
+            onChange={(e) => patchGoal({ creditPct: Number.parseInt(e.target.value, 10) })}
+          >
+            <option value={0}>0% — recommended</option>
+            <option value={50}>50%</option>
+            <option value={100}>100%</option>
+          </select>
+        </label>
       </div>
       {bmrRes && proposal ? (
         <div className={styles.energyReadout}>
@@ -227,7 +259,9 @@ function BodyGoalSection(props: {
             <span>~{maintenanceBase(bmrRes.kcal, profile.activity).toLocaleString()} kcal</span>
           </div>
           <div className={styles.energyReadoutLine}>
-            <span>Proposed daily target</span>
+            <span>
+              {settings.goal.autoTarget ? 'Daily target (auto)' : 'Proposed daily target'}
+            </span>
             <span>~{proposal.kcal.toLocaleString()} kcal</span>
           </div>
           {proposal.warnings.map((w) => (
@@ -235,21 +269,28 @@ function BodyGoalSection(props: {
               {w}
             </div>
           ))}
-          {settings.targets.kcal !== proposal.kcal && (
-            <button
-              type="button"
-              className={styles.chip}
-              style={{ alignSelf: 'flex-start' }}
-              onClick={() =>
-                props.patchSettings({ targets: { ...settings.targets, kcal: proposal.kcal } })
-              }
-            >
-              USE ~{proposal.kcal.toLocaleString()} AS DAILY KCAL TARGET
-            </button>
+          {settings.goal.autoTarget ? (
+            <div className={styles.energyHint}>
+              Target follows your goal automatically — it re-computes as your weight changes.
+            </div>
+          ) : (
+            settings.targets.kcal !== proposal.kcal && (
+              <button
+                type="button"
+                className={styles.chip}
+                style={{ alignSelf: 'flex-start' }}
+                onClick={() =>
+                  props.patchSettings({ targets: { ...settings.targets, kcal: proposal.kcal } })
+                }
+              >
+                USE ~{proposal.kcal.toLocaleString()} AS DAILY KCAL TARGET
+              </button>
+            )
           )}
         </div>
       ) : (
         <div className={styles.energyWarn}>
+          {settings.goal.autoTarget ? 'Auto target is waiting on these inputs: ' : ''}
           Needs a weigh-in plus either a body-fat % (best) or height + birth year + sex — weight and
           measurements live on the Weight card.
         </div>
@@ -446,11 +487,18 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
         <Section title="Targets">
           <div className={styles.macroGrid}>
             <NumberField
-              label="KCAL / DAY"
+              label={settings.goal.autoTarget ? 'KCAL / DAY (AUTO)' : 'KCAL / DAY'}
               value={settings.targets.kcal}
               min={500}
               max={10000}
-              onChange={(kcal) => props.patchSettings({ targets: { ...settings.targets, kcal } })}
+              // Hand-editing the number is an explicit opt-out of auto mode —
+              // otherwise the goal engine would overwrite it on the next sync.
+              onChange={(kcal) =>
+                props.patchSettings({
+                  targets: { ...settings.targets, kcal },
+                  goal: { ...settings.goal, autoTarget: false },
+                })
+              }
             />
             <NumberField
               label="PROTEIN G"

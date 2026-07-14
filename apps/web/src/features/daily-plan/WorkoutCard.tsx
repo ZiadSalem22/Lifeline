@@ -5,6 +5,7 @@ import { WEEK_DAY_NAMES } from './lib/plan-model';
 import {
   cardioKcal,
   computeCardio,
+  computeStrength,
   isRoutineComplete,
   newRoutineKey,
   resolveRoutineKey,
@@ -187,23 +188,35 @@ export function WorkoutBody(props: WorkoutBodyProps) {
   const totalSets = routine.ex.reduce((a, x) => a + x.sets, 0);
   const doneSets = routine.ex.reduce((a, x, i) => a + Math.min(done[i] ?? 0, x.sets), 0);
   const complete = isRoutineComplete(routine, done);
-  // Footer sums the WHOLE day's cardio (matches the Meals card + Statistics,
+  // Footer sums the WHOLE day's burn (matches the Meals card + Statistics,
   // which sum all routines) so switching today's routine can't make the card
   // disagree with them. `?? {}` guards pre-cardioDone historical blobs.
   const dayCardio = Object.values(props.day.cardioDone ?? {}).reduce(
     (acc, cardio) => ({ min: acc.min + cardio.min, kcal: acc.kcal + cardio.kcal }),
     { min: 0, kcal: 0 },
   );
+  const dayStrengthKcal = Object.values(props.day.strengthDone ?? {}).reduce(
+    (acc, strength) => acc + strength.kcal,
+    0,
+  );
+  const dayBurnKcal = dayCardio.kcal + dayStrengthKcal;
 
-  // Recompute today's cardio snapshot from the routine's completed timed
+  // Recompute today's cardio + strength snapshots from the routine's completed
   // exercises whenever dots or minutes change — stored on the day blob so the
-  // settings-free metrics extractor can read cardio.
-  const withCardio = (nextRoutine: GymRoutine, nextDone: number[]): DailyPlanData['cardioDone'] => {
+  // settings-free metrics extractor can read them.
+  const withBurn = (
+    nextRoutine: GymRoutine,
+    nextDone: number[],
+  ): Pick<DailyPlanData, 'cardioDone' | 'strengthDone'> => {
     const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
     const cardioDone = { ...(props.day.cardioDone ?? {}) };
     if (cardio.min > 0 || cardio.kcal > 0 || cardio.km > 0) cardioDone[key] = cardio;
     else delete cardioDone[key];
-    return cardioDone;
+    const strength = computeStrength(nextRoutine, nextDone, props.bodyWeightKg);
+    const strengthDone = { ...(props.day.strengthDone ?? {}) };
+    if (strength.sets > 0) strengthDone[key] = strength;
+    else delete strengthDone[key];
+    return { cardioDone, strengthDone };
   };
 
   const tapSet = (exIdx: number, dotIdx: number) => {
@@ -214,7 +227,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
     const nowComplete = isRoutineComplete(routine, nextDone);
     props.patchDay({
       workoutDone: { ...props.day.workoutDone, [key]: nextDone },
-      cardioDone: withCardio(routine, nextDone),
+      ...withBurn(routine, nextDone),
     });
     if (wasComplete !== nowComplete) props.onCompletionChange(nowComplete);
   };
@@ -241,7 +254,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
         routines: { ...props.settings.gym.routines, [key]: nextRoutine },
       },
     });
-    props.patchDay({ cardioDone: withCardio(nextRoutine, done) });
+    props.patchDay(withBurn(nextRoutine, done));
   };
 
   const setPr = (i: number, field: 'n' | 'v', value: string) => {
@@ -359,10 +372,11 @@ export function WorkoutBody(props: WorkoutBodyProps) {
 
       <QuickCardio day={props.day} patchDay={props.patchDay} bodyWeightKg={props.bodyWeightKg} />
 
-      {dayCardio.min > 0 && (
+      {(dayCardio.min > 0 || dayBurnKcal > 0) && (
         <div className={styles.cardioBurn}>
-          {dayCardio.min} min cardio
-          {dayCardio.kcal > 0 ? ` · ~${dayCardio.kcal} kcal burned` : ''}
+          {dayCardio.min > 0 ? `${dayCardio.min} min cardio · ` : ''}
+          {dayBurnKcal > 0 ? `~${dayBurnKcal} kcal burned` : ''}
+          {dayStrengthKcal > 0 && dayCardio.kcal > 0 ? ' (cardio + sets)' : ''}
         </div>
       )}
 
@@ -463,16 +477,25 @@ export function WorkoutSetupModal(props: SetupProps) {
   const updateEx = (i: number, patch: Partial<GymExercise>) =>
     updateEdit({ ex: editRoutine.ex.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
 
-  // Today's cardio snapshot for a routine, recomputed from its timed exercises.
-  const recomputeCardio = (routineKey: string, nextRoutine: GymRoutine, nextDone: number[]) => {
+  // Today's cardio + strength snapshots for a routine, recomputed from its
+  // exercises (routine edits must keep the day's burn history honest).
+  const recomputeBurn = (
+    routineKey: string,
+    nextRoutine: GymRoutine,
+    nextDone: number[],
+  ): Pick<DailyPlanData, 'cardioDone' | 'strengthDone'> => {
     const cardio = computeCardio(nextRoutine, nextDone, props.bodyWeightKg);
     const cardioDone = { ...(props.day.cardioDone ?? {}) };
     if (cardio.min > 0 || cardio.kcal > 0 || cardio.km > 0) cardioDone[routineKey] = cardio;
     else delete cardioDone[routineKey];
-    return cardioDone;
+    const strength = computeStrength(nextRoutine, nextDone, props.bodyWeightKg);
+    const strengthDone = { ...(props.day.strengthDone ?? {}) };
+    if (strength.sets > 0) strengthDone[routineKey] = strength;
+    else delete strengthDone[routineKey];
+    return { cardioDone, strengthDone };
   };
 
-  // Edits that change minutes/effort/type re-snapshot today's cardio.
+  // Edits that change minutes/effort/type re-snapshot today's burn.
   const updateExTimed = (i: number, patch: Partial<GymExercise>) => {
     const nextRoutine = {
       ...editRoutine,
@@ -480,7 +503,7 @@ export function WorkoutSetupModal(props: SetupProps) {
     };
     updateEdit({ ex: nextRoutine.ex });
     const doneArr = props.day.workoutDone[editKey];
-    if (doneArr) props.patchDay({ cardioDone: recomputeCardio(editKey, nextRoutine, doneArr) });
+    if (doneArr) props.patchDay(recomputeBurn(editKey, nextRoutine, doneArr));
   };
 
   // workoutDone is index-keyed, so removing an exercise must splice today's
@@ -493,7 +516,7 @@ export function WorkoutSetupModal(props: SetupProps) {
       const nextDone = doneArr.filter((_, j) => j !== i);
       props.patchDay({
         workoutDone: { ...props.day.workoutDone, [editKey]: nextDone },
-        cardioDone: recomputeCardio(editKey, { ...editRoutine, ex: nextEx }, nextDone),
+        ...recomputeBurn(editKey, { ...editRoutine, ex: nextEx }, nextDone),
       });
     }
   };
@@ -511,7 +534,7 @@ export function WorkoutSetupModal(props: SetupProps) {
       const clamped = doneArr.map((v, j) => (j === i ? Math.min(v, sets) : v));
       props.patchDay({
         workoutDone: { ...props.day.workoutDone, [editKey]: clamped },
-        cardioDone: recomputeCardio(editKey, nextRoutine, clamped),
+        ...recomputeBurn(editKey, nextRoutine, clamped),
       });
     }
   };
@@ -530,7 +553,7 @@ export function WorkoutSetupModal(props: SetupProps) {
       routines,
       week: gym.week.map((k) => (k === editKey ? 'rest' : k)),
     });
-    // Drop the deleted routine's day state too, or its cardio would keep
+    // Drop the deleted routine's day state too, or its burn would keep
     // counting in Meals/Statistics with no card to surface it.
     const dayPatch: Partial<DailyPlanData> = {};
     if (props.day.workoutRoutine === editKey) dayPatch.workoutRoutine = null;
@@ -538,6 +561,11 @@ export function WorkoutSetupModal(props: SetupProps) {
       const cardioDone = { ...props.day.cardioDone };
       delete cardioDone[editKey];
       dayPatch.cardioDone = cardioDone;
+    }
+    if (props.day.strengthDone?.[editKey]) {
+      const strengthDone = { ...props.day.strengthDone };
+      delete strengthDone[editKey];
+      dayPatch.strengthDone = strengthDone;
     }
     if (Object.keys(dayPatch).length > 0) props.patchDay(dayPatch);
     setEditKey(Object.keys(routines)[0] ?? 'rest');
