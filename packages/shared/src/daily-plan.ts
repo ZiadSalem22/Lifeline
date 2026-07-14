@@ -432,10 +432,12 @@ export const dailyPlanSettingsSchema = z.object({
     .object({
       mode: z.enum(['cut', 'maintain', 'bulk']).default('maintain'),
       rateKgPerWeek: z.number().min(0).max(1.5).default(0.5),
-      autoTarget: z.boolean().default(false),
+      // Default TRUE (owner decision): the target should follow the goal out
+      // of the box — hand-editing KCAL/DAY is the explicit opt-out.
+      autoTarget: z.boolean().default(true),
       creditPct: z.number().int().min(0).max(100).default(0),
     })
-    .default({ mode: 'maintain', rateKgPerWeek: 0.5, autoTarget: false, creditPct: 0 }),
+    .default({ mode: 'maintain', rateKgPerWeek: 0.5, autoTarget: true, creditPct: 0 }),
   /** Real task auto-completed when today's workout finishes (null = off). */
   gymTaskNumber: z.number().int().min(1).nullable().default(null),
   /** Habit row auto-checked when today's workout finishes. */

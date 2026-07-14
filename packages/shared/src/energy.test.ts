@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   acsmKcalPerMin,
+  bmi,
   bmr,
   bmrKatch,
   bmrMifflin,
@@ -172,6 +173,14 @@ describe('cardio kcal (MET + ACSM)', () => {
 
   it('never fakes a number without body weight', () => {
     expect(cardioKcal({ effort: 'run', kmh: 10, incline: 0 }, 0, 30)).toBe(0);
+  });
+});
+
+describe('bmi', () => {
+  it('kg / m², rounded to 0.1; 0 when inputs are missing', () => {
+    expect(bmi(80, 180)).toBe(24.7);
+    expect(bmi(0, 180)).toBe(0);
+    expect(bmi(80, 0)).toBe(0);
   });
 });
 

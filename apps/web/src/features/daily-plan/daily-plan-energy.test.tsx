@@ -35,14 +35,14 @@ describe('Meals energy ledger', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('~1,778')).toBeInTheDocument();
-    expect(screen.getByText('~2,445')).toBeInTheDocument();
+    expect(await screen.findByText('1,778')).toBeInTheDocument();
+    expect(screen.getByText('2,445')).toBeInTheDocument();
     // 500 in − 2445 maintenance (no cardio logged) → deficit 1945.
     expect(screen.getByText('Deficit')).toBeInTheDocument();
-    expect(screen.getByText('−~1,945')).toBeInTheDocument();
+    expect(screen.getByText('−1,945')).toBeInTheDocument();
     // Masthead summary ring: 2400 target − 500 eaten → 1,900 left + deficit label.
     expect(screen.getByLabelText('1,900 kcal left of 2,400')).toBeInTheDocument();
-    expect(screen.getByText('~1,945 deficit')).toBeInTheDocument();
+    expect(screen.getByText('1,945 deficit')).toBeInTheDocument();
   });
 
   it('nudges toward setup instead of guessing when there is no usable profile', async () => {
@@ -77,10 +77,11 @@ describe('Body & goal section', () => {
     );
 
     // 1778 × 1.375 = 2445 maintenance; cut 0.5 kg/wk → −550 → 1895.
-    expect(screen.getByText('~1,895 kcal')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /USE ~1,895 AS DAILY KCAL TARGET/ }));
+    expect(screen.getByText('1,895 kcal')).toBeInTheDocument();
+    // Manual mode's single affordance is opting back into auto.
+    await user.click(screen.getByRole('button', { name: /SWITCH TO AUTO — target 1,895/ }));
     expect(patchSettings).toHaveBeenCalledWith({
-      targets: { ...settings.targets, kcal: 1895 },
+      goal: { ...settings.goal, autoTarget: true },
     });
   });
 });
@@ -140,10 +141,10 @@ describe('Goal-driven energy v2', () => {
     expect(await screen.findByText('kcal left of 2,635 (+235 exercise)')).toBeInTheDocument();
     // Ledger maintenance includes the strength burn: 2445 + 235 = 2680,
     // realized deficit 500 − 2680 = −2180 (credit never touches the ledger).
-    expect(screen.getByText('~2,680')).toBeInTheDocument();
-    expect(screen.getByText('−~2,180')).toBeInTheDocument();
+    expect(screen.getByText('2,680')).toBeInTheDocument();
+    expect(screen.getByText('−2,180')).toBeInTheDocument();
     // Both the workout card and the meals card surface the strength burn.
-    expect(screen.getAllByText(/~235 kcal burned/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/235 kcal burned/).length).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -159,7 +160,7 @@ describe('Quick cardio', () => {
     );
 
     await user.click(await screen.findByRole('button', { name: '+ Quick cardio' }));
-    expect(screen.getByText('~142 kcal')).toBeInTheDocument();
+    expect(screen.getByText('142 kcal')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Log quick cardio' }));
     // Both the workout card and the meals card surface the burn — assert the
     // persisted truth (debounced flush) plus at least one visible line.
@@ -173,6 +174,6 @@ describe('Quick cardio', () => {
       },
       { timeout: 4000 },
     );
-    expect((await screen.findAllByText(/~142 kcal burned/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/142 kcal burned/)).length).toBeGreaterThan(0);
   });
 });

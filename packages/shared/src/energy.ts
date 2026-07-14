@@ -72,6 +72,13 @@ export function bmr(inputs: BmrInputs): BmrResult | null {
   return null;
 }
 
+/** BMI = kg / m²; 0 when weight or height is unknown (never guessed). */
+export function bmi(weightKg: number, heightCm: number): number {
+  if (weightKg <= 0 || heightCm <= 0) return 0;
+  const meters = heightCm / 100;
+  return Math.round((weightKg / (meters * meters)) * 10) / 10;
+}
+
 /* ── Activity / maintenance ──────────────────────────────────────────────── */
 
 /**
@@ -124,8 +131,8 @@ export function proposeTarget(
   if (weightKg > 0 && rate > weightKg * 0.0075) {
     warnings.push(
       goal.mode === 'bulk'
-        ? `~${rate} kg/week is aggressive for ${Math.round(weightKg)} kg — expect mostly fat gain`
-        : `~${rate} kg/week is aggressive for ${Math.round(weightKg)} kg — expect muscle loss / fatigue`,
+        ? `${rate} kg/week is aggressive for ${Math.round(weightKg)} kg — expect mostly fat gain`
+        : `${rate} kg/week is aggressive for ${Math.round(weightKg)} kg — expect muscle loss / fatigue`,
     );
   }
   let kcal = Math.round(base + (sign * rate * KCAL_PER_KG) / 7);

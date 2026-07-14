@@ -134,6 +134,6 @@ describe('workout completion sync', () => {
     // Workout card footer (unique "min cardio" phrasing) …
     expect(await screen.findByText(/min cardio/)).toBeInTheDocument();
     // … and the Meals card shows the burned line (never netted into the ring).
-    expect(screen.getByText('~274 kcal burned')).toBeInTheDocument();
+    expect(screen.getByText('274 kcal burned')).toBeInTheDocument();
   });
 });

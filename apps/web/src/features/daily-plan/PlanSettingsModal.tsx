@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, PlanHabit, TemplateKey } from '@lifeline/shared';
-import { TEMPLATE_KEYS, bmr, maintenanceBase, proposeTarget } from '@lifeline/shared';
+import { TEMPLATE_KEYS, bmi, bmr, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { templateFromDay } from './lib/templates';
 import { dividerBelowAt, newHabitId, templateKeyOf, withDividerAt } from './lib/plan-model';
@@ -104,9 +104,9 @@ const GOAL_LABELS: Record<DailyPlanSettings['goal']['mode'], string> = {
 
 /**
  * BODY & GOAL: energy profile (sex / birth year / lifestyle), goal mode +
- * rate, and a live readout — BMR, maintenance, proposed daily target. The
- * proposal only lands in targets.kcal when the user taps USE (no hidden
- * rewrites of the ring's target).
+ * rate, and a live readout — BMR, BMI, maintenance, daily target. The target
+ * is AUTO by default (the plan view materializes it as weight changes);
+ * hand-editing KCAL/DAY opts out, SWITCH TO AUTO opts back in.
  */
 function BodyGoalSection(props: {
   settings: DailyPlanSettings;
@@ -133,6 +133,7 @@ function BodyGoalSection(props: {
   const proposal = bmrRes
     ? proposeTarget(bmrRes.kcal, profile.activity, settings.goal, props.weightKg)
     : null;
+  const bmiValue = bmi(props.weightKg, settings.height);
 
   return (
     <Section title="Body & goal — powers the energy ledger">
@@ -217,34 +218,6 @@ function BodyGoalSection(props: {
             </select>
           </label>
         )}
-        <label className={styles.macroLabel}>
-          DAILY KCAL TARGET
-          <select
-            className={styles.smallInput}
-            value={settings.goal.autoTarget ? 'auto' : 'manual'}
-            aria-label="Daily kcal target mode"
-            onChange={(e) => patchGoal({ autoTarget: e.target.value === 'auto' })}
-          >
-            <option value="auto">Auto — follows my goal</option>
-            <option value="manual">Manual — I set the number</option>
-          </select>
-        </label>
-        <label
-          className={styles.macroLabel}
-          title="Percentage of logged exercise calories added to TODAY's budget. 0% keeps the budget fixed (recommended for a cut — exercise deepens the deficit instead)."
-        >
-          EAT BACK EXERCISE
-          <select
-            className={styles.smallInput}
-            value={settings.goal.creditPct}
-            aria-label="Exercise calories credited into the daily budget"
-            onChange={(e) => patchGoal({ creditPct: Number.parseInt(e.target.value, 10) })}
-          >
-            <option value={0}>0% — recommended</option>
-            <option value={50}>50%</option>
-            <option value={100}>100%</option>
-          </select>
-        </label>
       </div>
       {bmrRes && proposal ? (
         <div className={styles.energyReadout}>
@@ -252,17 +225,23 @@ function BodyGoalSection(props: {
             <span>
               BMR ({bmrRes.method === 'katch' ? 'Katch-McArdle, from fat %' : 'Mifflin-St Jeor'})
             </span>
-            <span>~{bmrRes.kcal.toLocaleString()} kcal</span>
+            <span>{bmrRes.kcal.toLocaleString()} kcal</span>
           </div>
+          {bmiValue > 0 && (
+            <div className={styles.energyReadoutLine}>
+              <span>BMI</span>
+              <span>{bmiValue}</span>
+            </div>
+          )}
           <div className={styles.energyReadoutLine}>
             <span>Maintenance (before workouts)</span>
-            <span>~{maintenanceBase(bmrRes.kcal, profile.activity).toLocaleString()} kcal</span>
+            <span>{maintenanceBase(bmrRes.kcal, profile.activity).toLocaleString()} kcal</span>
           </div>
           <div className={styles.energyReadoutLine}>
             <span>
               {settings.goal.autoTarget ? 'Daily target (auto)' : 'Proposed daily target'}
             </span>
-            <span>~{proposal.kcal.toLocaleString()} kcal</span>
+            <span>{proposal.kcal.toLocaleString()} kcal</span>
           </div>
           {proposal.warnings.map((w) => (
             <div key={w} className={styles.energyWarn}>
@@ -274,18 +253,14 @@ function BodyGoalSection(props: {
               Target follows your goal automatically — it re-computes as your weight changes.
             </div>
           ) : (
-            settings.targets.kcal !== proposal.kcal && (
-              <button
-                type="button"
-                className={styles.chip}
-                style={{ alignSelf: 'flex-start' }}
-                onClick={() =>
-                  props.patchSettings({ targets: { ...settings.targets, kcal: proposal.kcal } })
-                }
-              >
-                USE ~{proposal.kcal.toLocaleString()} AS DAILY KCAL TARGET
-              </button>
-            )
+            <button
+              type="button"
+              className={styles.chip}
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => patchGoal({ autoTarget: true })}
+            >
+              SWITCH TO AUTO — target {proposal.kcal.toLocaleString()}
+            </button>
           )}
         </div>
       ) : (

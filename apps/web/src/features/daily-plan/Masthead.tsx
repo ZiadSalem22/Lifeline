@@ -49,9 +49,9 @@ export function Masthead({ dateStr, score, subtitle, onSelectDay, energy }: Mast
     : energy.balance === null
       ? 'Kcal Left'
       : energy.balance < 0
-        ? `~${Math.abs(energy.balance).toLocaleString()} deficit`
+        ? `${Math.abs(energy.balance).toLocaleString()} deficit`
         : energy.balance > 0
-          ? `~${energy.balance.toLocaleString()} surplus`
+          ? `${energy.balance.toLocaleString()} surplus`
           : 'even today';
 
   return (

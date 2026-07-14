@@ -155,7 +155,7 @@ function QuickCardio(props: {
         />
       </label>
       <span className={styles.speedHint}>
-        {props.bodyWeightKg <= 0 ? 'log a weigh-in first' : kcal > 0 ? `~${kcal} kcal` : '—'}
+        {props.bodyWeightKg <= 0 ? 'log a weigh-in first' : kcal > 0 ? `${kcal} kcal` : '—'}
       </span>
       <button
         type="button"
@@ -375,7 +375,7 @@ export function WorkoutBody(props: WorkoutBodyProps) {
       {(dayCardio.min > 0 || dayBurnKcal > 0) && (
         <div className={styles.cardioBurn}>
           {dayCardio.min > 0 ? `${dayCardio.min} min cardio · ` : ''}
-          {dayBurnKcal > 0 ? `~${dayBurnKcal} kcal burned` : ''}
+          {dayBurnKcal > 0 ? `${dayBurnKcal} kcal burned` : ''}
           {dayStrengthKcal > 0 && dayCardio.kcal > 0 ? ' (cardio + sets)' : ''}
         </div>
       )}
@@ -852,7 +852,7 @@ export function WorkoutSetupModal(props: SetupProps) {
                       {props.bodyWeightKg <= 0
                         ? 'log a weigh-in for calorie estimates'
                         : roundKcal > 0
-                          ? `~${roundKcal} kcal / round${ex.kmh > 0 ? ' (speed + incline)' : ` (${ex.effort})`}`
+                          ? `${roundKcal} kcal / round${ex.kmh > 0 ? ' (speed + incline)' : ` (${ex.effort})`}`
                           : 'set minutes for an estimate'}
                     </span>
                   </div>

@@ -597,9 +597,7 @@ export function MealsSection(props: MealsSectionProps) {
                 {exerciseCredit > 0 ? ` (+${exerciseCredit.toLocaleString()} exercise)` : ''}
               </span>
               {burnedKcal > 0 && (
-                <span className={styles.burnedLine}>
-                  ~{burnedKcal.toLocaleString()} kcal burned
-                </span>
+                <span className={styles.burnedLine}>{burnedKcal.toLocaleString()} kcal burned</span>
               )}
             </div>
           </div>
@@ -641,12 +639,12 @@ export function MealsSection(props: MealsSectionProps) {
                 }
               >
                 <span>BMR</span>
-                <span className={styles.energyVal}>~{bmrRes.kcal.toLocaleString()}</span>
+                <span className={styles.energyVal}>{bmrRes.kcal.toLocaleString()}</span>
               </div>
               <div className={styles.energyRow} title="BMR × lifestyle + logged exercise">
                 <span>Maintenance</span>
                 <span className={styles.energyVal}>
-                  ~{(maintBase + burnedKcal).toLocaleString()}
+                  {(maintBase + burnedKcal).toLocaleString()}
                 </span>
               </div>
               {settings.goal.mode !== 'maintain' && (
@@ -668,7 +666,7 @@ export function MealsSection(props: MealsSectionProps) {
                 <div className={styles.energyRow}>
                   <span>{balance > 0 ? 'Surplus' : balance < 0 ? 'Deficit' : 'Even'}</span>
                   <span className={`${styles.energyVal} ${styles.energyValStrong}`}>
-                    {balance < 0 ? '−' : balance > 0 ? '+' : ''}~
+                    {balance < 0 ? '−' : balance > 0 ? '+' : ''}
                     {Math.abs(balance).toLocaleString()}
                   </span>
                 </div>
