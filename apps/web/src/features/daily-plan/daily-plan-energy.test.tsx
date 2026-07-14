@@ -38,8 +38,11 @@ describe('Meals energy ledger', () => {
     expect(await screen.findByText('~1,778')).toBeInTheDocument();
     expect(screen.getByText('~2,445')).toBeInTheDocument();
     // 500 in − 2445 maintenance (no cardio logged) → deficit 1945.
-    expect(screen.getByText('DEFICIT')).toBeInTheDocument();
-    expect(screen.getByText('~1,945 kcal')).toBeInTheDocument();
+    expect(screen.getByText('Deficit')).toBeInTheDocument();
+    expect(screen.getByText('−~1,945')).toBeInTheDocument();
+    // Masthead summary ring: 2400 target − 500 eaten → 1,900 left + deficit label.
+    expect(screen.getByLabelText('1,900 kcal left of 2,400')).toBeInTheDocument();
+    expect(screen.getByText('~1,945 deficit')).toBeInTheDocument();
   });
 
   it('nudges toward setup instead of guessing when there is no usable profile', async () => {

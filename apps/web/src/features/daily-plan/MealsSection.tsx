@@ -619,38 +619,43 @@ export function MealsSection(props: MealsSectionProps) {
               <span className={styles.fatVal}>{r1(totals.f)} g</span>
             </div>
           </div>
+          {maintBase !== null && bmrRes !== null ? (
+            <div className={styles.energyLedger}>
+              <div className={styles.totalsHead}>Energy</div>
+              <div
+                className={styles.energyRow}
+                title={
+                  bmrRes.method === 'katch' ? 'Katch-McArdle (from body fat %)' : 'Mifflin-St Jeor'
+                }
+              >
+                <span>BMR</span>
+                <span className={styles.energyVal}>~{bmrRes.kcal.toLocaleString()}</span>
+              </div>
+              <div className={styles.energyRow} title="BMR × lifestyle + logged cardio">
+                <span>Maintenance</span>
+                <span className={styles.energyVal}>
+                  ~{(maintBase + burnedKcal).toLocaleString()}
+                </span>
+              </div>
+              {balance !== null ? (
+                <div className={styles.energyRow}>
+                  <span>{balance > 0 ? 'Surplus' : balance < 0 ? 'Deficit' : 'Even'}</span>
+                  <span className={`${styles.energyVal} ${styles.energyValStrong}`}>
+                    {balance < 0 ? '−' : balance > 0 ? '+' : ''}~
+                    {Math.abs(balance).toLocaleString()}
+                  </span>
+                </div>
+              ) : (
+                <div className={styles.energyHint}>Log meals to see today's balance</div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className={styles.energySetup} onClick={props.onOpenSettings}>
+              + Set up energy tracking
+              <span className={styles.energySetupSub}>BMR · maintenance · deficit</span>
+            </button>
+          )}
         </div>
-        {maintBase !== null && bmrRes !== null ? (
-          <div className={styles.energyLedger}>
-            <span
-              title={
-                bmrRes.method === 'katch' ? 'Katch-McArdle (from body fat %)' : 'Mifflin-St Jeor'
-              }
-            >
-              BMR <strong>~{bmrRes.kcal.toLocaleString()}</strong>
-            </span>
-            <span title="BMR × lifestyle + logged cardio">
-              MAINTENANCE <strong>~{(maintBase + burnedKcal).toLocaleString()}</strong>
-            </span>
-            {balance !== null ? (
-              <span>
-                {balance > 0 ? 'SURPLUS' : balance < 0 ? 'DEFICIT' : 'EVEN'}{' '}
-                <strong>~{Math.abs(balance).toLocaleString()} kcal</strong>
-              </span>
-            ) : (
-              <span>log meals to see today's balance</span>
-            )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            className={styles.moreBtn}
-            style={{ margin: 0, padding: '6px 0 0' }}
-            onClick={props.onOpenSettings}
-          >
-            + Set up energy tracking (BMR · maintenance · deficit)
-          </button>
-        )}
       </div>
 
       <SavedMealsModal

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 import type { DailyPlanData, DailyPlanSettings, HabitMark, Tag, Todo } from '@lifeline/shared';
+import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
 import { useCreateTodo, useToggleComplete, useUpdateSubtasks } from '../todos/data/hooks';
@@ -553,6 +554,40 @@ export function DailyPlanView({
       }
     }
   }
+  // Masthead energy summary: kcal-left ring always works off intake vs target;
+  // the deficit/surplus label needs a BMR-capable profile. Hidden with the
+  // Meals card (no food tracking → no kcal summary).
+  const intakeKcal = Math.round(
+    MEAL_SLOTS.reduce(
+      (sum, slot) => sum + day.meals[slot].reduce((a, item) => a + (Number(item.cal) || 0), 0),
+      0,
+    ),
+  );
+  const mastheadEnergy = settings.hidden['meals']
+    ? null
+    : (() => {
+        const bmrRes = bmr({
+          weightKg: effectiveWeightKg,
+          fatPct: lastFatPct,
+          heightCm: settings.height,
+          birthYear: settings.profile.birthYear,
+          sex: settings.profile.sex,
+          currentYear: new Date().getFullYear(),
+        });
+        const burned = Math.round(
+          Object.values(day.cardioDone ?? {}).reduce((sum, cardio) => sum + cardio.kcal, 0),
+        );
+        const mealCount = MEAL_SLOTS.reduce((a, slot) => a + day.meals[slot].length, 0);
+        const balance = bmrRes
+          ? dayBalance(
+              intakeKcal,
+              mealCount,
+              maintenanceBase(bmrRes.kcal, settings.profile.activity),
+              burned,
+            )
+          : null;
+        return { intake: intakeKcal, target: settings.targets.kcal, balance };
+      })();
 
   // Streaks + 28-day history: marks come from this week's cache plus the
   // recent window (28 days ending yesterday), all relative to the selected
@@ -781,6 +816,7 @@ export function DailyPlanView({
         score={score}
         subtitle={settings.subtitle}
         onSelectDay={onSelectDay}
+        energy={mastheadEnergy}
       />
 
       {weekError && !weekReady && (

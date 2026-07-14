@@ -1476,22 +1476,62 @@ button.weekBarBtn:hover .weekBarFill {
   letter-spacing: 0.03em;
 }
 
-/* Meals card: maintenance / balance ledger under the daily totals. */
+/* Energy ledger — lives INSIDE .diaryRight (the Daily Totals column). It must
+   never be a direct .diaryWrap child: that container fakes hairline dividers
+   with a rule-colored background + 1px gaps, so a backgroundless extra child
+   renders as a giant gray panel. */
 .energyLedger {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding-top: 6px;
-  border-top: 1px dashed var(--plan-rule);
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  color: var(--plan-muted);
-  font-variant-numeric: tabular-nums;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--plan-rule);
 }
-.energyLedger strong {
+.energyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--plan-muted);
+}
+.energyVal {
   color: var(--color-text);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.energyValStrong {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.energyHint {
+  font-size: 10.5px;
+  color: var(--plan-muted);
+  font-style: italic;
+}
+.energySetup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 0 0;
+  border: none;
+  border-top: 1px solid var(--plan-rule);
+  background: transparent;
+  color: var(--plan-muted);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  text-align: left;
+  cursor: pointer;
+}
+.energySetup:hover,
+.energySetup:focus-visible {
+  color: var(--color-text);
+}
+.energySetupSub {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 /* Customize panel: BMR/maintenance/target readout for the energy goal. */
