@@ -21,12 +21,14 @@
 
 /* The sheet, not the overlay, scrolls — a scrollbar drag registers its
    mousedown here and never counts as an outside click. Bottom padding keeps
-   the submit row reachable above phone home-bars. */
+   the submit row reachable above phone home-bars. --kb-inset trims the height
+   to the visible band so a focused field never hides behind the keyboard. */
 .sheet {
   width: min(680px, 100%);
-  max-height: 100dvh;
+  max-height: calc(100dvh - var(--kb-inset, 0px));
   overflow-y: auto;
-  padding: var(--space-12) var(--space-16) calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-12) var(--space-16)
+    calc(var(--space-24) + env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px));
 }
 
 /* Cancel affordance: rides sticky at the top of the scrolling sheet so it
