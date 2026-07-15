@@ -127,6 +127,7 @@ describe('createApp public surface', () => {
 describe('createApp production SPA serving (WEB_DIST_DIR)', () => {
   const distDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lifeline-web-'));
   fs.writeFileSync(path.join(distDir, 'index.html'), '<!doctype html><title>Lifeline SPA</title>');
+  fs.writeFileSync(path.join(distDir, 'sw.js'), '// worker');
   fs.mkdirSync(path.join(distDir, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(distDir, 'assets', 'app.js'), 'console.log("bundle");');
 
@@ -135,17 +136,25 @@ describe('createApp production SPA serving (WEB_DIST_DIR)', () => {
 
   afterAll(() => fs.rmSync(distDir, { recursive: true, force: true }));
 
-  it('serves index.html at the root', async () => {
+  it('serves index.html at the root, uncached', async () => {
     const response = await request(spaApp).get('/');
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.text).toContain('Lifeline SPA');
+    expect(response.headers['cache-control']).toBe('no-cache');
   });
 
-  it('serves fingerprinted static assets', async () => {
+  it('serves fingerprinted static assets as immutable', async () => {
     const response = await request(spaApp).get('/assets/app.js');
     expect(response.status).toBe(200);
     expect(response.text).toContain('bundle');
+    expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+  });
+
+  it('never long-caches non-fingerprinted root files (sw.js pins old shells)', async () => {
+    const response = await request(spaApp).get('/sw.js');
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-cache');
   });
 
   it('falls back to index.html for client-side routes', async () => {
