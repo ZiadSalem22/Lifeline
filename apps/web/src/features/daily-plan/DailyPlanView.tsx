@@ -67,8 +67,7 @@ import styles from './DailyPlan.module.css';
 
 type DayPatch = Partial<DailyPlanData> | ((day: DailyPlanData) => Partial<DailyPlanData>);
 type SettingsPatch =
-  | Partial<DailyPlanSettings>
-  | ((settings: DailyPlanSettings) => Partial<DailyPlanSettings>);
+  Partial<DailyPlanSettings> | ((settings: DailyPlanSettings) => Partial<DailyPlanSettings>);
 
 export interface DailyPlanViewProps {
   /** 'today' | 'tomorrow' | 'YYYY-MM-DD' route token. */
