@@ -799,6 +799,21 @@ button.weekChipToday:hover:not(:disabled) {
   font-variant-numeric: tabular-nums;
 }
 
+/* The hour you're living right now (today only) — same today-band language
+   as the habits grid, and the list opens scrolled to it. */
+.schedRowNow {
+  background: var(--plan-today-band);
+  box-shadow: var(--plan-today-shadow);
+  border-radius: 6px;
+  margin-inline: -6px;
+  padding-inline: 6px;
+}
+
+.schedRowNow .schedTime {
+  color: var(--plan-primary);
+  font-weight: 800;
+}
+
 /* ── priorities ──────────────────────────────────────────────────────────── */
 
 .prioNum {
