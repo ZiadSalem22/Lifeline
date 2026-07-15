@@ -238,3 +238,16 @@ svg {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ── Gesture selection guard ───────────────────────────────────────────────
+   Applied to <body> while a hold-to-drag gesture is pending (jump pill,
+   sheet tiles, card section bars). Touch browsers otherwise start text
+   selection on long-press — WebKit even creeps to the NEAREST selectable
+   text when the pressed element itself is user-select:none. Scoped to the
+   gesture lifetime, so normal copy/paste everywhere is untouched. */
+body.gesture-no-select,
+body.gesture-no-select * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}

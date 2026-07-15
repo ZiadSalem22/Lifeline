@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { clearTextSelection, suppressTextSelection } from './lib/gesture-select';
 import styles from './JumpSheet.module.css';
 
 /**
@@ -161,6 +162,7 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     const d = drag.current;
     if (!d) return;
     if (d.timer !== null) window.clearTimeout(d.timer);
+    suppressTextSelection(false);
     document.removeEventListener('touchmove', preventTouchScroll);
     if (d.lifted) {
       try {
@@ -206,12 +208,13 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
   }, [open]);
 
   // Global teardown for an in-flight drag or pill glide (unmount mid-gesture
-  // must not leave a non-passive touchmove blocker behind).
+  // must not leave a non-passive touchmove blocker or selection guard behind).
   useEffect(
     () => () => {
       if (drag.current?.timer != null) window.clearTimeout(drag.current.timer);
       if (glide.current?.timer != null) window.clearTimeout(glide.current.timer);
       document.removeEventListener('touchmove', preventTouchScroll);
+      suppressTextSelection(false);
     },
     [],
   );
@@ -237,6 +240,7 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     const g = glide.current;
     if (!g) return;
     if (g.timer !== null) window.clearTimeout(g.timer);
+    suppressTextSelection(false);
     if (g.active) {
       document.removeEventListener('touchmove', preventTouchScroll);
       try {
@@ -262,12 +266,14 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     // Same claim as the tile lift: the finger is stationary, no scroll owns
     // the touch — block panning so the glide tracks cleanly.
     document.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    clearTextSelection();
     navigator.vibrate?.(10);
     openSheet();
   };
 
   const onPillPointerDown = (event: ReactPointerEvent) => {
     if (event.button !== 0) return;
+    suppressTextSelection(true);
     glide.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -316,6 +322,7 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     // The finger is stationary past the hold delay, so no scroll owns this
     // touch yet — claim it, or the first drag movement scrolls the sheet.
     document.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    clearTextSelection();
     navigator.vibrate?.(10);
     setLiftedKey(d.key);
     applyLiftTransform(d);
@@ -323,6 +330,7 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
 
   const onTilePointerDown = (event: ReactPointerEvent, key: string) => {
     if (byKey.get(key)?.fixed || event.button !== 0) return;
+    suppressTextSelection(true);
     const el = event.currentTarget as HTMLElement;
     drag.current = {
       key,
