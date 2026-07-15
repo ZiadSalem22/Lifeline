@@ -86,6 +86,27 @@ describe('DailyPlanView', () => {
     expect(onSelectDay).toHaveBeenCalledTimes(1);
   });
 
+  it("today's schedule bands the current hour; other days don't", async () => {
+    renderPlan('today');
+    await screen.findByText('Schedule');
+    const hour = new Date().getHours();
+    const nowRow = document.querySelector('[data-now]');
+    if (hour >= 4 || hour === 0) {
+      // Default day runs 04:00 → 00:00 (24 renders as the 00:00 row).
+      expect(nowRow).not.toBeNull();
+      expect(nowRow?.textContent).toContain(`${hour < 10 ? '0' : ''}${hour}:00`);
+    } else {
+      // 01:00–03:00 sit outside the default hours — nothing to band.
+      expect(nowRow).toBeNull();
+    }
+  });
+
+  it('a past day never shows the now band', async () => {
+    renderPlan('2026-07-09');
+    await screen.findByText('Schedule');
+    expect(document.querySelector('[data-now]')).toBeNull();
+  });
+
   it('hiding a card moves it to the restore bar; Show all brings it back', async () => {
     const user = userEvent.setup();
     renderPlan();

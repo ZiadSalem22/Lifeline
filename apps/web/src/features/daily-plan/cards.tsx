@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import type {
   DailyPlanData,
@@ -219,6 +219,8 @@ export interface ScheduleBodyProps {
   onOpenTask: (todo: Todo) => void;
   onAddTaskAt: (hour: string) => void;
   onToggleSubtask?: SubtaskToggle | undefined;
+  /** Viewing TODAY: the current hour gets a live band and the list opens on it. */
+  isToday?: boolean;
 }
 
 function SchedChip(props: {
@@ -287,6 +289,7 @@ export function ScheduleBody({
   onOpenTask,
   onAddTaskAt,
   onToggleSubtask,
+  isToday = false,
 }: ScheduleBodyProps) {
   const hours = scheduleHours(startHour, endHour);
   const byTime = (a: Todo, b: Todo) => (a.dueTime ?? '').localeCompare(b.dueTime ?? '');
@@ -297,19 +300,49 @@ export function ScheduleBody({
         t.dueTime !== null && !new Set(hours.map((h) => h.slice(0, 3))).has(t.dueTime.slice(0, 3)),
     )
     .sort(byTime);
+
+  // Live "now" band (today only): the hour is read fresh each render; a
+  // minute tick forces a render so the band crosses hour boundaries while
+  // the tab stays open.
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    if (!isToday) return;
+    const timer = setInterval(() => setNowTick((t) => t + 1), 60_000);
+    return () => clearInterval(timer);
+  }, [isToday]);
+  const nowHour = new Date().getHours();
+  const nowLabel = isToday ? `${nowHour < 10 ? '0' : ''}${nowHour}:00` : null;
+
+  // Open on "now": today's list starts scrolled so the current hour sits a
+  // third of the way down its window instead of at 04:00.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const nowRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const row = nowRef.current;
+    if (!isToday || !list || !row) return;
+    list.scrollTop = Math.max(0, row.offsetTop - list.offsetTop - list.clientHeight / 3);
+  }, [isToday]);
+
   return (
     <div className={styles.cardBody}>
       {/* The full day of hour rows scrolls inside the card on phones. */}
-      <div className={`${styles.scrollList} ${styles.scrollTall}`}>
+      <div ref={listRef} className={`${styles.scrollList} ${styles.scrollTall}`}>
         {hours.map((time) => {
           const suggestions = suggestionsFor(time);
           // '13:30' lands on the '13:00' row; the chip shows the real minutes.
           const rowTodos = todos
             .filter((t) => t.dueTime?.startsWith(time.slice(0, 3)))
             .sort(byTime);
+          const isNow = time === nowLabel;
           return (
-            <div key={time}>
-              <div className={`${styles.rowRule} ${styles.schedRow}`}>
+            <div key={time} ref={isNow ? nowRef : undefined}>
+              <div
+                className={[styles.rowRule, styles.schedRow, isNow ? styles.schedRowNow : undefined]
+                  .filter(Boolean)
+                  .join(' ')}
+                {...(isNow ? { 'data-now': '' } : {})}
+              >
                 <span className={styles.schedTime}>{time}</span>
                 <input
                   dir="auto"

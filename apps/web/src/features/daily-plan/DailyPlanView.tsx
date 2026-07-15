@@ -661,6 +661,7 @@ export function DailyPlanView({
           onOpenTask={(todo) => setPreviewId(todo.id)}
           onAddTaskAt={(hour) => openComposer(dateStr, hour)}
           onToggleSubtask={toggleSubtask}
+          isToday={isToday}
         />
       ),
     },
