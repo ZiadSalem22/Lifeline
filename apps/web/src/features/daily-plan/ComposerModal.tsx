@@ -55,6 +55,25 @@ export function ComposerModal({
       }}
     >
       <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="Add task">
+        {/* The sheet can outgrow a phone screen and Escape needs a keyboard —
+            a sticky ✕ keeps cancel one thumb-tap away at any scroll depth. */}
+        <div className={styles.closeRow}>
+          <button type="button" className={styles.close} aria-label="Close" onClick={onClose}>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M5 5l14 14" />
+              <path d="M19 5L5 19" />
+            </svg>
+          </button>
+        </div>
         <Composer
           open={open}
           allTags={allTags}
