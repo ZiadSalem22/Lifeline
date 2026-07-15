@@ -12,13 +12,21 @@ import express, { type RequestHandler } from 'express';
 export function createSpaHandler(webDistDir: string): RequestHandler {
   const resolvedDir = path.resolve(webDistDir);
   const indexHtml = path.join(resolvedDir, 'index.html');
+  const assetsDir = path.join(resolvedDir, 'assets') + path.sep;
   const staticMiddleware = express.static(resolvedDir, {
     index: false,
-    // Vite fingerprints asset filenames, so they can be cached hard; index.html
-    // (served by the fallback below) is not cached so deploys take effect.
-    maxAge: '1y',
+    // ONLY Vite's fingerprinted /assets/* files are immutable. Everything
+    // else in the dist root (index.html, sw.js, manifest, icons) must
+    // revalidate on every load — a year-cached sw.js or shell is exactly how
+    // a phone keeps booting a previous release's asset URLs after a deploy
+    // (blank page: the old hashed files no longer exist).
+    maxAge: 0,
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache');
+      if (filePath.startsWith(assetsDir)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
     },
   });
 

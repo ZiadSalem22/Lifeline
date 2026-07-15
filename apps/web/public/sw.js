@@ -5,7 +5,8 @@
  * - hashed /assets/*: cache-first (content-hashed, immutable);
  * - everything else (API calls included) goes straight to the network.
  */
-const CACHE = 'lifeline-shell-v1';
+// v2: purge shells cached by the v1 worker (it could cache a non-ok response).
+const CACHE = 'lifeline-shell-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -37,8 +38,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE).then((cache) => cache.put('/', copy));
+          // Only a healthy shell may become the offline fallback — caching a
+          // mid-deploy 502 here would serve an error page while offline.
+          if (response.ok) {
+            const copy = response.clone();
+            void caches.open(CACHE).then((cache) => cache.put('/', copy));
+          }
           return response;
         })
         .catch(() => caches.match('/').then((hit) => hit ?? Response.error())),
