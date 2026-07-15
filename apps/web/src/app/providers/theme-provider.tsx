@@ -17,7 +17,7 @@ import type { FontName, ThemeContextValue, ThemeId } from './theme-context';
 
 /**
  * Theme/font state, ported from the old ThemeProvider:
- * - localStorage keys 'theme' / 'font' (defaults: 'dark', 'DM Sans');
+ * - localStorage keys 'theme' / 'font' (defaults: 'paper', 'DM Sans');
  * - applies documentElement[data-theme] and the --font-family-base inline var;
  * - fontSize (12–20, default 14) applies --font-size-base — the old Settings
  *   slider had no onChange, it is functional now;
@@ -36,9 +36,9 @@ function clampFontSize(value: number): number {
 function readStoredTheme(): ThemeId {
   try {
     const stored = window.localStorage.getItem(THEME_KEY);
-    return isThemeId(stored) ? stored : 'dark';
+    return isThemeId(stored) ? stored : 'paper';
   } catch {
-    return 'dark';
+    return 'paper';
   }
 }
 

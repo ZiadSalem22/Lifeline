@@ -27,17 +27,18 @@ export const PLAN_SECTIONS = [
 ] as const;
 export type PlanSectionKey = (typeof PLAN_SECTIONS)[number][0];
 
-// Default order is FUNCTIONAL-FIRST: the cards acted on all day (schedule,
-// focus, priorities, tasks, habits, workout, water, weight, tomorrow) lead;
-// the reflective ones (gratitude, mood, review, week) close the page. Users
-// override freely via secOrder — this only shapes brand-new accounts.
+// Default order is FUNCTIONAL-FIRST: the cards acted on all day lead —
+// schedule, habits, focus, priorities, workout (meals renders full-width
+// above the grid) — and the reflective ones (gratitude, mood, review, week)
+// close the page. Users override freely via secOrder — this only shapes
+// accounts that never rearranged.
 export const PLAN_GRID_KEYS: PlanSectionKey[] = [
   'schedule',
+  'habits',
   'focus',
   'priorities',
-  'todo',
-  'habits',
   'workout',
+  'todo',
   'water',
   'weight',
   'tomorrow',

@@ -57,10 +57,10 @@ describe('ThemeProvider', () => {
     vi.unstubAllGlobals();
   });
 
-  it('defaults to dark / DM Sans / 14 and applies the data-theme attribute', async () => {
+  it('defaults to paper / DM Sans / 14 and applies the data-theme attribute', async () => {
     renderThemed();
     await identityResolved();
-    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('paper');
     expect(screen.getByTestId('font').textContent).toBe('DM Sans');
     expect(screen.getByTestId('font-size').textContent).toBe('14');
     expect(document.documentElement.style.getPropertyValue('--font-family-base')).toContain(

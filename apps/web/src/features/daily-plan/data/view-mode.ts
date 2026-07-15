@@ -18,9 +18,10 @@ function isHomeViewMode(value: unknown): value is HomeViewMode {
 function readStoredMode(): HomeViewMode {
   try {
     const raw = window.localStorage.getItem(MODE_KEY);
-    return isHomeViewMode(raw) ? raw : 'tasks';
+    // The Daily Plan IS the home page — Tasks mode only when chosen.
+    return isHomeViewMode(raw) ? raw : 'plan';
   } catch {
-    return 'tasks';
+    return 'plan';
   }
 }
 

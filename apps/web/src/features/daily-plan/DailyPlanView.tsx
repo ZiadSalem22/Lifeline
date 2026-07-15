@@ -321,9 +321,10 @@ export function DailyPlanView({
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const order = previewOrder ?? persistedOrder;
 
-  const density = settings.density;
-  const colw = density === 'roomy' ? 420 : 340;
-  const gap = density === 'roomy' ? 20 : 14;
+  // Compact is THE density — the roomy variant and its toggle are retired
+  // (settings.density still parses for old blobs; it is simply ignored).
+  const colw = 340;
+  const gap = 14;
 
   // span-2 is only legal when the grid actually fits two columns.
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -831,7 +832,7 @@ export function DailyPlanView({
   const densityStyle = { '--colw': `${colw}px` } as CSSProperties;
 
   return (
-    <div className={styles.planRoot} data-density={density} style={densityStyle}>
+    <div className={styles.planRoot} data-density="compact" style={densityStyle}>
       <div
         style={{
           display: 'flex',
@@ -852,15 +853,6 @@ export function DailyPlanView({
           // active (the old ternary showed DARK as selected on all of them).
           value={theme === 'paper' || theme === 'dark' ? theme : ''}
           onChange={(value) => setTheme(value === 'paper' ? 'paper' : 'dark')}
-        />
-        <Segmented
-          label="Density"
-          options={[
-            ['compact', 'COMPACT'],
-            ['roomy', 'ROOMY'],
-          ]}
-          value={density}
-          onChange={(value) => patchSettings({ density: value as 'compact' | 'roomy' })}
         />
         <button
           type="button"

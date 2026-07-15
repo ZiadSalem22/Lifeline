@@ -38,7 +38,7 @@ describe('card reorder via keyboard', () => {
         const raw = window.localStorage.getItem('daily_plan_settings');
         expect(raw).not.toBeNull();
         const { secOrder } = JSON.parse(raw as string) as { secOrder: string[] };
-        expect(secOrder[0]).toBe('focus');
+        expect(secOrder[0]).toBe('habits');
         expect(secOrder[1]).toBe('schedule');
       },
       { timeout: 3000 },
