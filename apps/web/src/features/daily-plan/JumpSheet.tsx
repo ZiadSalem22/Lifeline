@@ -83,6 +83,17 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<DragState | null>(null);
   const suppressClick = useRef(false);
+  // Pill glide: hold the pill → the sheet opens under the still-held finger →
+  // slide over a tile and release to jump there in one gesture.
+  const [glideKey, setGlideKey] = useState<string | null>(null);
+  const glide = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    timer: number | null;
+    active: boolean;
+  } | null>(null);
+  const suppressPillClick = useRef(false);
   const previewRef = useRef<string[] | null>(null);
   const setPreviewBoth = (next: string[] | null) => {
     previewRef.current = next;
@@ -194,11 +205,12 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- closeSheet only touches refs/state setters
   }, [open]);
 
-  // Global teardown for an in-flight drag (unmount mid-drag must not leave a
-  // non-passive touchmove blocker behind).
+  // Global teardown for an in-flight drag or pill glide (unmount mid-gesture
+  // must not leave a non-passive touchmove blocker behind).
   useEffect(
     () => () => {
-      if (drag.current?.timer !== null && drag.current) window.clearTimeout(drag.current.timer);
+      if (drag.current?.timer != null) window.clearTimeout(drag.current.timer);
+      if (glide.current?.timer != null) window.clearTimeout(glide.current.timer);
       document.removeEventListener('touchmove', preventTouchScroll);
     },
     [],
@@ -212,6 +224,80 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
     el.scrollIntoView?.({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     el.setAttribute('data-jump-flash', '');
     window.setTimeout(() => el.removeAttribute('data-jump-flash'), 950);
+  };
+
+  // ── pill glide (hold → slide → release on a tile) ──
+  const tileKeyAt = (x: number, y: number): string | null =>
+    typeof document.elementFromPoint === 'function'
+      ? (document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-key]')?.dataset['key'] ??
+        null)
+      : null;
+
+  const clearGlide = () => {
+    const g = glide.current;
+    if (!g) return;
+    if (g.timer !== null) window.clearTimeout(g.timer);
+    if (g.active) {
+      document.removeEventListener('touchmove', preventTouchScroll);
+      try {
+        pillRef.current?.releasePointerCapture(g.pointerId);
+      } catch {
+        /* pointer already gone */
+      }
+      setGlideKey(null);
+    }
+    glide.current = null;
+  };
+
+  const startGlide = () => {
+    const g = glide.current;
+    if (!g) return;
+    g.timer = null;
+    g.active = true;
+    try {
+      pillRef.current?.setPointerCapture(g.pointerId);
+    } catch {
+      /* jsdom / stale pointer */
+    }
+    // Same claim as the tile lift: the finger is stationary, no scroll owns
+    // the touch — block panning so the glide tracks cleanly.
+    document.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    navigator.vibrate?.(10);
+    openSheet();
+  };
+
+  const onPillPointerDown = (event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
+    glide.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      timer: window.setTimeout(startGlide, 250),
+      active: false,
+    };
+  };
+
+  const onPillPointerMove = (event: ReactPointerEvent) => {
+    const g = glide.current;
+    if (!g || event.pointerId !== g.pointerId) return;
+    if (!g.active) {
+      if (Math.hypot(event.clientX - g.startX, event.clientY - g.startY) > SLOP_PX) clearGlide();
+      return;
+    }
+    event.preventDefault();
+    setGlideKey(tileKeyAt(event.clientX, event.clientY));
+  };
+
+  const onPillPointerUp = (event: ReactPointerEvent) => {
+    const g = glide.current;
+    if (!g || event.pointerId !== g.pointerId) return;
+    const wasActive = g.active;
+    clearGlide();
+    if (!wasActive) return; // quick tap — the click handler opens the sheet
+    suppressPillClick.current = true;
+    const key = tileKeyAt(event.clientX, event.clientY);
+    if (key) jumpTo(key);
+    // released off any tile: the sheet simply stays open for a normal tap
   };
 
   // ── hold-and-drag reorder ──
@@ -393,7 +479,20 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
         aria-label="Navigate sections"
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={openSheet}
+        onPointerDown={onPillPointerDown}
+        onPointerMove={onPillPointerMove}
+        onPointerUp={onPillPointerUp}
+        onPointerCancel={clearGlide}
+        onContextMenu={(event) => {
+          if (glide.current) event.preventDefault();
+        }}
+        onClick={() => {
+          if (suppressPillClick.current) {
+            suppressPillClick.current = false;
+            return;
+          }
+          openSheet();
+        }}
       >
         <span className={styles.pillDots} aria-hidden="true">
           <i />
@@ -452,6 +551,7 @@ export function JumpSheet({ sections, onReorder }: JumpSheetProps) {
                   section.fixed ? styles.tileFixed : undefined,
                   key === currentKey ? styles.tileCurrent : undefined,
                   key === liftedKey ? styles.tileLifted : undefined,
+                  key === glideKey ? styles.tileGlide : undefined,
                 ]
                   .filter(Boolean)
                   .join(' ');

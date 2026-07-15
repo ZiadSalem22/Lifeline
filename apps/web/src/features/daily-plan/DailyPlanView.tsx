@@ -812,19 +812,19 @@ export function DailyPlanView({
     meals: mastheadEnergy ? `${mastheadEnergy.intake} / ${mastheadEnergy.target} kcal` : '',
     nonneg: `${day.nonnegs.filter(Boolean).length} / ${settings.nonnegLabels.length}`,
   };
+  // Sheet order mirrors the page: meals (full-width, above the grid), then
+  // the grid cards in the user's order, then non-negotiables at the bottom.
+  const fixedSection = (key: 'meals' | 'nonneg'): JumpSection[] =>
+    settings.hidden[key]
+      ? []
+      : [{ key, label: sectionLabel(key), status: jumpStatus[key] ?? '', fixed: true }];
   const jumpSections: JumpSection[] = [
+    ...fixedSection('meals'),
     // persistedOrder is pre-filtered to PLAN_GRID_KEYS members above.
     ...(persistedOrder as PlanSectionKey[])
       .filter((key) => !settings.hidden[key])
       .map((key) => ({ key, label: sectionLabel(key), status: jumpStatus[key] ?? '' })),
-    ...(['meals', 'nonneg'] as const)
-      .filter((key) => !settings.hidden[key])
-      .map((key) => ({
-        key,
-        label: sectionLabel(key),
-        status: jumpStatus[key] ?? '',
-        fixed: true,
-      })),
+    ...fixedSection('nonneg'),
   ];
 
   const densityStyle = { '--colw': `${colw}px` } as CSSProperties;
@@ -950,9 +950,28 @@ export function DailyPlanView({
         </div>
       )}
 
+      {/* Meals leads the page (functional-first): the food diary is worked
+          all day, so it sits right under the masthead, above the grid. */}
+      {!settings.hidden['meals'] && (
+        <MealsSection
+          day={day}
+          settings={settings}
+          patchDay={patchDay}
+          patchSettings={patchSettings}
+          onHide={() => hide('meals')}
+          recentItems={recentMeals}
+          weightKg={effectiveWeightKg}
+          fatPct={lastFatPct}
+          onOpenSettings={() => setCustomizeOpen(true)}
+        />
+      )}
+
       <div
         ref={gridRef}
         className={styles.grid}
+        // MealsSection (.fullCard) carries margin-top; the grid needs its own
+        // top gap only when meals sits above it.
+        style={settings.hidden['meals'] ? undefined : { marginTop: 'var(--gap)' }}
         // Dropping in a gap between cards is as valid as dropping on one —
         // the live preview has already placed the card; just commit.
         onDragOver={(event) => {
@@ -990,20 +1009,6 @@ export function DailyPlanView({
           );
         })}
       </div>
-
-      {!settings.hidden['meals'] && (
-        <MealsSection
-          day={day}
-          settings={settings}
-          patchDay={patchDay}
-          patchSettings={patchSettings}
-          onHide={() => hide('meals')}
-          recentItems={recentMeals}
-          weightKg={effectiveWeightKg}
-          fatPct={lastFatPct}
-          onOpenSettings={() => setCustomizeOpen(true)}
-        />
-      )}
 
       {!settings.hidden['nonneg'] && (
         <div className={styles.fullCard} data-sec="nonneg">

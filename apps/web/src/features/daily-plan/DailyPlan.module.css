@@ -453,11 +453,14 @@ button.weekChipToday:hover:not(:disabled) {
  * button's click target). Habit cells get less slop — their grid is dense.
  */
 @media (pointer: coarse) {
+  /* NOT .cardCtl — it is position:absolute (top-right of the card); flipping
+     it to relative dropped all three controls into a broken in-flow strip
+     above the section bar on every touch device. Its ::after slop below works
+     against the absolute position just as well. */
   .square,
   .cupBtn,
   .iconBtn,
   .rowAddBtn,
-  .cardCtl,
   .circle {
     position: relative;
   }
@@ -482,6 +485,26 @@ button.weekChipToday:hover:not(:disabled) {
 /* The drag source dims while its ghost travels; the grid glides via FLIP. */
 .cardDragging {
   opacity: 0.35;
+}
+
+/* Long-press lift (touch reorder): the card pops like a home-screen icon
+   while the grid reflows around the finger. */
+.cardLifted {
+  z-index: 5;
+  transform: scale(1.02);
+  box-shadow:
+    0 0 0 2px var(--plan-primary),
+    0 18px 44px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease-out;
+}
+
+/* The section bar doubles as the touch drag handle — suppress iOS text
+   selection / callout so a long-press lifts instead of highlighting text. */
+.secbar {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-y;
 }
 
 .ctlGrip {

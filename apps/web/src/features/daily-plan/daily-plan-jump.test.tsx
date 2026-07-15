@@ -111,8 +111,8 @@ describe('Daily Plan jump navigation', () => {
         const raw = window.localStorage.getItem('daily_plan_settings');
         expect(raw).not.toBeNull();
         const order = JSON.parse(raw as string).secOrder as string[];
-        // focus keeps its hidden slot; gratitude and schedule swapped.
-        expect(order.slice(0, 3)).toEqual(['gratitude', 'focus', 'schedule']);
+        // focus keeps its hidden slot; priorities and schedule swapped.
+        expect(order.slice(0, 3)).toEqual(['priorities', 'focus', 'schedule']);
       },
       { timeout: 3000 },
     );

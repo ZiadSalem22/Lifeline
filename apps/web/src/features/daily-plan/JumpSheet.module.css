@@ -28,6 +28,11 @@
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+  /* The pill is a gesture surface (hold → glide), never a scroll handle. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   transition:
     transform var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -285,6 +290,14 @@
   border-color: var(--plan-primary);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
   transition: none;
+}
+
+/* Under the finger during a pill glide — release here to jump. */
+.tileGlide {
+  border-color: var(--plan-primary);
+  background: var(--plan-hover);
+  box-shadow: var(--plan-today-shadow);
+  transform: scale(1.04);
 }
 
 .tileLabel {
