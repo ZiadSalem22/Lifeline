@@ -38,7 +38,11 @@ export function CircleCheck(props: {
   onToggle: () => void;
   className?: string | undefined;
 }) {
-  const style: CSSProperties = { width: props.size, height: props.size };
+  // Scales with the plan's SIZE setting — bigger text deserves bigger targets.
+  const style: CSSProperties = {
+    width: `calc(${props.size}px * var(--plan-scale, 1))`,
+    height: `calc(${props.size}px * var(--plan-scale, 1))`,
+  };
   return (
     <button
       type="button"

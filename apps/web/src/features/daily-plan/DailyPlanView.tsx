@@ -326,6 +326,18 @@ export function DailyPlanView({
   const colw = 340;
   const gap = 14;
 
+  // Content text scale (SIZE control): drives --plan-scale, which every plan
+  // font-size and checkbox control multiplies against. Set on :root, not
+  // .planRoot — the pill, jump sheet, and modals portal to <body>.
+  const textScale = settings.textScale;
+  useEffect(() => {
+    const scale = textScale === 's' ? '1' : textScale === 'l' ? '1.25' : '1.12';
+    document.documentElement.style.setProperty('--plan-scale', scale);
+    return () => {
+      document.documentElement.style.removeProperty('--plan-scale');
+    };
+  }, [textScale]);
+
   // span-2 is only legal when the grid actually fits two columns.
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [canWide, setCanWide] = useState(true);
@@ -844,6 +856,16 @@ export function DailyPlanView({
       >
         <SaveIndicator status={saveStatus} />
         <Segmented
+          label="Size"
+          options={[
+            ['s', 'A−'],
+            ['m', 'A'],
+            ['l', 'A+'],
+          ]}
+          value={settings.textScale}
+          onChange={(value) => patchSettings({ textScale: value as 's' | 'm' | 'l' })}
+        />
+        <Segmented
           label="Theme"
           options={[
             ['dark', 'DARK'],
@@ -857,7 +879,7 @@ export function DailyPlanView({
         <button
           type="button"
           className={styles.pillBtn}
-          style={{ fontSize: 11, letterSpacing: '.08em' }}
+          style={{ fontSize: 'calc(11px * var(--plan-scale, 1))', letterSpacing: '.08em' }}
           onClick={() => setCustomizeOpen(true)}
         >
           <svg
@@ -895,7 +917,7 @@ export function DailyPlanView({
       {weekError && !weekReady && (
         <div className={styles.hiddenBar} role="alert">
           <span className={styles.hiddenBarLabel}>Offline?</span>
-          <span style={{ fontSize: 12 }}>
+          <span style={{ fontSize: 'calc(12px * var(--plan-scale, 1))' }}>
             Couldn&apos;t load this day&apos;s plan — editing is paused so nothing gets overwritten.
           </span>
           <button type="button" className={styles.hiddenChip} onClick={() => void refetchWeek()}>
@@ -907,7 +929,7 @@ export function DailyPlanView({
       {isToday && carry.count > 0 && !day.carryHandled && (
         <div className={styles.hiddenBar} role="status">
           <span className={styles.hiddenBarLabel}>Yesterday</span>
-          <span style={{ fontSize: 12 }}>
+          <span style={{ fontSize: 'calc(12px * var(--plan-scale, 1))' }}>
             {carryError
               ? "Couldn't add the tasks — check your connection and try again."
               : `${carry.count} unfinished item${carry.count > 1 ? 's' : ''} from yesterday`}
@@ -1151,7 +1173,7 @@ function Segmented(props: {
         border: '1px solid var(--plan-card-border)',
         borderRadius: 999,
         overflow: 'hidden',
-        fontSize: 11,
+        fontSize: 'calc(11px * var(--plan-scale, 1))',
         letterSpacing: '.08em',
       }}
     >

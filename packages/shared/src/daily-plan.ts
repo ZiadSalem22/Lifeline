@@ -357,6 +357,9 @@ export const DEFAULT_SUBTITLE = 'discipline · focus · execution';
 
 export const dailyPlanSettingsSchema = z.object({
   density: z.enum(['compact', 'roomy']).default('compact'),
+  /** Content text scale inside the plan cards — 's' is the original desktop
+      density; 'm' (default) and 'l' step fonts/controls up for phones. */
+  textScale: z.enum(['s', 'm', 'l']).default('m'),
   secOrder: z.array(planKey).max(32).default([]),
   secWide: boundedRecord(z.boolean(), 32).default({}),
   hidden: boundedRecord(z.boolean(), 32).default({}),
