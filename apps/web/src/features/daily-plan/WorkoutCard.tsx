@@ -301,74 +301,77 @@ export function WorkoutBody(props: WorkoutBodyProps) {
         <div className={styles.gymRest}>Rest day — recovery, stretching, long walk.</div>
       )}
 
-      {routine.ex.map((ex, i) => {
-        const exDone = Math.min(done[i] ?? 0, ex.sets);
-        const timed = ex.type === 'time';
-        return (
-          <div key={i} className={styles.exRow}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span dir="auto" className={exDone >= ex.sets ? styles.exNameDone : styles.exName}>
-                {ex.n}
-              </span>
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  flex: '0 0 auto',
-                }}
-              >
-                <DraftNumber
-                  className={styles.kgInput}
-                  value={timed ? ex.min : ex.kg}
-                  ariaLabel={`${ex.n} ${timed ? 'minutes' : 'kg'}`}
-                  commit={(raw) =>
-                    timed
-                      ? Math.max(0, Math.min(600, Math.round(raw)))
-                      : Math.max(0, Math.min(2000, raw))
-                  }
-                  onCommit={(v) => (timed ? setMin(i, v) : setKg(i, v))}
-                />
-                <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>
-                  {timed ? 'min' : 'kg'}
+      {/* Long routines scroll inside the card on phones. */}
+      <div className={styles.scrollList}>
+        {routine.ex.map((ex, i) => {
+          const exDone = Math.min(done[i] ?? 0, ex.sets);
+          const timed = ex.type === 'time';
+          return (
+            <div key={i} className={styles.exRow}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span dir="auto" className={exDone >= ex.sets ? styles.exNameDone : styles.exName}>
+                  {ex.n}
                 </span>
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', gap: 5 }}>
-                {Array.from({ length: ex.sets }, (_, k) => (
-                  <CircleCheck
-                    key={k}
-                    on={k < exDone}
-                    size={17}
-                    label={`${ex.n} ${timed ? 'round' : 'set'} ${k + 1}`}
-                    onToggle={() => tapSet(i, k)}
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    flex: '0 0 auto',
+                  }}
+                >
+                  <DraftNumber
+                    className={styles.kgInput}
+                    value={timed ? ex.min : ex.kg}
+                    ariaLabel={`${ex.n} ${timed ? 'minutes' : 'kg'}`}
+                    commit={(raw) =>
+                      timed
+                        ? Math.max(0, Math.min(600, Math.round(raw)))
+                        : Math.max(0, Math.min(2000, raw))
+                    }
+                    onCommit={(v) => (timed ? setMin(i, v) : setKg(i, v))}
                   />
-                ))}
-              </span>
-              <span className={styles.setsLabel}>
-                {timed
-                  ? `${ex.sets > 1 ? `${ex.sets} × ` : ''}${ex.min} min`
-                  : `${ex.sets} × ${ex.reps}`}
-              </span>
-              {timed ? (
-                <span className={styles.overloadHint}>
-                  {ex.kmh > 0
-                    ? `${ex.kmh} km/h${ex.incline > 0 ? ` · ${ex.incline}%` : ''}`
-                    : ex.effort}
-                </span>
-              ) : (
-                ex.last > 0 && (
-                  <span className={styles.overloadHint}>
-                    Last {fmtKg(ex.last)}kg → try {fmtKg(ex.last + 2.5)}
+                  <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>
+                    {timed ? 'min' : 'kg'}
                   </span>
-                )
-              )}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', gap: 5 }}>
+                  {Array.from({ length: ex.sets }, (_, k) => (
+                    <CircleCheck
+                      key={k}
+                      on={k < exDone}
+                      size={17}
+                      label={`${ex.n} ${timed ? 'round' : 'set'} ${k + 1}`}
+                      onToggle={() => tapSet(i, k)}
+                    />
+                  ))}
+                </span>
+                <span className={styles.setsLabel}>
+                  {timed
+                    ? `${ex.sets > 1 ? `${ex.sets} × ` : ''}${ex.min} min`
+                    : `${ex.sets} × ${ex.reps}`}
+                </span>
+                {timed ? (
+                  <span className={styles.overloadHint}>
+                    {ex.kmh > 0
+                      ? `${ex.kmh} km/h${ex.incline > 0 ? ` · ${ex.incline}%` : ''}`
+                      : ex.effort}
+                  </span>
+                ) : (
+                  ex.last > 0 && (
+                    <span className={styles.overloadHint}>
+                      Last {fmtKg(ex.last)}kg → try {fmtKg(ex.last + 2.5)}
+                    </span>
+                  )
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
       <QuickCardio day={props.day} patchDay={props.patchDay} bodyWeightKg={props.bodyWeightKg} />
 

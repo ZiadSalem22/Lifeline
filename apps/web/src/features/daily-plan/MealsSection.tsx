@@ -262,7 +262,7 @@ export function MealsSection(props: MealsSectionProps) {
   const pinned = settings.presets.filter((p) => p.pinned);
 
   return (
-    <div className={styles.fullCard}>
+    <div className={styles.fullCard} data-sec="meals">
       <button
         type="button"
         className={`${styles.cardCtl} ${styles.ctlHide}`}
@@ -484,53 +484,55 @@ export function MealsSection(props: MealsSectionProps) {
                     </button>
                   </div>
                   {items.length === 0 && <div className={styles.slotEmpty}>Nothing logged yet</div>}
-                  {items.map((item, i) => (
-                    <div key={i} className={styles.mealItemRow}>
-                      <div
-                        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}
-                      >
-                        <input
-                          dir="auto"
-                          className={styles.mealName}
-                          value={item.n}
-                          aria-label={`${SLOT_LABELS[slot]} item ${i + 1}`}
-                          onChange={(e) => updateItem(slot, i, { n: e.target.value })}
-                        />
-                        <span className={styles.mealMacro}>
-                          P {r1(num(item.p))} · C {r1(num(item.c))} · F {r1(num(item.f))}
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        className={styles.mealKcal}
-                        value={Math.round(num(item.cal))}
-                        aria-label={`${SLOT_LABELS[slot]} item ${i + 1} kcal`}
-                        onChange={(e) => updateItem(slot, i, { cal: num(e.target.value) })}
-                      />
-                      <span className={styles.kcalUnit}>kcal</span>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        title="Remove"
-                        aria-label={`Remove ${SLOT_LABELS[slot]} item ${i + 1}`}
-                        onClick={() => removeItem(slot, i)}
-                      >
-                        <svg
-                          width="11"
-                          height="11"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.6"
-                          strokeLinecap="round"
-                          aria-hidden="true"
+                  <div className={`${styles.scrollList} ${styles.scrollSlot}`}>
+                    {items.map((item, i) => (
+                      <div key={i} className={styles.mealItemRow}>
+                        <div
+                          style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}
                         >
-                          <path d="M5 5l14 14" />
-                          <path d="M19 5L5 19" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+                          <input
+                            dir="auto"
+                            className={styles.mealName}
+                            value={item.n}
+                            aria-label={`${SLOT_LABELS[slot]} item ${i + 1}`}
+                            onChange={(e) => updateItem(slot, i, { n: e.target.value })}
+                          />
+                          <span className={styles.mealMacro}>
+                            P {r1(num(item.p))} · C {r1(num(item.c))} · F {r1(num(item.f))}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          className={styles.mealKcal}
+                          value={Math.round(num(item.cal))}
+                          aria-label={`${SLOT_LABELS[slot]} item ${i + 1} kcal`}
+                          onChange={(e) => updateItem(slot, i, { cal: num(e.target.value) })}
+                        />
+                        <span className={styles.kcalUnit}>kcal</span>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          title="Remove"
+                          aria-label={`Remove ${SLOT_LABELS[slot]} item ${i + 1}`}
+                          onClick={() => removeItem(slot, i)}
+                        >
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.6"
+                            strokeLinecap="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M5 5l14 14" />
+                            <path d="M19 5L5 19" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
