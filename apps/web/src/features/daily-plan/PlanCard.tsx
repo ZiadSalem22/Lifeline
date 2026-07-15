@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { clearTextSelection, suppressTextSelection } from './lib/gesture-select';
 import { masonryRowSpan } from './lib/masonry';
 import styles from './DailyPlan.module.css';
 
@@ -109,6 +110,7 @@ export function PlanCard(props: PlanCardProps) {
     if (!p) return;
     if (p.timer !== null) window.clearTimeout(p.timer);
     cancelAnimationFrame(p.raf);
+    suppressTextSelection(false);
     document.removeEventListener('touchmove', preventTouchScroll);
     if (p.lifted) {
       try {
@@ -136,6 +138,7 @@ export function PlanCard(props: PlanCardProps) {
     // Finger held still past the delay — no scroll owns this touch yet, so
     // claim it before the first drag movement pans the page instead.
     document.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    clearTextSelection();
     navigator.vibrate?.(10);
     setLifted(true);
     props.onDragStartKey(props.secKey);
@@ -144,6 +147,7 @@ export function PlanCard(props: PlanCardProps) {
 
   const onBarPointerDown = (event: ReactPointerEvent) => {
     if (event.button !== 0) return;
+    suppressTextSelection(true);
     press.current = {
       pointerId: event.pointerId,
       el: event.currentTarget as HTMLElement,
