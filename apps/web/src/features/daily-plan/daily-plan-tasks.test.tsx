@@ -119,6 +119,23 @@ describe('Schedule card', () => {
       });
     });
   });
+
+  it('the ✕ closes the Add Task popup and keeps the draft for the next open', async () => {
+    const user = userEvent.setup();
+    renderPlan([]);
+
+    await user.click(await screen.findByLabelText('Add task at 05:00'));
+    const dialog = await screen.findByRole('dialog', { name: 'Add task' });
+    await user.type(within(dialog).getByLabelText('Task title'), 'Cold shower');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Add task' })).not.toBeInTheDocument();
+
+    // Accidental dismiss must not eat the draft (the sheet stays mounted).
+    await user.click(await screen.findByLabelText('Add task at 05:00'));
+    const reopened = await screen.findByRole('dialog', { name: 'Add task' });
+    expect(within(reopened).getByLabelText('Task title')).toHaveValue('Cold shower');
+  });
 });
 
 describe('Tomorrow card', () => {

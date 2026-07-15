@@ -26,5 +26,60 @@
   width: min(680px, 100%);
   max-height: 100dvh;
   overflow-y: auto;
-  padding: var(--space-24) var(--space-16) calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-12) var(--space-16) calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Cancel affordance: rides sticky at the top of the scrolling sheet so it
+   never scrolls out of thumb reach (Escape needs a keyboard; the scrim is a
+   sliver on phones). */
+.closeRow {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-4) 0;
+}
+
+.close {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.close:hover,
+.close:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.close:active {
+  transform: scale(0.92);
+}
+
+/* Touch hit-slop beyond the visible circle. */
+@media (pointer: coarse) {
+  .close::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
 }
