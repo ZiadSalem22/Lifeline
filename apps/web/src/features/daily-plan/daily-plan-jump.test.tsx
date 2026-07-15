@@ -87,7 +87,7 @@ describe('Daily Plan jump navigation', () => {
         const raw = window.localStorage.getItem('daily_plan_settings');
         expect(raw).not.toBeNull();
         const order = JSON.parse(raw as string).secOrder as string[];
-        expect(order.indexOf('focus')).toBe(0);
+        expect(order.indexOf('habits')).toBe(0);
         expect(order.indexOf('schedule')).toBe(1);
       },
       { timeout: 3000 },
@@ -97,8 +97,8 @@ describe('Daily Plan jump navigation', () => {
   it('reordering from the sheet keeps hidden cards parked in their slot', async () => {
     const user = userEvent.setup();
     renderPlan();
-    // Hide the second card (Focus Zone), then move Schedule one slot later —
-    // it must hop over the hidden card's parked slot.
+    // Hide Focus Zone (third by default), then move Schedule one slot later —
+    // the hidden card must keep its parked slot through the merge.
     await user.click(await screen.findByRole('button', { name: 'Hide Focus Zone' }));
 
     const sheet = await openSheet(user);
@@ -111,8 +111,8 @@ describe('Daily Plan jump navigation', () => {
         const raw = window.localStorage.getItem('daily_plan_settings');
         expect(raw).not.toBeNull();
         const order = JSON.parse(raw as string).secOrder as string[];
-        // focus keeps its hidden slot; priorities and schedule swapped.
-        expect(order.slice(0, 3)).toEqual(['priorities', 'focus', 'schedule']);
+        // focus keeps its hidden slot; habits and schedule swapped ahead of it.
+        expect(order.slice(0, 3)).toEqual(['habits', 'schedule', 'focus']);
       },
       { timeout: 3000 },
     );

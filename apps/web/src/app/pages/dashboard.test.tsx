@@ -23,6 +23,8 @@ function renderDashboard(path = '/') {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // These specs exercise Tasks mode; the home view now defaults to the plan.
+  window.localStorage.setItem('homeViewMode', 'tasks');
 });
 
 describe('DashboardPage day view', () => {

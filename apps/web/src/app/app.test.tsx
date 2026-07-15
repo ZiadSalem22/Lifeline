@@ -8,6 +8,8 @@ describe('App smoke (local auth adapter + mocked /me)', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_AUTH_DISABLED', '1');
     window.localStorage.clear();
+    // The shell smoke exercises Tasks mode; the home view now defaults to the plan.
+    window.localStorage.setItem('homeViewMode', 'tasks');
     window.history.replaceState(null, '', '/');
     queryClient.clear();
   });

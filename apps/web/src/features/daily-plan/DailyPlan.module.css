@@ -87,13 +87,6 @@
   padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
-.planRoot[data-density='roomy'] {
-  --colw: 420px;
-  --pad: 20px;
-  --gap: 20px;
-  --fs: 14px;
-}
-
 /* Paper = the print planner: serif display everywhere, italic serif prompts. */
 :global([data-theme='paper']) .planRoot .prompt,
 :global([data-theme='paper']) .planRoot .mastheadSub {
