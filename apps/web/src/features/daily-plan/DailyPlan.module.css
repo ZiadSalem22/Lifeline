@@ -2228,6 +2228,18 @@ button.weekBarBtn:hover .weekBarFill {
   gap: 8px;
 }
 
+/* The saved-meal list scrolls inside its own region so the manual-entry row
+   and Add button above it stay put no matter how many meals are saved. */
+.presetScroll {
+  max-height: min(46vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--plan-card-border) transparent;
+  padding: 2px;
+  margin: -2px;
+}
+
 .presetCard {
   border: 1px solid var(--plan-card-border);
   border-radius: 10px;

@@ -10,6 +10,7 @@ import type {
 import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
 import { detectMeal, guessSlot, logSummary, parseFood, photoFoods } from './lib/food-parser';
+import { filterMeals } from './lib/meal-filter';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -748,156 +749,31 @@ export function SavedMealsModal(props: SavedMealsProps) {
     });
   };
 
+  // The food-name field does double duty: it's the manual-entry name AND the
+  // saved-meal filter. Typing narrows the list fuzzily (see meal-filter).
+  const query = manual.n;
+  const matches = filterMeals(settings.presets, query);
+  const filtering = query.trim().length > 0;
+
+  const addManual = () => {
+    const name = manual.n.trim();
+    if (!name) return;
+    props.onManualAdd(activeSlot, {
+      n: name,
+      cal: num(manual.cal),
+      p: num(manual.p),
+      c: num(manual.c),
+      f: num(manual.f),
+    });
+    setManual({ n: '', cal: '', p: '', c: '', f: '' });
+  };
+
   return (
     <Modal open={props.open} onClose={props.onClose} title="Add Food">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className={styles.slotChipRow}>
-          <span className={styles.sectionMiniMuted}>Log to</span>
-          {MEAL_SLOTS.map((slot) => (
-            <button
-              key={slot}
-              type="button"
-              className={activeSlot === slot ? styles.slotChipActive : styles.slotChip}
-              onClick={() => props.setSlot(slot)}
-            >
-              {SLOT_LABELS[slot]}
-            </button>
-          ))}
-          {props.slot === null && <span className={styles.slotHint}>auto: {autoSlot}</span>}
-        </div>
-
+        {/* ── Manual entry FIRST — the fast path, and the saved-meal filter. ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className={styles.sectionMiniMuted}>Saved meals — tap to log</div>
-          <div className={styles.presetGrid}>
-            {settings.presets.map((preset, i) => (
-              <div key={i} className={styles.presetCard}>
-                <div className={styles.presetCardTop}>
-                  <button
-                    type="button"
-                    className={styles.presetLog}
-                    onClick={() => props.onLog(preset, activeSlot)}
-                  >
-                    <span dir="auto" className={styles.presetName}>
-                      {preset.name}
-                    </span>
-                    <span className={styles.presetMacroLine}>
-                      {preset.cal} kcal · P {preset.p} · C {preset.c} · F {preset.f}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className={preset.pinned ? styles.presetIconBtnActive : styles.presetIconBtn}
-                    title="Pin to Daily Plan"
-                    aria-label={`Pin ${preset.name}`}
-                    aria-pressed={preset.pinned}
-                    onClick={() => updatePreset(i, { pinned: !preset.pinned })}
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill={preset.pinned ? 'currentColor' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 17v5" />
-                      <path d="M9 3h6l1 7 2.5 2.5H5.5L8 10z" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      props.editIndex === i ? styles.presetIconBtnActive : styles.presetIconBtn
-                    }
-                    style={{ marginRight: 6 }}
-                    title="Edit"
-                    aria-label={`Edit ${preset.name}`}
-                    onClick={() => props.setEditIndex(props.editIndex === i ? null : i)}
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
-                    </svg>
-                  </button>
-                </div>
-                {props.editIndex === i && (
-                  <div className={styles.presetEditor}>
-                    <input
-                      dir="auto"
-                      className={styles.smallInput}
-                      style={{ width: '100%', boxSizing: 'border-box', fontWeight: 600 }}
-                      value={preset.name}
-                      aria-label="Meal name"
-                      onChange={(e) => updatePreset(i, { name: e.target.value })}
-                    />
-                    <div className={styles.macroGrid}>
-                      {(
-                        [
-                          ['KCAL', 'cal'],
-                          ['P', 'p'],
-                          ['C', 'c'],
-                          ['F', 'f'],
-                        ] as const
-                      ).map(([label, field]) => (
-                        <label key={field} className={styles.macroLabel}>
-                          {label}
-                          <input
-                            type="number"
-                            className={styles.smallInput}
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '5px 6px' }}
-                            value={preset[field]}
-                            onChange={(e) => updatePreset(i, { [field]: num(e.target.value) })}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.dangerLink}
-                      onClick={() => {
-                        props.setEditIndex(null);
-                        props.patchSettings({
-                          presets: settings.presets.filter((_, j) => j !== i),
-                        });
-                      }}
-                    >
-                      DELETE MEAL
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              className={styles.newPresetCard}
-              onClick={() => {
-                const presets = [
-                  ...settings.presets,
-                  { name: 'New meal', cal: 400, p: 25, c: 40, f: 12, pinned: false },
-                ];
-                props.patchSettings({ presets });
-                props.setEditIndex(presets.length - 1);
-              }}
-            >
-              + New saved meal
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className={styles.sectionMiniMuted}>Or enter manually</div>
+          <div className={styles.sectionMiniMuted}>Add food — type to filter saved meals</div>
           <div className={styles.manualGrid}>
             <input
               dir="auto"
@@ -906,6 +782,9 @@ export function SavedMealsModal(props: SavedMealsProps) {
               aria-label="Manual food name"
               value={manual.n}
               onChange={(e) => setManual({ ...manual, n: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addManual();
+              }}
             />
             {(
               [
@@ -927,30 +806,190 @@ export function SavedMealsModal(props: SavedMealsProps) {
               />
             ))}
           </div>
-          <button
-            type="button"
-            className={styles.primaryBtn}
+          {/* Slot picker sits right beside the ADD action so the target meal
+              is chosen at the moment of adding (and governs saved-meal taps). */}
+          <div
             style={{
-              alignSelf: 'flex-start',
-              borderRadius: 999,
-              letterSpacing: '.08em',
-              fontSize: 'calc(10.5px * var(--plan-scale, 1))',
-            }}
-            onClick={() => {
-              const name = manual.n.trim();
-              if (!name) return;
-              props.onManualAdd(activeSlot, {
-                n: name,
-                cal: num(manual.cal),
-                p: num(manual.p),
-                c: num(manual.c),
-                f: num(manual.f),
-              });
-              setManual({ n: '', cal: '', p: '', c: '', f: '' });
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
             }}
           >
-            ADD TO {SLOT_LABELS[activeSlot].toUpperCase()}
-          </button>
+            <div className={styles.slotChipRow}>
+              <span className={styles.sectionMiniMuted}>Log to</span>
+              {MEAL_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  className={activeSlot === slot ? styles.slotChipActive : styles.slotChip}
+                  onClick={() => props.setSlot(slot)}
+                >
+                  {SLOT_LABELS[slot]}
+                </button>
+              ))}
+              {props.slot === null && <span className={styles.slotHint}>auto: {autoSlot}</span>}
+            </div>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              style={{
+                borderRadius: 999,
+                letterSpacing: '.08em',
+                fontSize: 'calc(10.5px * var(--plan-scale, 1))',
+              }}
+              onClick={addManual}
+            >
+              ADD TO {SLOT_LABELS[activeSlot].toUpperCase()}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Saved meals BELOW — New-on-top, scrollable, filtered by name. ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className={styles.sectionMiniMuted}>
+            {filtering
+              ? `Saved meals — ${matches.length} match${matches.length === 1 ? '' : 'es'}`
+              : 'Saved meals — tap to log'}
+          </div>
+          <div className={styles.presetScroll}>
+            <div className={styles.presetGrid}>
+              <button
+                type="button"
+                className={styles.newPresetCard}
+                onClick={() => {
+                  // Prefill from whatever's in the name field so a search that
+                  // finds nothing turns into the meal you were about to type.
+                  const name = manual.n.trim() || 'New meal';
+                  const presets = [
+                    ...settings.presets,
+                    { name, cal: 400, p: 25, c: 40, f: 12, pinned: false },
+                  ];
+                  props.patchSettings({ presets });
+                  props.setEditIndex(presets.length - 1);
+                }}
+              >
+                + New saved meal
+              </button>
+              {matches.map(({ item: preset, index: i }) => (
+                <div key={i} className={styles.presetCard}>
+                  <div className={styles.presetCardTop}>
+                    <button
+                      type="button"
+                      className={styles.presetLog}
+                      onClick={() => props.onLog(preset, activeSlot)}
+                    >
+                      <span dir="auto" className={styles.presetName}>
+                        {preset.name}
+                      </span>
+                      <span className={styles.presetMacroLine}>
+                        {preset.cal} kcal · P {preset.p} · C {preset.c} · F {preset.f}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={preset.pinned ? styles.presetIconBtnActive : styles.presetIconBtn}
+                      title="Pin to Daily Plan"
+                      aria-label={`Pin ${preset.name}`}
+                      aria-pressed={preset.pinned}
+                      onClick={() => updatePreset(i, { pinned: !preset.pinned })}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill={preset.pinned ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 17v5" />
+                        <path d="M9 3h6l1 7 2.5 2.5H5.5L8 10z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        props.editIndex === i ? styles.presetIconBtnActive : styles.presetIconBtn
+                      }
+                      style={{ marginRight: 6 }}
+                      title="Edit"
+                      aria-label={`Edit ${preset.name}`}
+                      onClick={() => props.setEditIndex(props.editIndex === i ? null : i)}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
+                      </svg>
+                    </button>
+                  </div>
+                  {props.editIndex === i && (
+                    <div className={styles.presetEditor}>
+                      <input
+                        dir="auto"
+                        className={styles.smallInput}
+                        style={{ width: '100%', boxSizing: 'border-box', fontWeight: 600 }}
+                        value={preset.name}
+                        aria-label="Meal name"
+                        onChange={(e) => updatePreset(i, { name: e.target.value })}
+                      />
+                      <div className={styles.macroGrid}>
+                        {(
+                          [
+                            ['KCAL', 'cal'],
+                            ['P', 'p'],
+                            ['C', 'c'],
+                            ['F', 'f'],
+                          ] as const
+                        ).map(([label, field]) => (
+                          <label key={field} className={styles.macroLabel}>
+                            {label}
+                            <input
+                              type="number"
+                              className={styles.smallInput}
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '5px 6px' }}
+                              value={preset[field]}
+                              onChange={(e) => updatePreset(i, { [field]: num(e.target.value) })}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.dangerLink}
+                        onClick={() => {
+                          props.setEditIndex(null);
+                          props.patchSettings({
+                            presets: settings.presets.filter((_, j) => j !== i),
+                          });
+                        }}
+                      >
+                        DELETE MEAL
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {filtering && matches.length === 0 && (
+              <div className={styles.emptyHint}>
+                No saved meal matches “{query.trim()}”. Fill the macros above and tap Add, or start
+                one with “+ New saved meal”.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Modal>
