@@ -64,7 +64,9 @@
   --plan-hover: #e9e8e0;
   --plan-primary: #141414;
   --plan-primary-ink: #fff;
-  --plan-muted: #5c5c56;
+  /* Darker than the handoff's #5c5c56 — small muted text on the warm paper
+     ground needs the extra contrast to stay readable on phones. */
+  --plan-muted: #4e4e47;
   --plan-danger: #b91c1c;
   --plan-rad: 4px;
   --plan-today-band: rgba(20, 20, 20, 0.05);
@@ -80,7 +82,7 @@
   --gap: 14px;
   --fs: 13px;
 
-  font-size: var(--fs);
+  font-size: calc(var(--fs) * var(--plan-scale, 1));
   animation: fadeIn 0.3s ease-out;
   /* The floating jump pill hovers over the page bottom — keep the motto and
      last card reachable above it (plus phone home bars). */
@@ -126,7 +128,7 @@
 
 .mastheadTitle {
   font-family: var(--plan-display-font);
-  font-size: clamp(28px, 4.5vw, 40px);
+  font-size: calc(clamp(28px, 4.5vw, 40px) * var(--plan-scale, 1));
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -139,7 +141,7 @@
   margin-top: 8px;
   color: var(--plan-muted);
   letter-spacing: 0.22em;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   text-transform: uppercase;
 }
 
@@ -174,7 +176,7 @@
   border: 1px solid var(--plan-rule);
   background: transparent;
   color: var(--plan-muted);
-  font-size: 15px;
+  font-size: calc(15px * var(--plan-scale, 1));
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -218,7 +220,7 @@
 
 .saveHint {
   align-self: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   letter-spacing: 0.06em;
   color: var(--plan-muted);
 }
@@ -240,7 +242,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-weight: 700;
   color: var(--plan-muted);
   border: 1px solid var(--plan-rule);
@@ -280,7 +282,7 @@ button.weekChipToday:hover:not(:disabled) {
 }
 
 .scoreLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   letter-spacing: 0.18em;
   color: var(--plan-muted);
   text-transform: uppercase;
@@ -303,7 +305,7 @@ button.weekChipToday:hover:not(:disabled) {
 }
 
 .hiddenBarLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--plan-muted);
@@ -318,7 +320,7 @@ button.weekChipToday:hover:not(:disabled) {
   padding: 4px 11px;
   border: 1px solid var(--plan-card-border);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--color-text);
   background: transparent;
@@ -332,7 +334,7 @@ button.weekChipToday:hover:not(:disabled) {
 
 .showAll {
   margin-left: auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--plan-muted);
@@ -378,9 +380,13 @@ button.weekChipToday:hover:not(:disabled) {
   background: var(--plan-secbar);
   color: var(--plan-secbar-text);
   padding: 8px 14px;
-  font-family: var(--plan-display-font);
+  /* Label sans, NOT the display face: paper's display serif (Playfair) has
+     hairline strokes that turn to mud at 11px reversed on the ink band —
+     the quiet sans keeps the small-caps look and stays readable. Dark is
+     unchanged (its display and label faces are the same sans). */
+  font-family: var(--plan-label-font);
   font-weight: 700;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   display: flex;
@@ -391,7 +397,7 @@ button.weekChipToday:hover:not(:disabled) {
 }
 
 .secbarBadge {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   letter-spacing: 0.1em;
   opacity: 0.75;
 }
@@ -664,8 +670,8 @@ button.weekChipToday:hover:not(:disabled) {
 }
 
 .square {
-  width: 17px;
-  height: 17px;
+  width: calc(17px * var(--plan-scale, 1));
+  height: calc(17px * var(--plan-scale, 1));
   flex: 0 0 auto;
   border-radius: 3px;
   padding: 0;
@@ -675,7 +681,7 @@ button.weekChipToday:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -692,7 +698,7 @@ button.weekChipToday:hover:not(:disabled) {
   border-radius: 999px;
   border: 1px solid var(--plan-card-border);
   color: var(--plan-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 600;
   flex: 0 0 auto;
 }
@@ -704,7 +710,7 @@ button.weekChipToday:hover:not(:disabled) {
   padding: 7px 13px;
   border: 1px solid var(--plan-card-border);
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--color-text);
@@ -723,7 +729,7 @@ button.weekChipToday:hover:not(:disabled) {
   border: 1px solid var(--plan-card-border);
   color: var(--color-text);
   font-weight: 600;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
   background: transparent;
   cursor: pointer;
 }
@@ -741,7 +747,7 @@ button.weekChipToday:hover:not(:disabled) {
   background: var(--plan-primary);
   color: var(--plan-primary-ink);
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   border: none;
   cursor: pointer;
 }
@@ -751,7 +757,7 @@ button.weekChipToday:hover:not(:disabled) {
   border: 1px solid var(--plan-card-border);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   color: var(--color-text);
   font-family: inherit;
   min-width: 0;
@@ -763,7 +769,7 @@ button.weekChipToday:hover:not(:disabled) {
 }
 
 .sectionMini {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 700;
@@ -787,7 +793,7 @@ button.weekChipToday:hover:not(:disabled) {
   width: 40px;
   flex: 0 0 auto;
   color: var(--plan-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -812,7 +818,7 @@ button.weekChipToday:hover:not(:disabled) {
 .prioNum {
   font-family: var(--plan-display-font);
   font-weight: 700;
-  font-size: 15px;
+  font-size: calc(15px * var(--plan-scale, 1));
   width: 18px;
   flex: 0 0 auto;
 }
@@ -850,7 +856,7 @@ button.weekChipToday:hover:not(:disabled) {
 
 .habitHead {
   text-align: center;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 700;
   color: var(--plan-muted);
 }
@@ -899,7 +905,7 @@ button.weekChipToday:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   line-height: 1;
   padding: 0;
 }
@@ -930,7 +936,7 @@ button.weekChipToday:hover:not(:disabled) {
   padding: 0 4px;
   border-radius: 999px;
   border: 1px solid var(--plan-card-border);
-  font-size: 8.5px;
+  font-size: calc(8.5px * var(--plan-scale, 1));
   font-weight: 700;
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
@@ -1032,7 +1038,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 13px;
+  font-size: calc(13px * var(--plan-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1065,7 +1071,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1095,7 +1101,7 @@ button.weekBarBtn:hover .weekBarFill {
 
 .todoSub {
   margin-left: auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   flex: 0 0 auto;
 }
@@ -1117,7 +1123,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .tagMore {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
@@ -1157,19 +1163,19 @@ button.weekBarBtn:hover .weekBarFill {
 .addTaskBtn {
   composes: pillBtn;
   padding: 4px 10px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
 }
 
 .emptyHint {
   padding: 6px 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-style: italic;
 }
 
 .quickError {
   padding-top: 4px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
   color: var(--color-danger, #c0392b);
 }
 
@@ -1182,7 +1188,7 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px solid var(--plan-card-border);
   background: transparent;
   color: var(--plan-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--plan-scale, 1));
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -1213,13 +1219,13 @@ button.weekBarBtn:hover .weekBarFill {
   gap: 8px;
   padding: 3px 0 3px 44px;
   border-bottom: 1px dashed var(--plan-rule);
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
 }
 
 .chipTime {
   margin-left: auto;
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1236,7 +1242,7 @@ button.weekBarBtn:hover .weekBarFill {
   border-radius: 999px;
   background: transparent;
   color: var(--plan-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -1263,14 +1269,14 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
   padding: 2px 0;
   color: var(--plan-muted);
 }
 
 /* A checked-off subtask reads as done without a heavy strike — lighter ink. */
 .subtaskRow .todoTitleDone {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
 }
 
 .schedChipSubs {
@@ -1304,7 +1310,7 @@ button.weekBarBtn:hover .weekBarFill {
   composes: circle;
   width: 20px;
   height: 20px;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -1396,7 +1402,7 @@ button.weekBarBtn:hover .weekBarFill {
   border-radius: 999px;
   background: transparent;
   color: var(--plan-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   letter-spacing: 0.04em;
   cursor: pointer;
 }
@@ -1442,7 +1448,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .measureHead {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--plan-muted);
@@ -1458,7 +1464,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
 }
 
 .measureLabel {
@@ -1472,7 +1478,7 @@ button.weekBarBtn:hover .weekBarFill {
   border-bottom: 1px solid var(--plan-rule);
   background: transparent;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: calc(13px * var(--plan-scale, 1));
   text-align: right;
   font-variant-numeric: tabular-nums;
   padding: 1px 0;
@@ -1491,7 +1497,7 @@ button.weekBarBtn:hover .weekBarFill {
 
 .measureUnit {
   color: var(--plan-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   width: 2.4ch;
 }
 
@@ -1508,12 +1514,12 @@ button.weekBarBtn:hover .weekBarFill {
 .gymTitle {
   font-family: var(--plan-display-font);
   font-weight: 800;
-  font-size: 19px;
+  font-size: calc(19px * var(--plan-scale, 1));
   line-height: 1.1;
 }
 
 .gymSubtitle {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1542,7 +1548,7 @@ button.weekBarBtn:hover .weekBarFill {
 
 /* Quiet "N min cardio · ~X kcal burned" line under the workout exercises. */
 .cardioBurn {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
@@ -1559,7 +1565,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--plan-muted);
@@ -1569,7 +1575,7 @@ button.weekBarBtn:hover .weekBarFill {
   width: 52px;
 }
 .speedHint {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
@@ -1591,7 +1597,7 @@ button.weekBarBtn:hover .weekBarFill {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   color: var(--plan-muted);
 }
 .energyVal {
@@ -1600,11 +1606,11 @@ button.weekBarBtn:hover .weekBarFill {
   font-variant-numeric: tabular-nums;
 }
 .energyValStrong {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--plan-scale, 1));
   font-weight: 700;
 }
 .energyHint {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-style: italic;
 }
@@ -1618,7 +1624,7 @@ button.weekBarBtn:hover .weekBarFill {
   border-top: 1px solid var(--plan-rule);
   background: transparent;
   color: var(--plan-muted);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
   letter-spacing: 0.03em;
   text-align: left;
   cursor: pointer;
@@ -1628,7 +1634,7 @@ button.weekBarBtn:hover .weekBarFill {
   color: var(--color-text);
 }
 .energySetupSub {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -1641,7 +1647,7 @@ button.weekBarBtn:hover .weekBarFill {
   padding: 10px 12px;
   border: 1px solid var(--plan-card-border);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
@@ -1652,12 +1658,12 @@ button.weekBarBtn:hover .weekBarFill {
 }
 .energyReadoutLine span:first-child {
   color: var(--plan-muted);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .energyWarn {
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-style: italic;
 }
@@ -1670,7 +1676,7 @@ button.weekBarBtn:hover .weekBarFill {
   border-radius: 6px;
   background: transparent;
   color: var(--plan-muted);
-  font-size: 8.5px;
+  font-size: calc(8.5px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -1686,7 +1692,7 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px dashed var(--plan-card-border);
   border-radius: 8px;
   color: var(--plan-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   text-align: center;
 }
 
@@ -1700,7 +1706,7 @@ button.weekBarBtn:hover .weekBarFill {
 
 .exName {
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--plan-scale, 1));
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1719,7 +1725,7 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px solid var(--plan-card-border);
   border-radius: 6px;
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   text-align: right;
   color: var(--color-text);
 }
@@ -1730,14 +1736,14 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .setsLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-weight: 600;
 }
 
 .overloadHint {
   margin-left: auto;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-style: italic;
 }
@@ -1749,7 +1755,7 @@ button.weekBarBtn:hover .weekBarFill {
   padding: 9px 12px;
   border: 1.5px solid var(--plan-primary);
   border-radius: 8px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--plan-primary);
@@ -1769,7 +1775,7 @@ button.weekBarBtn:hover .weekBarFill {
   background: transparent;
   border: none;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--color-text);
 }
@@ -1779,7 +1785,7 @@ button.weekBarBtn:hover .weekBarFill {
   background: transparent;
   border: none;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   text-align: right;
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
@@ -1797,7 +1803,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .weekDay {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
@@ -1816,7 +1822,7 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px solid var(--plan-card-border);
   border-radius: 7px;
   padding: 5px 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   color: var(--color-text);
 }
 
@@ -1828,7 +1834,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .exEditHead {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--plan-muted);
@@ -1874,7 +1880,7 @@ button.weekBarBtn:hover .weekBarFill {
   padding: 4px 11px;
   border: 1px solid var(--plan-card-border);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--color-text);
   background: transparent;
@@ -1890,12 +1896,12 @@ button.weekBarBtn:hover .weekBarFill {
   composes: presetChip;
   border-style: dashed;
   color: var(--plan-muted);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
 }
 
 .presetCal {
   color: var(--plan-muted);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 
@@ -1917,14 +1923,14 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px solid var(--plan-rule);
   border-radius: 9px;
   color: var(--plan-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   font-style: italic;
 }
 
 .aiText {
   flex: 1 1 200px;
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   white-space: pre-line;
 }
 
@@ -1935,7 +1941,7 @@ button.weekBarBtn:hover .weekBarFill {
   padding: 4px 11px;
   border: 1px solid var(--plan-primary);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--plan-primary);
@@ -1964,7 +1970,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--plan-primary);
@@ -2010,7 +2016,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .slotSubtotal {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2023,7 +2029,7 @@ button.weekBarBtn:hover .weekBarFill {
   padding: 3px 9px;
   border: 1px solid var(--plan-card-border);
   border-radius: 999px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--plan-muted);
@@ -2039,7 +2045,7 @@ button.weekBarBtn:hover .weekBarFill {
 .slotEmpty {
   padding: 8px 0 4px;
   color: var(--plan-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   font-style: italic;
 }
 
@@ -2056,7 +2062,7 @@ button.weekBarBtn:hover .weekBarFill {
   background: transparent;
   border: none;
   padding: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--color-text);
   width: 100%;
@@ -2067,7 +2073,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .mealMacro {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2077,7 +2083,7 @@ button.weekBarBtn:hover .weekBarFill {
   flex: 0 0 auto;
   background: transparent;
   border: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   text-align: right;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -2088,7 +2094,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .kcalUnit {
-  font-size: 9px;
+  font-size: calc(9px * var(--plan-scale, 1));
   color: var(--plan-muted);
   flex: 0 0 auto;
 }
@@ -2118,19 +2124,19 @@ button.weekBarBtn:hover .weekBarFill {
 .kcalLeftBig {
   font-family: var(--plan-display-font);
   font-weight: 700;
-  font-size: 19px;
+  font-size: calc(19px * var(--plan-scale, 1));
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .kcalLeftSub {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
 }
 
 /* Cardio burned — informational only, deliberately NOT netted into kcal-left. */
 .burnedLine {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
   margin-top: 1px;
@@ -2146,7 +2152,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   color: var(--plan-muted);
 }
 
@@ -2170,7 +2176,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   border-top: 1px solid var(--plan-rule);
   padding-top: 8px;
   color: var(--plan-muted);
@@ -2197,7 +2203,7 @@ button.weekBarBtn:hover .weekBarFill {
   border: 1px solid var(--plan-card-border);
   color: var(--color-text);
   font-weight: 600;
-  font-size: 11px;
+  font-size: calc(11px * var(--plan-scale, 1));
   background: transparent;
   cursor: pointer;
 }
@@ -2211,7 +2217,7 @@ button.weekBarBtn:hover .weekBarFill {
 }
 
 .slotHint {
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-style: italic;
 }
@@ -2255,12 +2261,12 @@ button.weekBarBtn:hover .weekBarFill {
 
 .presetName {
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--plan-scale, 1));
   line-height: 1.25;
 }
 
 .presetMacroLine {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   color: var(--plan-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2300,7 +2306,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 8.5px;
+  font-size: calc(8.5px * var(--plan-scale, 1));
   letter-spacing: 0.1em;
   color: var(--plan-muted);
   font-weight: 700;
@@ -2311,7 +2317,7 @@ button.weekBarBtn:hover .weekBarFill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: calc(10px * var(--plan-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--plan-danger);
@@ -2328,7 +2334,7 @@ button.weekBarBtn:hover .weekBarFill {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--plan-scale, 1));
   font-weight: 600;
   color: var(--plan-muted);
   background: transparent;
@@ -2373,11 +2379,11 @@ button.weekBarBtn:hover .weekBarFill {
   composes: square;
   width: 22px;
   height: 22px;
-  font-size: 13px;
+  font-size: calc(13px * var(--plan-scale, 1));
 }
 
 .nonnegLabel {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--plan-scale, 1));
   letter-spacing: 0.14em;
   font-weight: 700;
   text-transform: uppercase;
@@ -2389,7 +2395,7 @@ button.weekBarBtn:hover .weekBarFill {
   font-family: var(--plan-display-font);
   font-weight: 700;
   letter-spacing: 0.34em;
-  font-size: 12px;
+  font-size: calc(12px * var(--plan-scale, 1));
   color: var(--plan-muted);
   text-transform: uppercase;
 }

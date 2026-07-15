@@ -326,7 +326,7 @@ export function MealsSection(props: MealsSectionProps) {
         <input
           dir="auto"
           className={styles.smallInput}
-          style={{ flex: 1, padding: '9px 12px', fontSize: 12.5 }}
+          style={{ flex: 1, padding: '9px 12px', fontSize: 'calc(12.5px * var(--plan-scale, 1))' }}
           placeholder="Log food: “2 eggs and toast for breakfast”…"
           aria-label="Log food"
           value={draft}
@@ -336,7 +336,11 @@ export function MealsSection(props: MealsSectionProps) {
         <button
           type="button"
           className={styles.primaryBtn}
-          style={{ padding: '9px 16px', letterSpacing: '.08em', fontSize: 11 }}
+          style={{
+            padding: '9px 16px',
+            letterSpacing: '.08em',
+            fontSize: 'calc(11px * var(--plan-scale, 1))',
+          }}
           onClick={() => send(draft, false)}
         >
           LOG
@@ -344,7 +348,10 @@ export function MealsSection(props: MealsSectionProps) {
       </div>
 
       <div className={styles.pinnedRow}>
-        <span className={styles.sectionMiniMuted} style={{ fontSize: 9 }}>
+        <span
+          className={styles.sectionMiniMuted}
+          style={{ fontSize: 'calc(9px * var(--plan-scale, 1))' }}
+        >
           Pinned
         </span>
         {pinned.map((preset, i) => (
@@ -387,7 +394,10 @@ export function MealsSection(props: MealsSectionProps) {
 
       {props.recentItems.length > 0 && (
         <div className={styles.pinnedRow}>
-          <span className={styles.sectionMiniMuted} style={{ fontSize: 9 }}>
+          <span
+            className={styles.sectionMiniMuted}
+            style={{ fontSize: 'calc(9px * var(--plan-scale, 1))' }}
+          >
             Recent
           </span>
           {props.recentItems.map((item, i) => (
@@ -924,7 +934,7 @@ export function SavedMealsModal(props: SavedMealsProps) {
               alignSelf: 'flex-start',
               borderRadius: 999,
               letterSpacing: '.08em',
-              fontSize: 10.5,
+              fontSize: 'calc(10.5px * var(--plan-scale, 1))',
             }}
             onClick={() => {
               const name = manual.n.trim();

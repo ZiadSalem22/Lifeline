@@ -332,7 +332,12 @@ export function WorkoutBody(props: WorkoutBodyProps) {
                     }
                     onCommit={(v) => (timed ? setMin(i, v) : setKg(i, v))}
                   />
-                  <span style={{ fontSize: 10, color: 'var(--plan-muted)' }}>
+                  <span
+                    style={{
+                      fontSize: 'calc(10px * var(--plan-scale, 1))',
+                      color: 'var(--plan-muted)',
+                    }}
+                  >
                     {timed ? 'min' : 'kg'}
                   </span>
                 </span>

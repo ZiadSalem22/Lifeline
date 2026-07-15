@@ -325,7 +325,11 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--plan-muted)' }}>{templateSummary}</div>
+          <div
+            style={{ fontSize: 'calc(12px * var(--plan-scale, 1))', color: 'var(--plan-muted)' }}
+          >
+            {templateSummary}
+          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -354,7 +358,13 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               </button>
             )}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--plan-muted)', fontStyle: 'italic' }}>
+          <div
+            style={{
+              fontSize: 'calc(11px * var(--plan-scale, 1))',
+              color: 'var(--plan-muted)',
+              fontStyle: 'italic',
+            }}
+          >
             Build the day you want once (schedule, priorities), then save it here. Yesterday&apos;s
             unfinished items are offered as real tasks by the carry-over bar.
           </div>
@@ -630,7 +640,10 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
         </Section>
 
         <Section title="Your words">
-          <label className={styles.macroLabel} style={{ fontSize: 9 }}>
+          <label
+            className={styles.macroLabel}
+            style={{ fontSize: 'calc(9px * var(--plan-scale, 1))' }}
+          >
             MASTHEAD SUBTITLE
             <input
               dir="auto"
@@ -642,7 +655,10 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               onChange={(e) => props.patchSettings({ subtitle: e.target.value })}
             />
           </label>
-          <label className={styles.macroLabel} style={{ fontSize: 9 }}>
+          <label
+            className={styles.macroLabel}
+            style={{ fontSize: 'calc(9px * var(--plan-scale, 1))' }}
+          >
             MOTTO (BOTTOM LINE)
             <input
               dir="auto"
