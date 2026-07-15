@@ -39,4 +39,56 @@
 .body {
   padding: var(--space-20);
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Phones: the centered card becomes a bottom sheet — full width, sized by
+   the dynamic viewport (Safari's collapsing URL bar), padded past the home
+   bar, with a grabber so it reads as sheet UI. Desktop stays a card. */
+@media (max-width: 640px) {
+  .overlay {
+    align-items: flex-end;
+    padding: var(--space-24) 0 0;
+  }
+
+  .overlay .modal {
+    width: 100%;
+    max-height: calc(100dvh - 40px);
+    border-bottom: none;
+    border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
+    animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0.22, 1);
+  }
+
+  .modal::before {
+    content: '';
+    flex: none;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin: 8px 0 -4px;
+    border-radius: 999px;
+    background: var(--color-border);
+  }
+
+  .body {
+    padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(28px);
+    opacity: 0.4;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay .modal {
+    animation: none;
+  }
 }

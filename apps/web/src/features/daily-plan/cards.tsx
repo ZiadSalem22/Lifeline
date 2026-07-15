@@ -299,68 +299,73 @@ export function ScheduleBody({
     .sort(byTime);
   return (
     <div className={styles.cardBody}>
-      {hours.map((time) => {
-        const suggestions = suggestionsFor(time);
-        // '13:30' lands on the '13:00' row; the chip shows the real minutes.
-        const rowTodos = todos.filter((t) => t.dueTime?.startsWith(time.slice(0, 3))).sort(byTime);
-        return (
-          <div key={time}>
-            <div className={`${styles.rowRule} ${styles.schedRow}`}>
-              <span className={styles.schedTime}>{time}</span>
-              <input
-                dir="auto"
-                className={styles.inputBare}
-                maxLength={500}
-                value={day.schedule[time] ?? ''}
-                aria-label={`Schedule ${time}`}
-                list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
-                onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
-              />
-              {suggestions.length > 0 && (
-                <datalist id={`plan-sched-sug-${time}`}>
-                  {suggestions.map((text) => (
-                    <option key={text} value={text} />
-                  ))}
-                </datalist>
-              )}
-              <button
-                type="button"
-                className={styles.rowAddBtn}
-                aria-label={`Add task at ${time}`}
-                onClick={() => onAddTaskAt(time)}
-              >
-                +
-              </button>
+      {/* The full day of hour rows scrolls inside the card on phones. */}
+      <div className={`${styles.scrollList} ${styles.scrollTall}`}>
+        {hours.map((time) => {
+          const suggestions = suggestionsFor(time);
+          // '13:30' lands on the '13:00' row; the chip shows the real minutes.
+          const rowTodos = todos
+            .filter((t) => t.dueTime?.startsWith(time.slice(0, 3)))
+            .sort(byTime);
+          return (
+            <div key={time}>
+              <div className={`${styles.rowRule} ${styles.schedRow}`}>
+                <span className={styles.schedTime}>{time}</span>
+                <input
+                  dir="auto"
+                  className={styles.inputBare}
+                  maxLength={500}
+                  value={day.schedule[time] ?? ''}
+                  aria-label={`Schedule ${time}`}
+                  list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
+                  onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
+                />
+                {suggestions.length > 0 && (
+                  <datalist id={`plan-sched-sug-${time}`}>
+                    {suggestions.map((text) => (
+                      <option key={text} value={text} />
+                    ))}
+                  </datalist>
+                )}
+                <button
+                  type="button"
+                  className={styles.rowAddBtn}
+                  aria-label={`Add task at ${time}`}
+                  onClick={() => onAddTaskAt(time)}
+                >
+                  +
+                </button>
+              </div>
+              {rowTodos.map((todo) => (
+                <SchedChip
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={() => onToggleTodo(todo.id)}
+                  onOpen={onOpenTask}
+                  onToggleSubtask={onToggleSubtask}
+                />
+              ))}
             </div>
-            {rowTodos.map((todo) => (
+          );
+        })}
+        {offHours.length > 0 && (
+          <div>
+            <div className={styles.sectionMiniMuted} style={{ paddingTop: 8 }}>
+              Outside hours
+            </div>
+            {offHours.map((todo) => (
               <SchedChip
                 key={todo.id}
                 todo={todo}
+                alwaysTime
                 onToggle={() => onToggleTodo(todo.id)}
                 onOpen={onOpenTask}
                 onToggleSubtask={onToggleSubtask}
               />
             ))}
           </div>
-        );
-      })}
-      {offHours.length > 0 && (
-        <div>
-          <div className={styles.sectionMiniMuted} style={{ paddingTop: 8 }}>
-            Outside hours
-          </div>
-          {offHours.map((todo) => (
-            <SchedChip
-              key={todo.id}
-              todo={todo}
-              alwaysTime
-              onToggle={() => onToggleTodo(todo.id)}
-              onOpen={onOpenTask}
-              onToggleSubtask={onToggleSubtask}
-            />
-          ))}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -1016,30 +1021,32 @@ export function TodoBody(props: TodoBodyProps) {
       {todos.length === 0 && day.quick.length === 0 && (
         <div className={styles.emptyHint}>No tasks for this day yet — add one below.</div>
       )}
-      {todos.map((todo) => (
-        <TaskRow
-          key={todo.id}
-          todo={todo}
-          onToggle={() => props.onToggleTodo(todo.id)}
-          onOpen={props.onOpenTask}
-          onToggleSubtask={props.onToggleSubtask}
-        />
-      ))}
-      {/* Legacy scratch items from before quick-add created real tasks. */}
-      {day.quick.map((q, i) => (
-        <div key={`q-${i}`} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
-          <SquareCheck
-            on={q.done}
-            label={`Toggle quick to-do ${q.t}`}
-            onToggle={() =>
-              patch({ quick: day.quick.map((x, j) => (j === i ? { ...x, done: !x.done } : x)) })
-            }
+      <div className={styles.scrollList}>
+        {todos.map((todo) => (
+          <TaskRow
+            key={todo.id}
+            todo={todo}
+            onToggle={() => props.onToggleTodo(todo.id)}
+            onOpen={props.onOpenTask}
+            onToggleSubtask={props.onToggleSubtask}
           />
-          <span dir="auto" className={q.done ? styles.todoTitleDone : styles.todoTitle}>
-            {q.t}
-          </span>
-        </div>
-      ))}
+        ))}
+        {/* Legacy scratch items from before quick-add created real tasks. */}
+        {day.quick.map((q, i) => (
+          <div key={`q-${i}`} className={styles.rowRule} style={{ padding: '5px 0', gap: 9 }}>
+            <SquareCheck
+              on={q.done}
+              label={`Toggle quick to-do ${q.t}`}
+              onToggle={() =>
+                patch({ quick: day.quick.map((x, j) => (j === i ? { ...x, done: !x.done } : x)) })
+              }
+            />
+            <span dir="auto" className={q.done ? styles.todoTitleDone : styles.todoTitle}>
+              {q.t}
+            </span>
+          </div>
+        ))}
+      </div>
       <div className={styles.quickAddRow}>
         {props.suggestions.length > 0 && (
           <datalist id="plan-quick-sug">
@@ -1405,15 +1412,17 @@ export function TomorrowBody({
   return (
     <div className={styles.cardBody} style={{ gap: 2 }}>
       <AddTaskRow label="Add task for tomorrow" onAdd={onAddTask} />
-      {todos.map((todo) => (
-        <TaskRow
-          key={todo.id}
-          todo={todo}
-          onToggle={() => onToggleTodo(todo.id)}
-          onOpen={onOpenTask}
-          onToggleSubtask={onToggleSubtask}
-        />
-      ))}
+      <div className={styles.scrollList}>
+        {todos.map((todo) => (
+          <TaskRow
+            key={todo.id}
+            todo={todo}
+            onToggle={() => onToggleTodo(todo.id)}
+            onOpen={onOpenTask}
+            onToggleSubtask={onToggleSubtask}
+          />
+        ))}
+      </div>
       <div className={styles.sectionMiniMuted} style={{ paddingTop: 6 }}>
         Notes
       </div>

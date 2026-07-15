@@ -35,6 +35,7 @@ import {
 } from './lib/suggestions';
 import { Masthead } from './Masthead';
 import { PlanCard } from './PlanCard';
+import { JumpSheet, type JumpSection } from './JumpSheet';
 import { PlanSettingsModal } from './PlanSettingsModal';
 import { ComposerModal } from './ComposerModal';
 import { TaskPreviewModal } from './TaskPreviewModal';
@@ -66,7 +67,8 @@ import styles from './DailyPlan.module.css';
 
 type DayPatch = Partial<DailyPlanData> | ((day: DailyPlanData) => Partial<DailyPlanData>);
 type SettingsPatch =
-  Partial<DailyPlanSettings> | ((settings: DailyPlanSettings) => Partial<DailyPlanSettings>);
+  | Partial<DailyPlanSettings>
+  | ((settings: DailyPlanSettings) => Partial<DailyPlanSettings>);
 
 export interface DailyPlanViewProps {
   /** 'today' | 'tomorrow' | 'YYYY-MM-DD' route token. */
@@ -425,6 +427,20 @@ export function DailyPlanView({
     patchSettings({ secOrder: next });
   };
 
+  // Jump-sheet reorder arrives as the VISIBLE cards' new order — splice it
+  // back into the full persisted order, leaving hidden cards in their slots.
+  const reorderVisible = useCallback(
+    (visibleNext: string[]) => {
+      const current = settingsRef.current;
+      const full = current.secOrder.filter((k) => (PLAN_GRID_KEYS as string[]).includes(k));
+      for (const key of PLAN_GRID_KEYS) if (!full.includes(key)) full.push(key);
+      const queue = visibleNext.filter((k) => full.includes(k) && !current.hidden[k]);
+      const next = full.map((k) => (current.hidden[k] ? k : (queue.shift() ?? k)));
+      patchSettings({ secOrder: next });
+    },
+    [patchSettings],
+  );
+
   // One toggle for tasks from any card (today's and tomorrow's alike).
   const toggleTask = useCallback(
     (id: string) => {
@@ -770,6 +786,48 @@ export function DailyPlanView({
     nonneg: null,
   };
 
+  // Jump-sheet registry: every visible section in its on-page order, each
+  // with a glanceable status so the sheet doubles as a mini-dashboard.
+  const habitsDoneCount = settings.habits.filter((h) => day.habits[h.id] === true).length;
+  const scheduleFilled =
+    Object.values(day.schedule).filter((t) => t.trim().length > 0).length +
+    dayTodos.filter((t) => t.dueTime !== null).length;
+  const prioFilled = day.priorities.filter((p) => p.t.trim().length > 0);
+  const gratitudeFilled = day.gratitude.filter((g) => g.trim().length > 0).length;
+  const tomorrowQueued =
+    tomorrowTodos.length + day.tomorrow.filter((t) => t.t.trim().length > 0).length;
+  const jumpStatus: Partial<Record<PlanSectionKey, string>> = {
+    schedule: scheduleFilled > 0 ? `${scheduleFilled} planned` : '',
+    focus: day.focusText.trim().length > 0 ? '✓' : '',
+    gratitude: gratitudeFilled > 0 ? `${gratitudeFilled} / ${settings.gratitudeCount}` : '',
+    priorities:
+      prioFilled.length > 0
+        ? `${prioFilled.filter((p) => p.done).length} / ${prioFilled.length} done`
+        : '',
+    habits: `${habitsDoneCount} / ${settings.habits.length}`,
+    workout: bodies.workout?.badge ?? '',
+    todo: dayTodos.length > 0 ? `${taskDone} / ${dayTodos.length} done` : '',
+    water: `${Math.min(day.water, settings.targets.water)} / ${settings.targets.water}`,
+    weight: day.weight > 0 ? `${Math.round(day.weight * 10) / 10} kg` : '',
+    tomorrow: tomorrowQueued > 0 ? `${tomorrowQueued} queued` : '',
+    meals: mastheadEnergy ? `${mastheadEnergy.intake} / ${mastheadEnergy.target} kcal` : '',
+    nonneg: `${day.nonnegs.filter(Boolean).length} / ${settings.nonnegLabels.length}`,
+  };
+  const jumpSections: JumpSection[] = [
+    // persistedOrder is pre-filtered to PLAN_GRID_KEYS members above.
+    ...(persistedOrder as PlanSectionKey[])
+      .filter((key) => !settings.hidden[key])
+      .map((key) => ({ key, label: sectionLabel(key), status: jumpStatus[key] ?? '' })),
+    ...(['meals', 'nonneg'] as const)
+      .filter((key) => !settings.hidden[key])
+      .map((key) => ({
+        key,
+        label: sectionLabel(key),
+        status: jumpStatus[key] ?? '',
+        fixed: true,
+      })),
+  ];
+
   const densityStyle = { '--colw': `${colw}px` } as CSSProperties;
 
   return (
@@ -949,7 +1007,7 @@ export function DailyPlanView({
       )}
 
       {!settings.hidden['nonneg'] && (
-        <div className={styles.fullCard}>
+        <div className={styles.fullCard} data-sec="nonneg">
           <button
             type="button"
             className={`${styles.cardCtl} ${styles.ctlHide}`}
@@ -1048,6 +1106,8 @@ export function DailyPlanView({
           openTask(todo, todo.dueDate ?? dateStr);
         }}
       />
+
+      <JumpSheet sections={jumpSections} onReorder={reorderVisible} />
     </div>
   );
 }

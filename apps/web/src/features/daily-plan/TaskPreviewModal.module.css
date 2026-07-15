@@ -27,6 +27,56 @@
   box-shadow: 0 24px 60px var(--shadow-dark);
 }
 
+/* Phones: preview slides up as a bottom sheet instead of a floating card. */
+@media (max-width: 640px) {
+  .overlay {
+    align-items: flex-end;
+    padding: var(--space-24) 0 0;
+    overflow-y: hidden;
+  }
+
+  .overlay .sheet {
+    width: 100%;
+    margin: 0;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-bottom: none;
+    border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
+    padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom, 0px));
+    animation: preview-up 0.28s cubic-bezier(0.32, 0.72, 0.22, 1);
+  }
+
+  .sheet::before {
+    content: '';
+    flex: none;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin: -10px 0 -6px;
+    border-radius: 999px;
+    background: var(--color-border);
+  }
+}
+
+@keyframes preview-up {
+  from {
+    transform: translateY(28px);
+    opacity: 0.4;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay .sheet {
+    animation: none;
+  }
+}
+
 /* ── header ──────────────────────────────────────────────────────────────── */
 
 .head {

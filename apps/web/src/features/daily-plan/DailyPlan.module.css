@@ -33,6 +33,9 @@
      heading sans; paper routes these to the base sans so the only display
      face is the serif — the print reference is serif + ONE quiet sans. */
   --plan-label-font: var(--font-family-heading);
+  /* Scroll-shadow ink for internally-scrolling lists: derives from the muted
+     text so it reads on both dark cards (light haze) and paper (grey haze). */
+  --plan-scroll-shadow: color-mix(in srgb, var(--plan-muted) 45%, transparent);
 }
 
 :global([data-theme='dark']) {
@@ -79,6 +82,9 @@
 
   font-size: var(--fs);
   animation: fadeIn 0.3s ease-out;
+  /* The floating jump pill hovers over the page bottom — keep the motto and
+     last card reachable above it (plus phone home bars). */
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
 .planRoot[data-density='roomy'] {
@@ -500,6 +506,68 @@ button.weekChipToday:hover:not(:disabled) {
   padding: var(--pad);
   display: flex;
   flex-direction: column;
+}
+
+/* ── jump navigation & internal list scrolling ───────────────────────────── */
+
+/* Jump targets stop clear of the sticky top bar. */
+.card,
+.fullCard {
+  scroll-margin-top: 76px;
+}
+
+/* Landing beat after a jump — a one-shot primary ring on the target card. */
+@media (prefers-reduced-motion: no-preference) {
+  :global([data-jump-flash]) {
+    animation: jumpFlash 0.9s ease-out;
+  }
+}
+
+@keyframes jumpFlash {
+  0% {
+    box-shadow: 0 0 0 2px var(--plan-primary);
+  }
+
+  100% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+/* Long lists scroll inside their card so the page stays shallow on phones.
+   Edge shadows appear only when there is more to scroll (local-attachment
+   covers slide away with the content); momentum + contained overscroll keep
+   it feeling native on touch. */
+.scrollList {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  overflow-y: auto;
+  max-height: var(--scroll-max, min(48vh, 400px));
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--plan-card-border) transparent;
+  background:
+    linear-gradient(var(--scroll-bg, var(--plan-card)) 33%, transparent),
+    linear-gradient(transparent, var(--scroll-bg, var(--plan-card)) 66%) 0 100%,
+    radial-gradient(farthest-side at 50% 0, var(--plan-scroll-shadow), transparent),
+    radial-gradient(farthest-side at 50% 100%, var(--plan-scroll-shadow), transparent) 0 100%;
+  background-repeat: no-repeat;
+  background-size:
+    100% 20px,
+    100% 20px,
+    100% 8px,
+    100% 8px;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* The schedule is the day's backbone — give it a taller window. */
+.scrollTall {
+  --scroll-max: min(58vh, 560px);
+}
+
+/* Meal slot lists cap lower — four slots share one full-width card. */
+.scrollSlot {
+  --scroll-max: 280px;
 }
 
 /* ── shared row/input primitives ─────────────────────────────────────────── */
