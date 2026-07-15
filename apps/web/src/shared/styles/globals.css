@@ -43,6 +43,23 @@ textarea {
   color: inherit;
 }
 
+/*
+ * iOS Safari zooms the whole page in when a focused text field's font-size is
+ * below 16px — the layout jumps and you lose sight of what you're typing.
+ * Floor every text-entry control at 16px on touch pointers so tapping a field
+ * never rescales the page. Scale-aware (--plan-scale) so the A+ size setting
+ * still grows inputs past the floor; pinch-zoom stays available (no
+ * maximum-scale hack). Checkbox/radio/range have no text caret, so they never
+ * trigger the zoom and are left alone.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: max(16px, calc(1rem * var(--plan-scale, 1)));
+  }
+}
+
 button {
   cursor: pointer;
   background: none;
