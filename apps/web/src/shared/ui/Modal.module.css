@@ -46,14 +46,19 @@
    the dynamic viewport (Safari's collapsing URL bar), padded past the home
    bar, with a grabber so it reads as sheet UI. Desktop stays a card. */
 @media (max-width: 640px) {
+  /* --kb-inset (from keyboard-inset.ts) is the on-screen keyboard height.
+     Padding-bottom lifts the sheet's anchor above the keyboard; the modal's
+     max-height then fits it into the remaining visible band, so a focused
+     input never hides behind the keyboard on iOS. */
   .overlay {
     align-items: flex-end;
-    padding: var(--space-24) 0 0;
+    padding: var(--space-24) 0 var(--kb-inset, 0px);
+    transition: padding-bottom 0.2s ease;
   }
 
   .overlay .modal {
     width: 100%;
-    max-height: calc(100dvh - 40px);
+    max-height: calc(100dvh - 40px - var(--kb-inset, 0px));
     border-bottom: none;
     border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
     animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0.22, 1);

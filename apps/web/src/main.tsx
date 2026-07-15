@@ -1,8 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './app/App';
+import { installKeyboardInsetTracking } from './shared/lib/keyboard-inset';
 import './shared/styles/tokens.css';
 import './shared/styles/globals.css';
+
+// Publish the on-screen keyboard's height as --kb-inset so bottom-sheet modals
+// can lift their inputs above it (iOS Safari overlays the keyboard).
+installKeyboardInsetTracking();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing #root element');
