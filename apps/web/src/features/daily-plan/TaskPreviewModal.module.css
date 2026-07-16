@@ -265,6 +265,77 @@
   text-decoration: line-through;
 }
 
+/* ── move-to (reschedule) ────────────────────────────────────────────────── */
+
+.moveRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--color-border);
+}
+
+.moveLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.moveBtn {
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.moveBtn:hover:not(:disabled),
+.moveBtn:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface-light);
+}
+
+.moveBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* "Pick a date" — the whole chip is the label so tapping anywhere opens the
+   native picker; the input carries the value and fires onChange. */
+.moveDate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.moveDate:hover,
+.moveDate:focus-within {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.moveDate input {
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  width: 1.2rem; /* just the picker icon; the label carries the text */
+}
+
 /* ── footer ──────────────────────────────────────────────────────────────── */
 
 .footer {

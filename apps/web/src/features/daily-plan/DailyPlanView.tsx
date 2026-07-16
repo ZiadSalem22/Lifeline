@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { format, parseISO } from 'date-fns';
 import type { DailyPlanData, DailyPlanSettings, HabitMark, Tag, Todo } from '@lifeline/shared';
 import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
-import { useCreateTodo, useToggleComplete, useUpdateSubtasks } from '../todos/data/hooks';
+import {
+  useCreateTodo,
+  useToggleComplete,
+  useUpdateSubtasks,
+  useUpdateTodo,
+} from '../todos/data/hooks';
 import {
   useDailyPlanWeek,
   usePlanSaveStatus,
@@ -262,6 +268,16 @@ export function DailyPlanView({
   const isToday = dateStr === resolveDayString('today');
   const carry = useMemo(() => carryOverFrom(yesterday), [yesterday]);
   const [carryError, setCarryError] = useState(false);
+
+  // Transient confirmation toast for actions whose result lands off-screen
+  // (carry-over creates tasks in the To-Do card; a move re-dates a task off
+  // the current day) — otherwise those read as "nothing happened".
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
   const addCarryAsTasks = useCallback(() => {
     const existing = new Set(
       filterTodosForDay(todos, dateStr).map((t) => t.title.trim().toLowerCase()),
@@ -287,14 +303,40 @@ export function DailyPlanView({
       );
     }
     setCarryError(false);
+    const added = creates.length;
     void Promise.allSettled(creates).then((results) => {
       // Don't burn the one-shot offer if every create failed (offline etc.).
       if (results.some((r) => r.status === 'rejected')) setCarryError(true);
-      if (creates.length === 0 || results.some((r) => r.status === 'fulfilled')) {
+      if (added === 0 || results.some((r) => r.status === 'fulfilled')) {
         patchDay({ carryHandled: true });
+        // The new tasks land in the To-Do card (which may be scrolled away or
+        // hidden), so confirm the outcome explicitly.
+        setToast(
+          added === 0 ? 'Those tasks are already on today' : `Moved ${added} to today's tasks`,
+        );
       }
     });
   }, [carry, todos, createTodo, dateStr, patchDay]);
+
+  // Per-task reschedule from the preview popup (Today / Tomorrow / pick a date).
+  const updateTodo = useUpdateTodo();
+  const moveTask = useCallback(
+    (todo: Todo, targetDate: string) => {
+      if (todo.dueDate === targetDate) return;
+      updateTodo.mutate({ id: todo.id, patch: { dueDate: targetDate } });
+      setPreviewId(null);
+      const today = resolveDayString('today');
+      const tomorrow = daysAfter(today, 1);
+      const label =
+        targetDate === today
+          ? 'today'
+          : targetDate === tomorrow
+            ? 'tomorrow'
+            : format(parseISO(targetDate), 'EEE, MMM d');
+      setToast(`Moved “${todo.title}” to ${label}`);
+    },
+    [updateTodo, setPreviewId, setToast],
+  );
 
   // Personal suggestion pools from the last 28 days.
   const prioSugs = useMemo(() => prioritySuggestions(recentDays), [recentDays]);
@@ -1124,7 +1166,14 @@ export function DailyPlanView({
           setPreviewId(null);
           openTask(todo, todo.dueDate ?? dateStr);
         }}
+        onMove={moveTask}
       />
+
+      {toast && (
+        <div className={styles.planToast} role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
 
       <JumpSheet sections={jumpSections} onReorder={reorderVisible} />
     </div>

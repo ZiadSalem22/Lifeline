@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { addDays, format } from 'date-fns';
 import type { Todo } from '@lifeline/shared';
 import { ThemeProvider } from '../../app/providers/theme-provider';
 import { renderWithProviders } from '../../test/harness';
@@ -69,6 +70,45 @@ describe('To-Do card', () => {
     // Completed task title stays plain text (no preview link).
     expect(screen.queryByRole('button', { name: 'Old chore' })).not.toBeInTheDocument();
     expect(screen.getByText('Old chore')).toBeInTheDocument();
+  });
+
+  it('preview → Move to a specific date reschedules the task and confirms with a toast', async () => {
+    const task = makeTodo({ title: 'Ship report', dueDate: '2026-07-09' });
+    renderPlan([task]);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Ship report' }));
+    const dialog = await screen.findByRole('dialog', { name: /Task/ });
+    // Native date inputs don't take userEvent typing well — fire the change.
+    fireEvent.change(within(dialog).getByLabelText('Move task to a specific date'), {
+      target: { value: '2026-07-12' },
+    });
+
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('guest_todos');
+      const todos = JSON.parse(raw as string) as { id: string; dueDate: string | null }[];
+      expect(todos.find((t) => t.id === task.id)?.dueDate).toBe('2026-07-12');
+    });
+    // Preview closes and a toast confirms the move (the task left this day's list).
+    expect(screen.queryByRole('dialog', { name: /Task/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Moved .*Ship report.* to/)).toBeInTheDocument();
+  });
+
+  it('preview → Tomorrow re-dates the task to the next day', async () => {
+    const task = makeTodo({ title: 'Ship report', dueDate: '2026-07-09' });
+    renderPlan([task]);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Ship report' }));
+    const dialog = await screen.findByRole('dialog', { name: /Task/ });
+    await user.click(within(dialog).getByRole('button', { name: 'Tomorrow' }));
+
+    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('guest_todos');
+      const todos = JSON.parse(raw as string) as { id: string; dueDate: string | null }[];
+      expect(todos.find((t) => t.id === task.id)?.dueDate).toBe(tomorrow);
+    });
   });
 });
 

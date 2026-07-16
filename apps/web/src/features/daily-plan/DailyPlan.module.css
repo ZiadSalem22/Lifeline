@@ -530,6 +530,48 @@ button.weekChipToday:hover:not(:disabled) {
   flex-direction: column;
 }
 
+/* Transient confirmation toast (carry-over, task move) — fixed near the top
+   so it's seen even when the affected card is scrolled away or hidden. */
+.planToast {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 940;
+  max-width: min(88vw, 420px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--plan-secbar);
+  color: var(--plan-secbar-text);
+  border: 1px solid var(--plan-card-border);
+  font-family: var(--plan-label-font);
+  font-size: calc(11px * var(--plan-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+  animation: planToastIn 0.22s ease-out;
+}
+
+@media (min-width: 769px) {
+  .planToast {
+    left: calc(50% + var(--sidebar-width) / 2);
+  }
+}
+
+@keyframes planToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planToast {
+    animation: none;
+  }
+}
+
 /* ── jump navigation & internal list scrolling ───────────────────────────── */
 
 /* Jump targets stop clear of the sticky top bar. */

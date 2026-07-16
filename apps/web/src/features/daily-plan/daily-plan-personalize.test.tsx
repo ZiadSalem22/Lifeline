@@ -122,6 +122,9 @@ describe('day continuity', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Add as tasks' }));
+    // A toast confirms the outcome (the tasks land in the To-Do card, which
+    // may be scrolled away or hidden — so the action needs explicit feedback).
+    expect(await screen.findByText(/Moved 2 to today's tasks/)).toBeInTheDocument();
     // Both carried items became REAL guest tasks due today.
     await waitFor(() => {
       const raw = window.localStorage.getItem('guest_todos');
