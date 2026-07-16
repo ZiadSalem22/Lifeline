@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { format, parseISO } from 'date-fns';
+import { addDays, format, parseISO } from 'date-fns';
 import type { Todo } from '@lifeline/shared';
 import { SquareCheck } from './cards';
 import styles from './TaskPreviewModal.module.css';
@@ -45,6 +45,8 @@ export interface TaskPreviewModalProps {
   onToggleSubtask: (todo: Todo, subtaskId: string) => void;
   /** Hand off to the full Tasks editor. */
   onEdit: (todo: Todo) => void;
+  /** Reschedule the task's due date ('YYYY-MM-DD'). */
+  onMove?: ((todo: Todo, dateStr: string) => void) | undefined;
 }
 
 export function TaskPreviewModal({
@@ -53,6 +55,7 @@ export function TaskPreviewModal({
   onToggleComplete,
   onToggleSubtask,
   onEdit,
+  onMove,
 }: TaskPreviewModalProps) {
   const open = todo !== null;
   useEffect(() => {
@@ -77,6 +80,9 @@ export function TaskPreviewModal({
   const meta = [formatDate(todo.dueDate), todo.dueTime, formatDuration(todo.duration)].filter(
     Boolean,
   );
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const tomorrowStr = format(addDays(now, 1), 'yyyy-MM-dd');
 
   return createPortal(
     <div
@@ -167,6 +173,39 @@ export function TaskPreviewModal({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {onMove && (
+          <div className={styles.moveRow}>
+            <span className={styles.moveLabel}>Move to</span>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              disabled={todo.dueDate === todayStr}
+              onClick={() => onMove(todo, todayStr)}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              disabled={todo.dueDate === tomorrowStr}
+              onClick={() => onMove(todo, tomorrowStr)}
+            >
+              Tomorrow
+            </button>
+            <label className={styles.moveDate}>
+              <span>Pick a date</span>
+              <input
+                type="date"
+                aria-label="Move task to a specific date"
+                value={todo.dueDate ?? ''}
+                onChange={(event) => {
+                  if (event.target.value) onMove(todo, event.target.value);
+                }}
+              />
+            </label>
           </div>
         )}
 
