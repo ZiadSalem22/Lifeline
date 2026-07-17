@@ -39,6 +39,15 @@ for (const c of cities) {
   kept += 1;
 }
 
+// Present the cities GeoNames files under Israel (IL) together with the
+// Palestinian territories (PS) under a single "Palestine" group (the picker
+// labels PS as "Palestine"). Fold IL into PS and drop the IL key; every city
+// keeps its real coordinates, so prayer times are unaffected.
+if (byCountry.IL) {
+  (byCountry.PS ??= []).push(...byCountry.IL);
+  delete byCountry.IL;
+}
+
 // Sort each country's cities by population (desc), then drop the population
 // field from the emitted tuple (only needed for ordering).
 for (const code of Object.keys(byCountry)) {
