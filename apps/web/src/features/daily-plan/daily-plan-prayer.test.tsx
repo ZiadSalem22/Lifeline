@@ -53,7 +53,7 @@ function renderPlan(dayToken = '2026-07-09') {
 
 describe('prayer times on the habit rows', () => {
   it('shows an HH:MM badge on each salah row and caches the month', async () => {
-    const fetchMock = vi.fn(() =>
+    const fetchMock = vi.fn((_url: string) =>
       Promise.resolve({ ok: true, json: () => Promise.resolve(CANNED_MONTH) } as Response),
     );
     vi.stubGlobal('fetch', fetchMock);
@@ -82,7 +82,7 @@ describe('prayer times on the habit rows', () => {
   });
 
   it('shows the add-your-city hint when no city is set (no fetch)', async () => {
-    const fetchMock = vi.fn(() =>
+    const fetchMock = vi.fn((_url: string) =>
       Promise.resolve({ ok: true, json: () => Promise.resolve(CANNED_MONTH) } as Response),
     );
     vi.stubGlobal('fetch', fetchMock);
