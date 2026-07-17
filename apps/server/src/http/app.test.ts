@@ -201,4 +201,10 @@ describe('createApp CSP lets the SPA reach Auth0', () => {
     expect(csp).toMatch(/font-src[^;]*https:\/\/fonts\.gstatic\.com/);
     expect(csp).toMatch(/img-src[^;]*https:/);
   });
+
+  it('allows the Aladhan prayer-times API in connect-src (browser-direct fetch)', async () => {
+    const response = await request(app).get('/api/v1/info');
+    const csp = response.headers['content-security-policy'] ?? '';
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/api\.aladhan\.com/);
+  });
 });

@@ -403,6 +403,20 @@ export const dailyPlanSettingsSchema = z.object({
   /** Height in cm (canonical); 0 = unset. Near-static, so it lives in settings. */
   height: z.number().min(0).max(300).default(0),
   /**
+   * Prayer times: the five salah habits show accurate times fetched by city.
+   * method -1 = Auto (let the provider pick the closest authority for the
+   * location); 0–23 / 99 are explicit calculation methods. Empty city = the
+   * feature is dormant. Seeded once from the user's profile city on first load.
+   */
+  prayer: z
+    .object({
+      enabled: z.boolean().default(true),
+      city: z.string().max(120).default(''),
+      country: z.string().max(120).default(''),
+      method: z.number().int().min(-1).max(99).default(-1),
+    })
+    .default({ enabled: true, city: '', country: '', method: -1 }),
+  /**
    * Energy profile for BMR/TDEE (see energy.ts). Katch-McArdle needs only
    * weight + fat%; Mifflin-St Jeor needs all four. 'unset'/0 = not provided —
    * the engine returns null rather than guessing.

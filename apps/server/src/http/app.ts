@@ -88,7 +88,8 @@ export function createApp(container: Container): Express {
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
           'img-src': ["'self'", 'data:', 'https:'],
-          'connect-src': ["'self'", ...auth0Sources],
+          // Aladhan supplies prayer times by city (browser-direct fetch).
+          'connect-src': ["'self'", 'https://api.aladhan.com', ...auth0Sources],
           'frame-src': ["'self'", ...auth0Sources],
         },
       },

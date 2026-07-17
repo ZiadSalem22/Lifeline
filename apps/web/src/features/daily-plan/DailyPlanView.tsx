@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import type { DailyPlanData, DailyPlanSettings, HabitMark, Tag, Todo } from '@lifeline/shared';
 import { MEAL_SLOTS, bmr, dayBalance, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { useTheme } from '../../app/providers/theme-context';
+import { useAuth } from '../../app/providers/auth-context';
 import { filterTodosForDay, resolveDayString } from '../todos/lib/day-filter';
 import {
   useCreateTodo,
@@ -20,6 +21,7 @@ import {
   useSaveSettings,
   type PlanSaveStatus,
 } from './data/hooks';
+import { usePrayerTimes } from './data/prayer-hooks';
 import {
   PLAN_GRID_KEYS,
   PLAN_SECTIONS,
@@ -195,6 +197,32 @@ export function DailyPlanView({
       saveSettings(next);
     },
     [saveSettings],
+  );
+
+  // Prayer times: seed the plan's prayer city from the account profile once
+  // (an onboarding-only user gets times without re-entering their city), then
+  // fetch the selected day's five times. Editing the city in Customize wins.
+  const { currentUser } = useAuth();
+  const prayer = settings.prayer;
+  useEffect(() => {
+    if (!settingsReady) return;
+    if (prayer.city.trim()) return; // already set — don't clobber a Customize edit
+    const profileCity = currentUser?.profile?.city?.trim();
+    if (!profileCity) return;
+    patchSettings({
+      prayer: {
+        ...settingsRef.current.prayer,
+        city: profileCity,
+        country: currentUser?.profile?.country?.trim() ?? settingsRef.current.prayer.country,
+      },
+    });
+  }, [settingsReady, prayer.city, currentUser, patchSettings]);
+
+  const { times: prayerTimes, active: prayerActive } = usePrayerTimes(
+    prayer.enabled ? prayer.city : '',
+    prayer.country,
+    prayer.method,
+    dateStr,
   );
 
   const day = effectiveDays[dateStr] ?? materialized;
@@ -753,6 +781,8 @@ export function DailyPlanView({
           onEditHabits={(updater) => patchSettings((s) => ({ habits: updater(s.habits) }))}
           streaks={streaks}
           historyFor={historyFor}
+          prayerTimes={prayerTimes}
+          prayerActive={prayerActive}
         />
       ),
     },
