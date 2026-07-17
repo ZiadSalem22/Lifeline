@@ -236,6 +236,7 @@
 }
 
 .weekChip {
+  position: relative;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -247,6 +248,24 @@
   color: var(--plan-muted);
   border: 1px solid var(--plan-rule);
   background: transparent;
+}
+
+/* The REAL current date: a small dot under the chip so the day you're viewing
+   (the filled chip) reads as distinct from today when they differ. */
+.weekChipRealToday {
+  border-color: var(--plan-primary);
+  color: var(--color-text);
+}
+
+.weekChipDot {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--plan-primary);
 }
 
 /* As a button the chip navigates to that weekday. */
@@ -570,6 +589,47 @@ button.weekChipToday:hover:not(:disabled) {
   .planToast {
     animation: none;
   }
+}
+
+/* Persistent "return to today" pill — bottom-left so it clears the
+   bottom-center JumpSheet pill; only shown while viewing another day. */
+.todayFab {
+  position: fixed;
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 901;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--plan-primary);
+  background: var(--plan-primary);
+  color: var(--plan-primary-ink);
+  font-family: var(--plan-label-font);
+  font-size: calc(12px * var(--plan-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.todayFab:hover {
+  filter: brightness(1.06);
+}
+
+/* Clear the sidebar on desktop, matching the JumpSheet pill's offset. */
+@media (min-width: 769px) {
+  .todayFab {
+    left: calc(var(--sidebar-width) + 14px);
+  }
+}
+
+/* The "you're viewing another day" banner — tinted so it reads as a state,
+   not an error. */
+.viewingBar {
+  border-style: solid;
+  border-color: var(--plan-primary);
 }
 
 /* ── jump navigation & internal list scrolling ───────────────────────────── */

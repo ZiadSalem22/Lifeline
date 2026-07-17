@@ -79,6 +79,7 @@ describe('dailyPlanSettingsSchema', () => {
     expect(settings.priorityCount).toBe(3);
     expect(settings.gratitudeCount).toBe(3);
     expect(settings.tomorrowCount).toBe(4);
+    expect(settings.timeFormat).toBe('24h');
     expect(settings.templates).toEqual({});
     // Prayer times default dormant (no city/coords) with Auto calculation method.
     expect(settings.prayer).toEqual({

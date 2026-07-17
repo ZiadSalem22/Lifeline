@@ -5,6 +5,7 @@ import { Modal } from '../../shared/ui/Modal';
 import { CityPicker } from './CityPicker';
 import { templateFromDay } from './lib/templates';
 import { dividerBelowAt, newHabitId, templateKeyOf, withDividerAt } from './lib/plan-model';
+import { formatClock } from './lib/time-format';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -612,6 +613,20 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
         <Section title="Schedule & rows">
           <div className={styles.macroGrid}>
             <label className={styles.macroLabel}>
+              TIME FORMAT
+              <select
+                className={styles.smallInput}
+                value={settings.timeFormat}
+                aria-label="Time format"
+                onChange={(e) =>
+                  props.patchSettings({ timeFormat: e.target.value as '24h' | '12h' })
+                }
+              >
+                <option value="24h">24-hour (17:30)</option>
+                <option value="12h">12-hour (5:30 PM)</option>
+              </select>
+            </label>
+            <label className={styles.macroLabel}>
               DAY STARTS
               <select
                 className={styles.smallInput}
@@ -623,7 +638,7 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               >
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={h}>
-                    {h < 10 ? `0${h}` : h}:00
+                    {formatClock(`${h < 10 ? '0' : ''}${h}:00`, settings.timeFormat)}
                   </option>
                 ))}
               </select>
@@ -640,9 +655,10 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
               >
                 {Array.from({ length: 24 }, (_, i) => {
                   const h = i + 1;
+                  const key = `${h === 24 ? '00' : h < 10 ? `0${h}` : h}:00`;
                   return (
                     <option key={h} value={h}>
-                      {h === 24 ? '00' : h < 10 ? `0${h}` : h}:00
+                      {formatClock(key, settings.timeFormat)}
                     </option>
                   );
                 })}

@@ -31,12 +31,24 @@ export interface MastheadProps {
   onSelectDay?: ((date: string) => void) | undefined;
   /** Energy summary ring (null hides it — e.g. the Meals card is hidden). */
   energy?: MastheadEnergy | null | undefined;
+  /** The REAL current date ('YYYY-MM-DD') — marks the actual-today chip so it
+      reads distinctly from the SELECTED day when you're browsing another day. */
+  todayStr?: string | undefined;
 }
 
 /** "DAILY PLAN" display header: subtitle rules, date (± day, jump-to-date), week chips, score ring. */
-export function Masthead({ dateStr, score, subtitle, onSelectDay, energy }: MastheadProps) {
-  const todayIdx = weekIndexOf(dateStr);
+export function Masthead({
+  dateStr,
+  score,
+  subtitle,
+  onSelectDay,
+  energy,
+  todayStr,
+}: MastheadProps) {
+  const selIdx = weekIndexOf(dateStr);
   const weekDates = weekDatesOf(dateStr);
+  // Which chip (if any) is the real current date within the displayed week.
+  const realTodayIdx = todayStr ? weekDates.findIndex((d) => d === todayStr) : -1;
   const dash = `${((score / 100) * CIRC).toFixed(1)} ${CIRC.toFixed(1)}`;
   const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'EEEE, MMMM d, yyyy');
   const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -115,34 +127,45 @@ export function Masthead({ dateStr, score, subtitle, onSelectDay, energy }: Mast
           <div className={styles.dateLabel}>{dateLabel}</div>
         )}
         <div className={styles.weekChips}>
-          {WEEK_LETTERS.map((letter, i) =>
-            onSelectDay ? (
+          {WEEK_LETTERS.map((letter, i) => {
+            // Filled = the day you're VIEWING; a dot = the REAL today (so a
+            // past/other day reads as clearly not-today).
+            const cls = [
+              styles.weekChip,
+              i === selIdx ? styles.weekChipToday : undefined,
+              i === realTodayIdx ? styles.weekChipRealToday : undefined,
+            ]
+              .filter(Boolean)
+              .join(' ');
+            const inner = (
+              <>
+                {letter}
+                {i === realTodayIdx && <span className={styles.weekChipDot} aria-hidden="true" />}
+              </>
+            );
+            const label = `Go to ${WEEK_DAY_NAMES[i] ?? ''} ${weekDates[i] ?? ''}${
+              i === realTodayIdx ? ' (today)' : ''
+            }`;
+            return onSelectDay ? (
               <button
                 key={i}
                 type="button"
-                className={
-                  i === todayIdx ? `${styles.weekChip} ${styles.weekChipToday}` : styles.weekChip
-                }
-                aria-label={`Go to ${WEEK_DAY_NAMES[i] ?? ''} ${weekDates[i] ?? ''}`}
-                aria-current={i === todayIdx ? 'date' : undefined}
+                className={cls}
+                aria-label={label}
+                aria-current={i === realTodayIdx ? 'date' : undefined}
                 onClick={() => {
                   const date = weekDates[i];
-                  if (date && i !== todayIdx) onSelectDay(date);
+                  if (date && i !== selIdx) onSelectDay(date);
                 }}
               >
-                {letter}
+                {inner}
               </button>
             ) : (
-              <span
-                key={i}
-                className={
-                  i === todayIdx ? `${styles.weekChip} ${styles.weekChipToday}` : styles.weekChip
-                }
-              >
-                {letter}
+              <span key={i} className={cls}>
+                {inner}
               </span>
-            ),
-          )}
+            );
+          })}
         </div>
       </div>
       {energy && (
