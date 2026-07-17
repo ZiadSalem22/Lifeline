@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { listTodosQuerySchema, queryBooleanSchema } from './todo.js';
+import {
+  createTodoSchema,
+  listTodosQuerySchema,
+  queryBooleanSchema,
+  updateTodoSchema,
+} from './todo.js';
 
 /**
  * Regression: `flagged`/`includeArchived` used `z.coerce.boolean()`, which is
@@ -60,5 +65,19 @@ describe('listTodosQuerySchema — flagged / includeArchived coercion', () => {
 
   it('invalid boolean string is a validation error', () => {
     expect(() => listTodosQuerySchema.parse({ flagged: 'maybe' })).toThrow();
+  });
+});
+
+describe('habitId (task ↔ habit link)', () => {
+  it('create accepts a habit link and defaults to none', () => {
+    expect(createTodoSchema.parse({ title: 'Udemy hour', habitId: 'udemy' }).habitId).toBe('udemy');
+    expect(createTodoSchema.parse({ title: 'Plain task' }).habitId).toBeUndefined();
+    // Bounded — a habit id is a short slug, not free text.
+    expect(createTodoSchema.safeParse({ title: 'x', habitId: 'h'.repeat(65) }).success).toBe(false);
+  });
+
+  it('update can set and clear the link', () => {
+    expect(updateTodoSchema.parse({ habitId: 'udemy' }).habitId).toBe('udemy');
+    expect(updateTodoSchema.parse({ habitId: null }).habitId).toBeNull();
   });
 });

@@ -132,6 +132,8 @@ export const todos = pgTable(
     /** Reserved word — quoted column name "order". */
     order: integer('order').notNull().default(0),
     recurrence: jsonb('recurrence').$type<Recurrence>(),
+    /** Daily Plan habit this task counts toward (completing it checks the habit). */
+    habitId: text('habit_id'),
     /** Dead field in practice (always null); kept for data compatibility. */
     nextRecurrenceDue: timestamp('next_recurrence_due', { withTimezone: true }),
     originalId: text('original_id'),

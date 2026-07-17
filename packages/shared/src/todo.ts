@@ -66,6 +66,9 @@ export const todoSchema = z.object({
   subtasks: z.array(subtaskSchema),
   order: z.number().int(),
   recurrence: recurrenceSchema.nullable(),
+  /** Habit this task counts toward (Daily Plan habit id); completing the task
+      checks that habit for the task's due date. Default so old rows self-heal. */
+  habitId: z.string().min(1).max(64).nullable().default(null),
   originalId: z.string().nullable(),
   archived: z.boolean(),
   createdAt: z.iso.datetime({ offset: true }),
@@ -100,6 +103,7 @@ export const createTodoSchema = z.object({
   priority: prioritySchema.optional(),
   subtasks: z.array(subtaskInputSchema).max(LIMITS.subtasksPerTodoMax).optional(),
   recurrence: recurrenceSchema.nullish(),
+  habitId: z.string().min(1).max(64).nullish(),
 });
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 

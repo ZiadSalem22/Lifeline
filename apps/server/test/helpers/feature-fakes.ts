@@ -165,6 +165,7 @@ export class InMemoryTodoRepository implements TodoRepository, ImportTodoWriter 
       subtasks: [],
       order: 0,
       recurrence: null,
+      habitId: null,
       originalId: null,
       archived: false,
       createdAt: now,
@@ -322,6 +323,7 @@ export class InMemoryTodoRepository implements TodoRepository, ImportTodoWriter 
     if (changes.priority !== undefined) todo.priority = changes.priority;
     if (changes.subtasks !== undefined) todo.subtasks = changes.subtasks;
     if (changes.order !== undefined) todo.order = changes.order;
+    if (changes.habitId !== undefined) todo.habitId = changes.habitId;
     if (changes.tagIds !== undefined) todo.tags = this.resolveTags(userId, changes.tagIds);
     todo.updatedAt = new Date().toISOString();
     this.store.set(id, { userId, todo });
@@ -377,6 +379,7 @@ export class InMemoryTodoRepository implements TodoRepository, ImportTodoWriter 
           subtasks: [],
           order: 0,
           recurrence: null,
+          habitId: null,
           originalId: null,
           archived: false,
           createdAt: now,
@@ -492,6 +495,7 @@ export class InMemoryTodoRepository implements TodoRepository, ImportTodoWriter 
       subtasks: data.subtasks,
       order: data.order,
       recurrence: data.recurrence,
+      habitId: data.habitId,
       originalId: data.originalId,
       archived: false,
       createdAt: now,

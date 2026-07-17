@@ -71,6 +71,7 @@ function toTodoDto(row: TodoRow, tagList: Tag[]): Todo {
     subtasks: row.subtasks,
     order: row.order,
     recurrence: row.recurrence ?? null,
+    habitId: row.habitId,
     originalId: row.originalId,
     archived: row.archived,
     createdAt: row.createdAt.toISOString(),
@@ -151,6 +152,7 @@ async function insertTodoRow(tx: Tx, userId: string, data: NewTodoData): Promise
       subtasks: data.subtasks,
       order: data.order,
       recurrence: data.recurrence,
+      habitId: data.habitId,
       originalId: data.originalId,
     })
     .returning();
@@ -471,6 +473,7 @@ export class DrizzleTodoRepository implements TodoRepository, ImportTodoWriter {
       if (changes.priority !== undefined) set.priority = changes.priority;
       if (changes.subtasks !== undefined) set.subtasks = changes.subtasks;
       if (changes.order !== undefined) set.order = changes.order;
+      if (changes.habitId !== undefined) set.habitId = changes.habitId;
 
       const rows = await tx
         .update(todos)

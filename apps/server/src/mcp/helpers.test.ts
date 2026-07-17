@@ -42,6 +42,7 @@ function makeTodo(partial: Partial<Todo> = {}): Todo {
     subtasks: [],
     order: 0,
     recurrence: null,
+    habitId: null,
     originalId: null,
     archived: false,
     createdAt: '2026-07-01T00:00:00.000Z',

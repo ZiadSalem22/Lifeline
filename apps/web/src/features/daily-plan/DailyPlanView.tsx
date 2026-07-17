@@ -1186,6 +1186,7 @@ export function DailyPlanView({
         effectiveDate={composerTarget.date}
         initialDueDate={composerTarget.date}
         initialDueTime={composerTarget.time}
+        habits={settings.habits}
         onClose={closeComposer}
       />
 
@@ -1199,6 +1200,8 @@ export function DailyPlanView({
           openTask(todo, todo.dueDate ?? dateStr);
         }}
         onMove={moveTask}
+        habits={settings.habits}
+        onLinkHabit={(todo, habitId) => updateTodo.mutate({ id: todo.id, patch: { habitId } })}
       />
 
       {toast && (

@@ -58,6 +58,9 @@ export class CreateTodo {
       subtasks,
       order: 0,
       recurrence,
+      // The habit link rides on every expanded occurrence — a recurring task
+      // drives its habit each day it recurs.
+      habitId: input.habitId ?? null,
       originalId: null,
       tagIds,
     }));

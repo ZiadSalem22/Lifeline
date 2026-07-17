@@ -180,6 +180,18 @@ describe('CreateTodo — subtask normalization (stable identity)', () => {
     expect(ids.size).toBe(1);
   });
 
+  it('the habit link is copied onto every expanded recurrence row', async () => {
+    const { todos, createTodo } = build();
+    await createTodo.execute('u1', 'free', {
+      title: 'Daily Udemy hour',
+      habitId: 'udemy',
+      recurrence: { mode: 'daily', startDate: '2026-03-01', endDate: '2026-03-03' },
+    });
+    const rows = todos.rowsFor('u1');
+    expect(rows).toHaveLength(3);
+    expect(rows.every((row) => row.habitId === 'udemy')).toBe(true);
+  });
+
   it('resolves tag references and drops unknown ids', async () => {
     const { createTodo } = build();
     const { todo } = await createTodo.execute('u1', 'free', {

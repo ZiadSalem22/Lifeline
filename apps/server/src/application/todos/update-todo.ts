@@ -44,6 +44,7 @@ export class UpdateTodo {
     if (input.priority !== undefined) changes.priority = input.priority;
     if (input.subtasks !== undefined) changes.subtasks = normalizeSubtasks(input.subtasks);
     if (input.order !== undefined) changes.order = input.order;
+    if (input.habitId !== undefined) changes.habitId = input.habitId ?? null;
     if (input.tags !== undefined) {
       changes.tagIds = await resolveTagReferenceIds(this.deps.tags, userId, input.tags);
     }

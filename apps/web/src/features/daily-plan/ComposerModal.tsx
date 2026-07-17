@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { Tag, Todo } from '@lifeline/shared';
+import type { PlanHabit, Tag, Todo } from '@lifeline/shared';
 import { Composer } from '../todos/components/Composer';
 import styles from './ComposerModal.module.css';
 
@@ -14,6 +14,8 @@ export interface ComposerModalProps {
   initialDueDate?: string | undefined;
   /** Preset due time ('HH:mm') re-applied on every open. */
   initialDueTime?: string | undefined;
+  /** Plan habits for the "Counts toward habit" select. */
+  habits?: readonly PlanHabit[] | undefined;
   onClose: () => void;
 }
 
@@ -32,6 +34,7 @@ export function ComposerModal({
   effectiveDate,
   initialDueDate,
   initialDueTime,
+  habits,
   onClose,
 }: ComposerModalProps) {
   // Lock the page behind the popup — on phones the background otherwise
@@ -84,6 +87,7 @@ export function ComposerModal({
           initialDueTime={initialDueTime}
           closeOnOutsideClick={false}
           initialFocus="title"
+          habits={habits}
         />
       </div>
     </div>,

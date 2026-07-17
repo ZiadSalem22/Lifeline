@@ -103,6 +103,23 @@ describe('POST /api/v1/todos', () => {
     expect(response.headers['x-total-created']).toBe('1');
   });
 
+  it('habitId roundtrips: set at create, changed and cleared via PATCH', async () => {
+    const created = await request(app)
+      .post('/api/v1/todos')
+      .send({ title: 'Udemy hour', habitId: 'udemy' });
+    expect(created.status).toBe(201);
+    expect(created.body.habitId).toBe('udemy');
+
+    const id = created.body.id as string;
+    const relinked = await request(app).patch(`/api/v1/todos/${id}`).send({ habitId: 'reading' });
+    expect(relinked.status).toBe(200);
+    expect(relinked.body.habitId).toBe('reading');
+
+    const cleared = await request(app).patch(`/api/v1/todos/${id}`).send({ habitId: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.habitId).toBeNull();
+  });
+
   it('400 problem with field errors for an empty body', async () => {
     const response = await request(app).post('/api/v1/todos').send({});
     expectProblem(response, 400, 'validation_failed');

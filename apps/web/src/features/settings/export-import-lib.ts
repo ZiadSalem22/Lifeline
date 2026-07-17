@@ -116,6 +116,7 @@ function normalizeTodo(raw: unknown, taskNumber: number): Todo | null {
     // Preserved when it parses as a plausible rule (has a mode/type string) —
     // the same tolerance as the server import; anything else becomes null.
     recurrence: plausibleRecurrence(record.recurrence),
+    habitId: str(pick(record, 'habitId', 'habit_id')),
     originalId: str(pick(record, 'originalId', 'original_id')),
     archived: false,
     createdAt: str(pick(record, 'createdAt', 'created_at')) ?? now,

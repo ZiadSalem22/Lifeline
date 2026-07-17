@@ -57,6 +57,7 @@ describe('Composer submit payload', () => {
       priority: 'high',
       subtasks: [{ title: 'Write agenda', isCompleted: false }],
       recurrence: null,
+      habitId: null,
     });
   });
 
