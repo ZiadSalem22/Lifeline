@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { DailyPlanData, DailyPlanSettings, PlanHabit, TemplateKey } from '@lifeline/shared';
 import { TEMPLATE_KEYS, bmi, bmr, maintenanceBase, proposeTarget } from '@lifeline/shared';
 import { Modal } from '../../shared/ui/Modal';
+import { CityPicker } from './CityPicker';
 import { templateFromDay } from './lib/templates';
 import { dividerBelowAt, newHabitId, templateKeyOf, withDividerAt } from './lib/plan-model';
 import styles from './DailyPlan.module.css';
@@ -309,34 +310,16 @@ function PrayerSection(props: {
 
   return (
     <Section title="Prayer times — shown on the five salah rows">
-      <div className={styles.macroGrid} style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-        <label className={styles.macroLabel} style={wordLabel}>
-          CITY
-          <input
-            dir="auto"
-            className={styles.smallInput}
-            style={fullWidth}
-            maxLength={120}
-            placeholder="e.g. Cairo"
-            value={prayer.city}
-            aria-label="Prayer city"
-            onChange={(e) => patchPrayer({ city: e.target.value })}
-          />
-        </label>
-        <label className={styles.macroLabel} style={wordLabel}>
-          COUNTRY
-          <input
-            dir="auto"
-            className={styles.smallInput}
-            style={fullWidth}
-            maxLength={120}
-            placeholder="e.g. Egypt"
-            value={prayer.country}
-            aria-label="Prayer country"
-            onChange={(e) => patchPrayer({ country: e.target.value })}
-          />
-        </label>
-      </div>
+      <CityPicker
+        idPrefix="prayer"
+        value={{
+          city: prayer.city,
+          country: prayer.country,
+          latitude: prayer.latitude,
+          longitude: prayer.longitude,
+        }}
+        onChange={(next) => patchPrayer(next)}
+      />
       <label
         className={styles.macroLabel}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 8, ...wordLabel }}

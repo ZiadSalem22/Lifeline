@@ -80,8 +80,15 @@ describe('dailyPlanSettingsSchema', () => {
     expect(settings.gratitudeCount).toBe(3);
     expect(settings.tomorrowCount).toBe(4);
     expect(settings.templates).toEqual({});
-    // Prayer times default dormant (no city) with Auto calculation method.
-    expect(settings.prayer).toEqual({ enabled: true, city: '', country: '', method: -1 });
+    // Prayer times default dormant (no city/coords) with Auto calculation method.
+    expect(settings.prayer).toEqual({
+      enabled: true,
+      city: '',
+      country: '',
+      method: -1,
+      latitude: null,
+      longitude: null,
+    });
   });
 
   it('day templates roundtrip per weekday and stored pre-personalization blobs self-heal', () => {

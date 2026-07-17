@@ -46,6 +46,25 @@ export function buildCalendarUrl(
   return `${ALADHAN_BASE}/calendarByCity/${year}/${month}?${params.toString()}`;
 }
 
+/**
+ * calendar for one month by exact coordinates — used when the city picker
+ * supplied lat/lon, so there's no name geocoding. method -1 = Auto (omit).
+ */
+export function buildCalendarUrlByCoords(
+  latitude: number,
+  longitude: number,
+  method: number,
+  year: number,
+  month: number,
+): string {
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+  });
+  if (method >= 0) params.set('method', String(method));
+  return `${ALADHAN_BASE}/calendar/${year}/${month}?${params.toString()}`;
+}
+
 /** First HH:MM in a raw timing string ("05:12 (EEST)" → "05:12"); null if none. */
 export function timeOnly(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   buildCalendarUrl,
+  buildCalendarUrlByCoords,
   monthKeyOf,
   parseMonth,
   timesForDay,
@@ -23,9 +24,10 @@ import {
 
 const CACHE_PREFIX = 'prayer_times';
 
-/** localStorage key for one city+method+month of parsed times. */
-function cacheKey(city: string, country: string, method: number, monthKey: string): string {
-  return `${CACHE_PREFIX}:${city.trim().toLowerCase()}:${country.trim().toLowerCase()}:${method}:${monthKey}`;
+/** localStorage key for one location+method+month of parsed times. `locToken`
+ * is the coordinate token (`@lat,lon`) when picked, else `city:country`. */
+function cacheKey(locToken: string, method: number, monthKey: string): string {
+  return `${CACHE_PREFIX}:${locToken}:${method}:${monthKey}`;
 }
 
 function readCache(key: string): PrayerMonth | null {
@@ -62,7 +64,21 @@ export async function fetchPrayerMonth(
   year: number,
   month: number,
 ): Promise<PrayerMonth> {
-  const url = buildCalendarUrl(city, country, method, year, month);
+  return fetchAndParse(buildCalendarUrl(city, country, method, year, month));
+}
+
+/** Coordinate variant — exact lat/lon, no name geocoding. */
+export async function fetchPrayerMonthByCoords(
+  latitude: number,
+  longitude: number,
+  method: number,
+  year: number,
+  month: number,
+): Promise<PrayerMonth> {
+  return fetchAndParse(buildCalendarUrlByCoords(latitude, longitude, method, year, month));
+}
+
+async function fetchAndParse(url: string): Promise<PrayerMonth> {
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Aladhan responded ${response.status}`);
   const json: unknown = await response.json();
@@ -79,30 +95,35 @@ export interface PrayerTimesResult {
 }
 
 /**
- * The five prayer times for `dateStr` (`YYYY-MM-DD`) in `city`. `method` -1 is
- * Auto. Returns `{ times: null }` until a city is set or the month resolves.
+ * The five prayer times for `dateStr` (`YYYY-MM-DD`) at a location. When
+ * `latitude`/`longitude` are present (city picked from the list) we query
+ * Aladhan by exact coordinates — no name geocoding; otherwise we fall back to
+ * the city/country name. `method` -1 is Auto. Returns `{ times: null }` until a
+ * location is set or the month resolves.
  */
 export function usePrayerTimes(
   city: string,
   country: string,
   method: number,
   dateStr: string,
+  latitude?: number | null,
+  longitude?: number | null,
 ): PrayerTimesResult {
   const trimmedCity = city.trim();
-  const active = trimmedCity.length > 0;
+  const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
+  const active = hasCoords || trimmedCity.length > 0;
   const monthKey = monthKeyOf(dateStr);
   const year = Number(dateStr.slice(0, 4));
   const month = Number(dateStr.slice(5, 7));
-  const key = cacheKey(city, country, method, monthKey);
+  // Coordinates give a stable, exact location token; the name path keys on
+  // city+country. Either way the month + method complete the cache identity.
+  const locToken = hasCoords
+    ? `@${latitude},${longitude}`
+    : `${trimmedCity.toLowerCase()}:${country.trim().toLowerCase()}`;
+  const key = cacheKey(locToken, method, monthKey);
 
   const query = useQuery({
-    queryKey: [
-      'prayer-times',
-      trimmedCity.toLowerCase(),
-      country.trim().toLowerCase(),
-      method,
-      monthKey,
-    ],
+    queryKey: ['prayer-times', locToken, method, monthKey],
     enabled: active && Number.isFinite(year) && Number.isFinite(month),
     // A month of prayer times doesn't change — refetch rarely, keep long.
     // gcTime stays under the 32-bit setTimeout ceiling (~24.8 days); the
@@ -115,7 +136,10 @@ export function usePrayerTimes(
     initialData: () => readCache(key) ?? undefined,
     queryFn: async () => {
       try {
-        const fetched = await fetchPrayerMonth(trimmedCity, country, method, year, month);
+        const fetched =
+          hasCoords && latitude != null && longitude != null
+            ? await fetchPrayerMonthByCoords(latitude, longitude, method, year, month)
+            : await fetchPrayerMonth(trimmedCity, country, method, year, month);
         writeCache(key, fetched);
         return fetched;
       } catch (err) {
