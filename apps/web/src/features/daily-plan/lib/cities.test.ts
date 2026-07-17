@@ -39,6 +39,12 @@ describe('countryName / countryOptions', () => {
     const opts = countryOptions(DATA);
     expect(opts.map((o) => o.name)).toEqual(['Egypt', 'United States']);
   });
+
+  it('labels the PS group "Palestine" (stable across CLDR versions)', () => {
+    expect(countryName('PS')).toBe('Palestine');
+    // Reverse lookup follows the override so a stored "Palestine" preselects it.
+    expect(codeForCountryName({ PS: [] }, 'Palestine')).toBe('PS');
+  });
 });
 
 describe('codeForCountryName', () => {
@@ -72,7 +78,7 @@ describe('loadCities', () => {
     const loaded = await loadCities();
     expect(loaded.EG?.[0]?.[0]).toBe('Cairo');
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    // Mirrored under cities:v1 for instant/offline reuse.
-    expect(window.localStorage.getItem('cities:v1')).not.toBeNull();
+    // Mirrored to the versioned cache key for instant/offline reuse.
+    expect(window.localStorage.getItem('cities:v2')).not.toBeNull();
   });
 });

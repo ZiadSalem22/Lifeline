@@ -15,7 +15,9 @@ import { scoreMeal } from './meal-filter';
 export type CityTuple = [name: string, lat: number, lon: number, admin: string];
 export type CityData = Record<string, CityTuple[]>;
 
-const CACHE_KEY = 'cities:v1';
+// Bump this when the dataset shape/content changes so cached copies refresh
+// (v2 = IL folded into a single "Palestine" group).
+const CACHE_KEY = 'cities:v2';
 const DATA_URL = '/cities15000.json';
 
 let memo: CityData | null = null;
@@ -60,8 +62,16 @@ const regionNames =
     ? new Intl.DisplayNames(['en'], { type: 'region' })
     : null;
 
+/** Display-name overrides layered over Intl (product choice). Cities keep their
+ * real coordinates, so this only changes the label shown in the picker. The
+ * PS group also carries the cities GeoNames files under Israel (merged in the
+ * data pipeline); it's labeled "Palestine" consistently across CLDR versions. */
+const NAME_OVERRIDES: Record<string, string> = { PS: 'Palestine' };
+
 /** ISO country code → English name ("EG" → "Egypt"); falls back to the code. */
 export function countryName(code: string): string {
+  const override = NAME_OVERRIDES[code];
+  if (override) return override;
   try {
     return regionNames?.of(code) ?? code;
   } catch {
