@@ -39,7 +39,22 @@ afterEach(() => {
 
 function seedPrayerCity(city: string, country = 'Egypt') {
   const settings = defaultDailyPlanSettings();
-  settings.prayer = { enabled: true, city, country, method: -1 };
+  // Name-only seed (no coords) — exercises the calendarByCity fallback path.
+  settings.prayer = { enabled: true, city, country, method: -1, latitude: null, longitude: null };
+  window.localStorage.setItem('daily_plan_settings', JSON.stringify(settings));
+}
+
+function seedPrayerCoords(latitude: number, longitude: number) {
+  const settings = defaultDailyPlanSettings();
+  // City picked from the list → exact coordinates drive the query.
+  settings.prayer = {
+    enabled: true,
+    city: 'Cairo',
+    country: 'Egypt',
+    method: -1,
+    latitude,
+    longitude,
+  };
   window.localStorage.setItem('daily_plan_settings', JSON.stringify(settings));
 }
 
@@ -79,6 +94,24 @@ describe('prayer times on the habit rows', () => {
       const key = Object.keys(localStorage).find((k) => k.startsWith('prayer_times:cairo:'));
       expect(key).toBeTruthy();
     });
+  });
+
+  it('queries Aladhan by coordinates when the city was picked (lat/lon present)', async () => {
+    const fetchMock = vi.fn((_url: string) =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve(CANNED_MONTH) } as Response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    seedPrayerCoords(30.0626, 31.2497);
+
+    renderPlan();
+
+    // Badges still render, but via the coordinate endpoint (no name geocoding).
+    expect(await screen.findByText('03:12')).toBeInTheDocument();
+    const url = String(fetchMock.mock.calls[0]?.[0] ?? '');
+    expect(url).toContain('/calendar/2026/7');
+    expect(url).toContain('latitude=30.0626');
+    expect(url).toContain('longitude=31.2497');
+    expect(url).not.toContain('calendarByCity');
   });
 
   it('shows the add-your-city hint when no city is set (no fetch)', async () => {

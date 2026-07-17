@@ -4,6 +4,8 @@ node_modules
 package-lock.json
 *.gen.ts
 openapi.json
+# Generated city dataset (npm run build:cities) — large, not hand-edited.
+apps/web/public/cities15000.json
 .dockerignore
 .gitignore
 .prettierignore

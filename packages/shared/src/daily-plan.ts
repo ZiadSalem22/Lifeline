@@ -414,8 +414,12 @@ export const dailyPlanSettingsSchema = z.object({
       city: z.string().max(120).default(''),
       country: z.string().max(120).default(''),
       method: z.number().int().min(-1).max(99).default(-1),
+      // Exact coordinates from the city picker — when present the app queries
+      // Aladhan by lat/lon (pinpoint) instead of geocoding the city name.
+      latitude: z.number().min(-90).max(90).nullable().default(null),
+      longitude: z.number().min(-180).max(180).nullable().default(null),
     })
-    .default({ enabled: true, city: '', country: '', method: -1 }),
+    .default({ enabled: true, city: '', country: '', method: -1, latitude: null, longitude: null }),
   /**
    * Energy profile for BMR/TDEE (see energy.ts). Katch-McArdle needs only
    * weight + fat%; Mifflin-St Jeor needs all four. 'unset'/0 = not provided —

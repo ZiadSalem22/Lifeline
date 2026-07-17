@@ -223,6 +223,8 @@ export function DailyPlanView({
     prayer.country,
     prayer.method,
     dateStr,
+    prayer.enabled ? prayer.latitude : null,
+    prayer.enabled ? prayer.longitude : null,
   );
 
   const day = effectiveDays[dateStr] ?? materialized;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCalendarUrl,
+  buildCalendarUrlByCoords,
   gregorianToIso,
   monthKeyOf,
   parseMonth,
@@ -34,6 +35,25 @@ describe('buildCalendarUrl', () => {
     const url = buildCalendarUrl('  New York ', ' United States ', -1, 2026, 7);
     expect(url).toContain('city=New+York');
     expect(url).toContain('country=United+States');
+  });
+});
+
+describe('buildCalendarUrlByCoords', () => {
+  it('assembles the coordinate calendar endpoint with lat/lon', () => {
+    const url = buildCalendarUrlByCoords(30.0626, 31.2497, -1, 2026, 7);
+    expect(url).toContain('/calendar/2026/7?');
+    expect(url).toContain('latitude=30.0626');
+    expect(url).toContain('longitude=31.2497');
+    // Auto omits the method param.
+    expect(url).not.toContain('method=');
+  });
+
+  it('includes the method when not Auto, and handles negative longitude', () => {
+    const url = buildCalendarUrlByCoords(40.7143, -74.006, 2, 2026, 7);
+    expect(url).toContain('latitude=40.7143');
+    // -74.006 encodes with %2D or literal '-'; URLSearchParams keeps '-'.
+    expect(url).toContain('longitude=-74.006');
+    expect(url).toContain('method=2');
   });
 });
 
