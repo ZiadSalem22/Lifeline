@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react';
-import type { CreateTodoInput, Priority, Recurrence, Tag, Todo } from '@lifeline/shared';
+import type { CreateTodoInput, PlanHabit, Priority, Recurrence, Tag, Todo } from '@lifeline/shared';
 import { FlagIcon } from '../../../shared/ui/icons';
 import { useCreateTag, useCreateTodo, useSimilar, useTodoByNumber } from '../data/hooks';
 import { resolveDayString } from '../lib/day-filter';
@@ -42,6 +42,12 @@ export interface ComposerProps {
    * typing right after "+ ADD TASK" lands in the task name.
    */
   initialFocus?: 'load' | 'title' | undefined;
+  /**
+   * Daily Plan habits offered by the "Counts toward habit" select. Completing
+   * the created task checks the linked habit for the task's due date. Absent/
+   * empty hides the control entirely.
+   */
+  habits?: readonly PlanHabit[] | undefined;
 }
 
 interface DraftSubtask {
@@ -63,6 +69,7 @@ export function Composer({
   initialDueTime,
   closeOnOutsideClick = true,
   initialFocus = 'load',
+  habits,
 }: ComposerProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const loadInputRef = useRef<HTMLInputElement | null>(null);
@@ -88,6 +95,7 @@ export function Composer({
     }
   }
   const [priority, setPriority] = useState<Priority>('medium');
+  const [habitId, setHabitId] = useState('');
   const [isFlagged, setIsFlagged] = useState(false);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -158,6 +166,7 @@ export function Composer({
     setDueTime(initialDueTime ?? '');
     setScheduleDate(initialDueDate ?? '');
     setPriority('medium');
+    setHabitId('');
     setIsFlagged(false);
     setTagIds([]);
     setShowTagPicker(false);
@@ -191,6 +200,8 @@ export function Composer({
     setTagIds(todo.tags.map((tag) => tag.id));
     setIsFlagged(todo.isFlagged);
     setPriority(todo.priority);
+    // A template of a linked task carries its habit link onto the new task.
+    setHabitId(todo.habitId ?? '');
     setSubtasks(
       todo.subtasks.map((subtask) => ({
         key: subtask.subtaskId,
@@ -251,6 +262,7 @@ export function Composer({
         isCompleted: subtask.isCompleted,
       })),
       recurrence,
+      habitId: habitId || null,
     };
     try {
       await createTodo.mutateAsync(input);
@@ -526,6 +538,23 @@ export function Composer({
           <option value="medium">Medium Priority</option>
           <option value="high">High Priority</option>
         </select>
+
+        {habits && habits.length > 0 && (
+          <select
+            className={styles.control}
+            value={habitId}
+            onChange={(event) => setHabitId(event.target.value)}
+            aria-label="Counts toward habit"
+            title="Completing this task checks the habit for that day"
+          >
+            <option value="">No habit</option>
+            {habits.map((habit) => (
+              <option key={habit.id} value={habit.id}>
+                ✓ {habit.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         <button
           type="button"

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { addDays, format, parseISO } from 'date-fns';
-import type { Todo } from '@lifeline/shared';
+import type { PlanHabit, Todo } from '@lifeline/shared';
 import { SquareCheck } from './cards';
 import styles from './TaskPreviewModal.module.css';
 
@@ -47,6 +47,10 @@ export interface TaskPreviewModalProps {
   onEdit: (todo: Todo) => void;
   /** Reschedule the task's due date ('YYYY-MM-DD'). */
   onMove?: ((todo: Todo, dateStr: string) => void) | undefined;
+  /** Plan habits for the "Counts toward habit" select (absent hides it). */
+  habits?: readonly PlanHabit[] | undefined;
+  /** Link/unlink the task to a habit (null clears the link). */
+  onLinkHabit?: ((todo: Todo, habitId: string | null) => void) | undefined;
 }
 
 export function TaskPreviewModal({
@@ -56,6 +60,8 @@ export function TaskPreviewModal({
   onToggleSubtask,
   onEdit,
   onMove,
+  habits,
+  onLinkHabit,
 }: TaskPreviewModalProps) {
   const open = todo !== null;
   useEffect(() => {
@@ -173,6 +179,25 @@ export function TaskPreviewModal({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {habits && habits.length > 0 && onLinkHabit && (
+          <div className={styles.moveRow}>
+            <span className={styles.moveLabel}>Counts toward</span>
+            <select
+              className={styles.habitSelect}
+              value={todo.habitId ?? ''}
+              aria-label="Counts toward habit"
+              onChange={(event) => onLinkHabit(todo, event.target.value || null)}
+            >
+              <option value="">No habit</option>
+              {habits.map((habit) => (
+                <option key={habit.id} value={habit.id}>
+                  ✓ {habit.label}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

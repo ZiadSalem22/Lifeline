@@ -153,6 +153,8 @@ export interface NewTodoData {
   subtasks: SubtaskRecord[];
   order: number;
   recurrence: Recurrence | null;
+  /** Daily Plan habit this task counts toward (copied to every expanded row). */
+  habitId: string | null;
   originalId: string | null;
   /** Resolved tag ids (unknown ids must be dropped before this point). */
   tagIds: string[];
@@ -168,6 +170,7 @@ export interface TodoUpdateData {
   priority?: Priority | undefined;
   subtasks?: SubtaskRecord[] | undefined;
   order?: number | undefined;
+  habitId?: string | null | undefined;
   tagIds?: string[] | undefined;
 }
 

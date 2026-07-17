@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import {
   defaultDailyPlanSettings,
   extractDayMetrics,
@@ -190,6 +195,131 @@ export function usePlanMetrics(range: { startDate: string; endDate: string }) {
   };
 }
 
+/* ── shared day-write pipeline ────────────────────────────────────────────────
+ * ONE pending snapshot per (mode, date) at module level, so every writer —
+ * the plan view's debounced edits AND out-of-view writers like the task→habit
+ * sync — composes from the same cache state and flushes through the same
+ * queue. Two independent pipelines racing the same date could PUT snapshots
+ * that silently drop each other's changes. */
+
+interface PendingDayWrite {
+  planApi: PlanApi;
+  mode: string;
+  date: string;
+  data: DailyPlanData;
+}
+
+const dayWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const dayWritePending = new Map<string, PendingDayWrite>();
+
+const dayWriteKey = (mode: string, date: string) => `${mode}|${date}`;
+
+function flushDayWrite(key: string, queryClient?: QueryClient) {
+  const timer = dayWriteTimers.get(key);
+  if (timer) clearTimeout(timer);
+  dayWriteTimers.delete(key);
+  const entry = dayWritePending.get(key);
+  if (!entry) return;
+  dayWritePending.delete(key);
+  entry.planApi
+    .putDay(entry.date, entry.data)
+    .then(() => markSettled(`day:${entry.date}`, true))
+    .catch(() => {
+      markSettled(`day:${entry.date}`, false);
+      // Server rejected/failed — refetch the truth for that week.
+      void queryClient?.invalidateQueries({
+        queryKey: weekKey(entry.mode, weekStartOf(entry.date)),
+      });
+    });
+}
+
+/** Patch every read-model cache (week, recent windows, metrics) for one day. */
+function patchDayCaches(queryClient: QueryClient, mode: string, date: string, next: DailyPlanData) {
+  const upsert = (rows: DailyPlanDay[] | undefined): DailyPlanDay[] => {
+    const list = rows ? [...rows] : [];
+    const index = list.findIndex((row) => row.date === date);
+    if (index === -1) {
+      list.push({ date, data: next });
+      list.sort((a, b) => a.date.localeCompare(b.date));
+    } else {
+      list[index] = { date, data: next };
+    }
+    return list;
+  };
+  queryClient.setQueryData<DailyPlanDay[]>(weekKey(mode, weekStartOf(date)), upsert);
+  // Keep recent-days windows fresh too, so same-session edits to a past
+  // day (e.g. yesterday's Tomorrow Plan) flow straight into today's
+  // continuity/suggestions instead of waiting out staleTime.
+  queryClient.setQueriesData<DailyPlanDay[]>(
+    {
+      predicate: (query) => {
+        const key = query.queryKey;
+        return (
+          Array.isArray(key) &&
+          key[0] === 'daily-plan-recent' &&
+          key[1] === mode &&
+          typeof key[2] === 'string' &&
+          typeof key[3] === 'string' &&
+          key[2] <= date &&
+          date <= key[3]
+        );
+      },
+    },
+    upsert,
+  );
+  // Statistics metrics caches covering this date update too — the shared
+  // extractor makes today's edits show up in charts without a refetch.
+  queryClient.setQueriesData<PlanMetricsResponse>(
+    {
+      predicate: (query) => {
+        const key = query.queryKey;
+        return (
+          Array.isArray(key) &&
+          key[0] === 'plan-metrics' &&
+          key[1] === mode &&
+          typeof key[2] === 'string' &&
+          typeof key[3] === 'string' &&
+          key[2] <= date &&
+          date <= key[3]
+        );
+      },
+    },
+    (response) => {
+      if (!response) return response;
+      const metric = extractDayMetrics(date, next);
+      const items = [...response.items];
+      const index = items.findIndex((m) => m.date === date);
+      if (index === -1) {
+        items.push(metric);
+        items.sort((a, b) => a.date.localeCompare(b.date));
+      } else {
+        items[index] = metric;
+      }
+      return { items };
+    },
+  );
+}
+
+/**
+ * Immediate write-through for out-of-view writers (task→habit sync): patches
+ * the caches, takes over any pending debounced snapshot for the date (the
+ * caller composed `next` from the cache, which already contains it), and PUTs
+ * right away — no debounce, since these are single event-driven writes.
+ */
+export function writePlanDayImmediate(
+  queryClient: QueryClient,
+  mode: string,
+  planApi: PlanApi,
+  date: string,
+  next: DailyPlanData,
+) {
+  patchDayCaches(queryClient, mode, date, next);
+  const key = dayWriteKey(mode, date);
+  dayWritePending.set(key, { planApi, mode, date, data: next });
+  markDirty(`day:${date}`);
+  flushDayWrite(key, queryClient);
+}
+
 /**
  * Debounced day writer. `saveDay(date, next)` patches the week cache
  * immediately and schedules the PUT; pending writes flush on unmount.
@@ -197,46 +327,13 @@ export function usePlanMetrics(range: { startDate: string; endDate: string }) {
 export function useSaveDay() {
   const { planApi, mode } = usePlanApi();
   const queryClient = useQueryClient();
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const pending = useRef(new Map<string, DailyPlanData>());
-
-  const flush = useCallback(
-    (date: string) => {
-      const timer = timers.current.get(date);
-      if (timer) clearTimeout(timer);
-      timers.current.delete(date);
-      const data = pending.current.get(date);
-      if (!data) return;
-      pending.current.delete(date);
-      planApi
-        .putDay(date, data)
-        .then(() => markSettled(`day:${date}`, true))
-        .catch(() => {
-          markSettled(`day:${date}`, false);
-          // Server rejected/failed — refetch the truth for that week.
-          void queryClient.invalidateQueries({ queryKey: weekKey(mode, weekStartOf(date)) });
-        });
-    },
-    [planApi, queryClient, mode],
-  );
 
   useEffect(() => {
-    const timerMap = timers.current;
-    const pendingMap = pending.current;
     // Refresh/close/app-switch would silently drop the 800ms debounce window:
     // React cleanups do not run on unload. Flush everything the moment the
     // page hides (the PUTs are keepalive, so they outlive a closing tab).
     const flushAll = () => {
-      for (const [date, data] of pendingMap) {
-        const timer = timerMap.get(date);
-        if (timer) clearTimeout(timer);
-        timerMap.delete(date);
-        void planApi
-          .putDay(date, data)
-          .then(() => markSettled(`day:${date}`, true))
-          .catch(() => markSettled(`day:${date}`, false));
-      }
-      pendingMap.clear();
+      for (const key of [...dayWritePending.keys()]) flushDayWrite(key, queryClient);
     };
     const onHide = () => {
       if (document.visibilityState === 'hidden') flushAll();
@@ -246,94 +343,25 @@ export function useSaveDay() {
     return () => {
       window.removeEventListener('pagehide', flushAll);
       document.removeEventListener('visibilitychange', onHide);
-      for (const timer of timerMap.values()) clearTimeout(timer);
-      timerMap.clear();
       // Fire-and-forget the unsaved blobs so day/mode switches never lose data.
-      for (const [date, data] of pendingMap) {
-        void planApi
-          .putDay(date, data)
-          .then(() => markSettled(`day:${date}`, true))
-          .catch(() => markSettled(`day:${date}`, false));
-      }
-      pendingMap.clear();
+      flushAll();
     };
-  }, [planApi]);
+  }, [queryClient]);
 
   return useCallback(
     (date: string, next: DailyPlanData) => {
-      const upsert = (rows: DailyPlanDay[] | undefined): DailyPlanDay[] => {
-        const list = rows ? [...rows] : [];
-        const index = list.findIndex((row) => row.date === date);
-        if (index === -1) {
-          list.push({ date, data: next });
-          list.sort((a, b) => a.date.localeCompare(b.date));
-        } else {
-          list[index] = { date, data: next };
-        }
-        return list;
-      };
-      queryClient.setQueryData<DailyPlanDay[]>(weekKey(mode, weekStartOf(date)), upsert);
-      // Keep recent-days windows fresh too, so same-session edits to a past
-      // day (e.g. yesterday's Tomorrow Plan) flow straight into today's
-      // continuity/suggestions instead of waiting out staleTime.
-      queryClient.setQueriesData<DailyPlanDay[]>(
-        {
-          predicate: (query) => {
-            const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              key[0] === 'daily-plan-recent' &&
-              key[1] === mode &&
-              typeof key[2] === 'string' &&
-              typeof key[3] === 'string' &&
-              key[2] <= date &&
-              date <= key[3]
-            );
-          },
-        },
-        upsert,
-      );
-      // Statistics metrics caches covering this date update too — the shared
-      // extractor makes today's edits show up in charts without a refetch.
-      queryClient.setQueriesData<PlanMetricsResponse>(
-        {
-          predicate: (query) => {
-            const key = query.queryKey;
-            return (
-              Array.isArray(key) &&
-              key[0] === 'plan-metrics' &&
-              key[1] === mode &&
-              typeof key[2] === 'string' &&
-              typeof key[3] === 'string' &&
-              key[2] <= date &&
-              date <= key[3]
-            );
-          },
-        },
-        (response) => {
-          if (!response) return response;
-          const metric = extractDayMetrics(date, next);
-          const items = [...response.items];
-          const index = items.findIndex((m) => m.date === date);
-          if (index === -1) {
-            items.push(metric);
-            items.sort((a, b) => a.date.localeCompare(b.date));
-          } else {
-            items[index] = metric;
-          }
-          return { items };
-        },
-      );
-      pending.current.set(date, next);
+      patchDayCaches(queryClient, mode, date, next);
+      const key = dayWriteKey(mode, date);
+      dayWritePending.set(key, { planApi, mode, date, data: next });
       markDirty(`day:${date}`);
-      const existing = timers.current.get(date);
+      const existing = dayWriteTimers.get(key);
       if (existing) clearTimeout(existing);
-      timers.current.set(
-        date,
-        setTimeout(() => flush(date), PLAN_SAVE_DEBOUNCE_MS),
+      dayWriteTimers.set(
+        key,
+        setTimeout(() => flushDayWrite(key, queryClient), PLAN_SAVE_DEBOUNCE_MS),
       );
     },
-    [queryClient, mode, flush],
+    [queryClient, mode, planApi],
   );
 }
 

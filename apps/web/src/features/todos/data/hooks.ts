@@ -13,6 +13,8 @@ import type {
 import { guestApi } from '../../../shared/guest/guest-api';
 import type { GuestTodoPatch } from '../../../shared/guest/guest-api';
 import { useAuth } from '../../../app/providers/auth-context';
+import { habitSyncTargets, useHabitTaskSync } from '../../daily-plan/data/habit-task-sync';
+import { todosQueryKey, tagsQueryKey } from './keys';
 import { moveById, computeOrderPatches } from '../lib/reorder';
 import type { OrderPatch } from '../lib/reorder';
 import * as todosApi from './api';
@@ -33,8 +35,7 @@ import * as todosApi from './api';
 
 const MAX_PAGES = 50;
 
-export const todosQueryKey = (guest: boolean) => ['todos', guest ? 'guest' : 'server'] as const;
-export const tagsQueryKey = (guest: boolean) => ['tags', guest ? 'guest' : 'server'] as const;
+export { todosQueryKey, tagsQueryKey };
 
 async function fetchAllServerTodos(): Promise<Todo[]> {
   const items: Todo[] = [];
@@ -130,11 +131,18 @@ export function useCreateTodo() {
 
 export function useUpdateTodo() {
   const { guestMode } = useAuth();
-  const { replaceTodo } = useTodoCache();
+  const { queryClient, key, replaceTodo } = useTodoCache();
+  const syncHabits = useHabitTaskSync();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: UpdateTodoInput }) =>
       guestMode ? guestApi.updateTodo(id, patch as GuestTodoPatch) : todosApi.patchTodo(id, patch),
-    onSuccess: (updated) => replaceTodo(updated),
+    onSuccess: (updated) => {
+      // A completed linked task moved to another day (or re-linked) must
+      // recompute BOTH sides — the old day's ✓ may no longer be earned.
+      const before = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === updated.id);
+      replaceTodo(updated);
+      syncHabits(habitSyncTargets(before, updated), [updated]);
+    },
   });
 }
 
@@ -142,6 +150,7 @@ export function useUpdateTodo() {
 export function useToggleComplete() {
   const { guestMode } = useAuth();
   const { replaceTodo } = useTodoCache();
+  const syncHabits = useHabitTaskSync();
   return useMutation({
     mutationFn: async ({ id, isCompleted }: { id: string; isCompleted: boolean }) => {
       if (guestMode) return guestApi.toggleTodo(id);
@@ -150,7 +159,11 @@ export function useToggleComplete() {
         : todosApi.completeTodo(id));
       return todo;
     },
-    onSuccess: (todo) => replaceTodo(todo),
+    onSuccess: (todo) => {
+      replaceTodo(todo);
+      // Linked task toggled → recompute its habit's ✓ for the task's day.
+      syncHabits(habitSyncTargets(todo), [todo]);
+    },
   });
 }
 
@@ -167,10 +180,18 @@ export function useToggleFlag() {
 /** DELETE = archive on the server; guest deletion is permanent (old behavior). */
 export function useDeleteTodo() {
   const { guestMode } = useAuth();
-  const { removeTodo } = useTodoCache();
+  const { queryClient, key, removeTodo } = useTodoCache();
+  const syncHabits = useHabitTaskSync();
   return useMutation({
     mutationFn: (id: string) => (guestMode ? guestApi.deleteTodo(id) : todosApi.archiveTodo(id)),
-    onSuccess: (_result, id) => removeTodo(id),
+    onSuccess: (_result, id) => {
+      // Deleting a completed linked task may un-earn its habit's ✓ (guest
+      // deletion is already gone from storage truth; server archive drops it
+      // from the recompute via the archived flag on the refetched row).
+      const before = queryClient.getQueryData<Todo[]>(key)?.find((t) => t.id === id);
+      removeTodo(id);
+      syncHabits(habitSyncTargets(before), before ? [{ ...before, archived: true }] : []);
+    },
   });
 }
 
@@ -286,6 +307,7 @@ export type BatchAction = 'complete' | 'uncomplete' | 'archive' | 'restore';
 export function useBatch() {
   const { guestMode } = useAuth();
   const { queryClient, key, invalidate } = useTodoCache();
+  const syncHabits = useHabitTaskSync();
   return useMutation<BatchResult | null, Error, { action: BatchAction; ids: string[] }>({
     mutationFn: async ({ action, ids }) => {
       if (!guestMode) return todosApi.batchTodos({ action, ids });
@@ -301,7 +323,16 @@ export function useBatch() {
       }
       return null;
     },
-    onSuccess: () => void invalidate(),
+    onSuccess: async (_result, { ids }) => {
+      // Batch complete/uncomplete/archive can flip linked tasks — collect the
+      // affected (habit, day) pairs first (link/date don't change in a batch),
+      // then recompute against the refreshed list (guest reads storage truth;
+      // server relies on the invalidated query's refetch).
+      const idSet = new Set(ids);
+      const affected = (queryClient.getQueryData<Todo[]>(key) ?? []).filter((t) => idSet.has(t.id));
+      await invalidate();
+      syncHabits(habitSyncTargets(...affected), []);
+    },
   });
 }
 

@@ -66,6 +66,7 @@ export interface GuestTodoPatch {
   priority?: Todo['priority'];
   subtasks?: SubtaskInput[];
   order?: number;
+  habitId?: string | null;
 }
 
 export interface GuestApi {
@@ -228,6 +229,7 @@ function normalizeStoredTodo(value: unknown): Todo | null {
   const priority = record.priority;
   const description = usableTitle(record.description);
   const originalId = pickField(record, 'originalId', 'original_id');
+  const habitId = pickField(record, 'habitId', 'habit_id');
 
   const subtasks: Subtask[] = [];
   for (const raw of Array.isArray(record.subtasks) ? record.subtasks : []) {
@@ -262,6 +264,7 @@ function normalizeStoredTodo(value: unknown): Todo | null {
     subtasks,
     order: Number.isFinite(order) ? Math.round(order) : 0,
     recurrence: plausibleRecurrence(record.recurrence),
+    habitId: typeof habitId === 'string' && habitId.length > 0 ? habitId : null,
     originalId: typeof originalId === 'string' && originalId.length > 0 ? originalId : null,
     archived: Boolean(record.archived),
     createdAt: isoOrNow(pickField(record, 'createdAt', 'created_at'), now),
@@ -464,6 +467,9 @@ export function createGuestApi(storage: GuestStorage = browserStorage): GuestApi
           subtasks: subtasks.map((subtask) => ({ ...subtask })),
           order: 0,
           recurrence,
+          // The habit link rides on every expanded occurrence (recurring task
+          // → drives its habit each day), mirroring the server expansion.
+          habitId: input.habitId ?? null,
           originalId: null,
           archived: false,
           createdAt: now,
@@ -501,6 +507,7 @@ export function createGuestApi(storage: GuestStorage = browserStorage): GuestApi
       if (patch.duration !== undefined) next.duration = patch.duration;
       if (patch.priority !== undefined) next.priority = patch.priority;
       if (patch.order !== undefined) next.order = patch.order;
+      if (patch.habitId !== undefined) next.habitId = patch.habitId;
       if (patch.tags !== undefined) next.tags = resolveTags(patch.tags);
       if (patch.subtasks !== undefined) next.subtasks = normalizeSubtasks(patch.subtasks);
 

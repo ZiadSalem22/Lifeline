@@ -26,6 +26,7 @@ import {
 import type { SortOption } from '../../features/todos/lib/day-filter';
 import { formatDuration } from '../../features/todos/lib/format';
 import { DailyPlanView } from '../../features/daily-plan/DailyPlanView';
+import { usePlanSettings } from '../../features/daily-plan/data/hooks';
 import { useHomeViewMode } from '../../features/daily-plan/data/view-mode';
 import { ApiError } from '../../shared/api/client';
 import { SparklesIcon } from '../../shared/ui/icons';
@@ -63,6 +64,8 @@ export default function DashboardPage() {
 
   const todosQuery = useAllTodos();
   const tagsQuery = useAllTags();
+  // Plan habits feed the composer's "Counts toward habit" select in Tasks mode.
+  const { settings: planSettings } = usePlanSettings();
   useRefreshOnDayChange(day);
 
   const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([]);
@@ -415,6 +418,7 @@ export default function DashboardPage() {
             allTodos={todosQuery.data ?? []}
             effectiveDate={day}
             onRequestClose={() => setComposerOpen(false)}
+            habits={planSettings.habits}
           />
 
           {/* ── task list ────────────────────────────────────────────────── */}

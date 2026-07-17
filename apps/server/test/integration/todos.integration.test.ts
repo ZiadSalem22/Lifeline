@@ -30,6 +30,7 @@ function newTodo(overrides: Partial<NewTodoData> = {}): NewTodoData {
     subtasks: [],
     order: 0,
     recurrence: null,
+    habitId: null,
     originalId: null,
     tagIds: [],
     ...overrides,

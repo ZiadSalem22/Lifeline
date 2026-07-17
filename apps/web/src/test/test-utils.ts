@@ -56,6 +56,7 @@ export function makeTodo(overrides: Partial<Todo> = {}): Todo {
     subtasks: [],
     order: 0,
     recurrence: null,
+    habitId: null,
     originalId: null,
     archived: false,
     createdAt: now,
