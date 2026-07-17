@@ -20,6 +20,7 @@ import {
   toLengthDisplay,
   toWeightDisplay,
 } from './lib/units';
+import { PRAYER_HABIT_IDS, type DayPrayers, type PrayerKey } from './lib/prayer-times';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -638,7 +639,14 @@ export interface HabitsBodyProps {
   streaks: Record<string, number>;
   /** 28-day history per habit id, oldest → newest (label click reveals it). */
   historyFor: (habitId: string) => { date: string; mark: HabitMark | undefined }[];
+  /** The selected day's five prayer times (by city), or null when unavailable. */
+  prayerTimes?: DayPrayers | null;
+  /** Prayer feature is on (a city is set) — gates the empty-city hint. */
+  prayerActive?: boolean;
 }
+
+/** Fixed prayer-habit ids, for a quick "is this a timed salah" membership test. */
+const PRAYER_ID_SET = new Set<string>(PRAYER_HABIT_IDS);
 
 /** empty → done → skipped → empty. */
 function nextHabitMark(current: HabitMark | undefined): HabitMark {
@@ -680,6 +688,8 @@ function HabitTrackerRow(props: {
   onMark: (date: string, habitId: string, next: HabitMark) => void;
   streak: number;
   historyFor: (habitId: string) => { date: string; mark: HabitMark | undefined }[];
+  /** HH:MM prayer time to show next to the label (salah rows only). */
+  timeBadge?: string | null;
 }) {
   const { habit } = props;
   const [showHistory, setShowHistory] = useState(false);
@@ -705,6 +715,11 @@ function HabitTrackerRow(props: {
           >
             {habit.label}
           </button>
+          {props.timeBadge && (
+            <span className={styles.prayerTimeBadge} title="Prayer time for the selected day">
+              {props.timeBadge}
+            </span>
+          )}
           {props.streak >= 2 && (
             <span className={styles.streakChip} title={`${props.streak}-day streak`}>
               ×{props.streak}
@@ -925,9 +940,17 @@ export function HabitsBody(props: HabitsBodyProps) {
                 onMark={props.onMark}
                 streak={props.streaks[habit.id] ?? 0}
                 historyFor={props.historyFor}
+                timeBadge={
+                  habit.salah && PRAYER_ID_SET.has(habit.id)
+                    ? (props.prayerTimes?.[habit.id as PrayerKey] ?? null)
+                    : null
+                }
               />
             ))}
           </div>
+          {!props.prayerActive && props.habits.some((h) => h.salah) && (
+            <p className={styles.prayerHint}>Add your city in Customize to see prayer times.</p>
+          )}
         </div>
       )}
     </div>

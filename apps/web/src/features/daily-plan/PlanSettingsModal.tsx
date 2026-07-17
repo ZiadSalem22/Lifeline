@@ -274,6 +274,112 @@ function BodyGoalSection(props: {
   );
 }
 
+/** Aladhan calculation methods. -1 = Auto (let the API pick for the city). */
+const PRAYER_METHODS: { value: number; label: string }[] = [
+  { value: -1, label: 'Auto — best for your city' },
+  { value: 3, label: 'Muslim World League' },
+  { value: 2, label: 'ISNA — North America' },
+  { value: 4, label: 'Umm al-Qura — Makkah' },
+  { value: 5, label: 'Egyptian General Authority' },
+  { value: 1, label: 'Univ. of Islamic Sciences, Karachi' },
+  { value: 7, label: 'Univ. of Tehran' },
+  { value: 0, label: 'Shia Ithna-Ashari — Jafari' },
+  { value: 8, label: 'Gulf Region' },
+  { value: 9, label: 'Kuwait' },
+  { value: 10, label: 'Qatar' },
+  { value: 11, label: 'Singapore' },
+  { value: 13, label: 'Turkey — Diyanet' },
+];
+
+/**
+ * PRAYER TIMES: type a city (+ country) to show accurate times on the five
+ * salah habit rows. Auto lets the provider pick the closest authority for the
+ * location; the Advanced disclosure overrides it with a specific method.
+ */
+function PrayerSection(props: {
+  settings: DailyPlanSettings;
+  patchSettings: (patch: Partial<DailyPlanSettings>) => void;
+}) {
+  const prayer = props.settings.prayer;
+  const [showAdvanced, setShowAdvanced] = useState(prayer.method >= 0);
+  const patchPrayer = (patch: Partial<DailyPlanSettings['prayer']>) =>
+    props.patchSettings({ prayer: { ...prayer, ...patch } });
+  const wordLabel = { fontSize: 'calc(9px * var(--plan-scale, 1))' } as const;
+  const fullWidth = { width: '100%', boxSizing: 'border-box' } as const;
+
+  return (
+    <Section title="Prayer times — shown on the five salah rows">
+      <div className={styles.macroGrid} style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <label className={styles.macroLabel} style={wordLabel}>
+          CITY
+          <input
+            dir="auto"
+            className={styles.smallInput}
+            style={fullWidth}
+            maxLength={120}
+            placeholder="e.g. Cairo"
+            value={prayer.city}
+            aria-label="Prayer city"
+            onChange={(e) => patchPrayer({ city: e.target.value })}
+          />
+        </label>
+        <label className={styles.macroLabel} style={wordLabel}>
+          COUNTRY
+          <input
+            dir="auto"
+            className={styles.smallInput}
+            style={fullWidth}
+            maxLength={120}
+            placeholder="e.g. Egypt"
+            value={prayer.country}
+            aria-label="Prayer country"
+            onChange={(e) => patchPrayer({ country: e.target.value })}
+          />
+        </label>
+      </div>
+      <label
+        className={styles.macroLabel}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, ...wordLabel }}
+      >
+        <input
+          type="checkbox"
+          checked={prayer.enabled}
+          aria-label="Show prayer times on the salah rows"
+          onChange={(e) => patchPrayer({ enabled: e.target.checked })}
+        />
+        SHOW TIMES ON THE SALAH ROWS
+      </label>
+      <button
+        type="button"
+        className={styles.habitLabelBtn}
+        style={{ alignSelf: 'flex-start', ...wordLabel, color: 'var(--plan-muted)' }}
+        aria-expanded={showAdvanced}
+        onClick={() => setShowAdvanced((v) => !v)}
+      >
+        {showAdvanced ? '▾ ' : '▸ '}ADVANCED — CALCULATION METHOD
+      </button>
+      {showAdvanced && (
+        <label className={styles.macroLabel} style={wordLabel}>
+          CALCULATION METHOD
+          <select
+            className={styles.smallInput}
+            style={fullWidth}
+            value={prayer.method}
+            aria-label="Prayer calculation method"
+            onChange={(e) => patchPrayer({ method: Number.parseInt(e.target.value, 10) })}
+          >
+            {PRAYER_METHODS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </Section>
+  );
+}
+
 export function PlanSettingsModal(props: PlanSettingsModalProps) {
   const { settings } = props;
   const [templateKey, setTemplateKey] = useState<TemplateKey>(templateKeyOf(props.dateStr));
@@ -517,6 +623,8 @@ export function PlanSettingsModal(props: PlanSettingsModalProps) {
           weightKg={props.weightKg}
           fatPct={props.fatPct}
         />
+
+        <PrayerSection settings={settings} patchSettings={props.patchSettings} />
 
         <Section title="Schedule & rows">
           <div className={styles.macroGrid}>

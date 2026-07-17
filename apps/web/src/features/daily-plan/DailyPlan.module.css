@@ -985,6 +985,25 @@ button.weekChipToday:hover:not(:disabled) {
   vertical-align: 1px;
 }
 
+/* Prayer time next to a salah habit's label — quiet, monospaced digits. */
+.prayerTimeBadge {
+  margin-inline-start: 6px;
+  font-size: calc(9.5px * var(--plan-scale, 1));
+  font-weight: 600;
+  color: var(--plan-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+
+/* Shown under the habit grid when no city is set yet. */
+.prayerHint {
+  margin: 8px 0 0;
+  font-size: calc(10px * var(--plan-scale, 1));
+  color: var(--plan-muted);
+  font-style: italic;
+}
+
 /* 28 squares, oldest → newest (GitHub-graph style, monochrome). */
 .habitHistory {
   display: grid;

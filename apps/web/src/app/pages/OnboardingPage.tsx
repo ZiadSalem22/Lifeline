@@ -33,6 +33,7 @@ export default function OnboardingPage() {
   const [email, setEmail] = useState(currentUser?.email ?? '');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
   const [startDay, setStartDay] = useState<DayName>('Monday');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -64,6 +65,7 @@ export default function OnboardingPage() {
         timezone: getBrowserTimezone(),
         phone: phone.trim() || null,
         country: country.trim() || null,
+        city: city.trim() || null,
         startDayOfWeek: startDay,
         onboardingCompleted: true,
       });
@@ -155,6 +157,19 @@ export default function OnboardingPage() {
               className={styles.input}
               value={country}
               onChange={(event) => handleCountryChange(event.target.value)}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="onboarding-city">
+              City
+            </label>
+            <input
+              id="onboarding-city"
+              className={styles.input}
+              value={city}
+              placeholder="For accurate prayer times"
+              onChange={(event) => setCity(event.target.value)}
             />
           </div>
 

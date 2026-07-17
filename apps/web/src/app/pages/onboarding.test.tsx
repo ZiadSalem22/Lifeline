@@ -62,6 +62,8 @@ describe('OnboardingPage', () => {
 
     await user.type(screen.getByLabelText('First Name *'), 'Ziyad');
     await user.type(screen.getByLabelText('Last Name *'), 'Salem');
+    // City feeds prayer times downstream — it must reach the profile PUT.
+    await user.type(screen.getByLabelText('City'), 'Cairo');
     // Email is prefilled from the identity.
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -74,6 +76,7 @@ describe('OnboardingPage', () => {
       firstName: 'Ziyad',
       lastName: 'Salem',
       email: 'ziyad@example.com',
+      city: 'Cairo',
       startDayOfWeek: 'Monday',
       onboardingCompleted: true,
     });
