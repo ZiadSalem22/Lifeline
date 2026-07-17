@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { addDays, format, parseISO } from 'date-fns';
 import type { PlanHabit, Todo } from '@lifeline/shared';
 import { SquareCheck } from './cards';
+import { formatClock, type TimeFormat } from './lib/time-format';
 import styles from './TaskPreviewModal.module.css';
 
 /**
@@ -51,6 +52,8 @@ export interface TaskPreviewModalProps {
   habits?: readonly PlanHabit[] | undefined;
   /** Link/unlink the task to a habit (null clears the link). */
   onLinkHabit?: ((todo: Todo, habitId: string | null) => void) | undefined;
+  /** 24h vs 12h clock display for the due-time in the meta line. */
+  timeFormat?: TimeFormat | undefined;
 }
 
 export function TaskPreviewModal({
@@ -62,6 +65,7 @@ export function TaskPreviewModal({
   onMove,
   habits,
   onLinkHabit,
+  timeFormat = '24h',
 }: TaskPreviewModalProps) {
   const open = todo !== null;
   useEffect(() => {
@@ -83,9 +87,11 @@ export function TaskPreviewModal({
   const done = todo.subtasks.filter((sub) => sub.isCompleted).length;
   const total = todo.subtasks.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const meta = [formatDate(todo.dueDate), todo.dueTime, formatDuration(todo.duration)].filter(
-    Boolean,
-  );
+  const meta = [
+    formatDate(todo.dueDate),
+    todo.dueTime ? formatClock(todo.dueTime, timeFormat) : null,
+    formatDuration(todo.duration),
+  ].filter(Boolean);
   const now = new Date();
   const todayStr = format(now, 'yyyy-MM-dd');
   const tomorrowStr = format(addDays(now, 1), 'yyyy-MM-dd');

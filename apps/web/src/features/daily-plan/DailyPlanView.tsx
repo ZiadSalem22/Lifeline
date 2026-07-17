@@ -295,7 +295,15 @@ export function DailyPlanView({
   // outcome (Add or Dismiss) so the bar never re-offers after a reload.
   // Offered on TODAY only — on other days "yesterday" isn't yesterday, and
   // on the tomorrow view the bar would invite duplicating in-progress work.
-  const isToday = dateStr === resolveDayString('today');
+  const todayStr = resolveDayString('today');
+  const isToday = dateStr === todayStr;
+  // Human label for the day you're viewing when it isn't today.
+  const viewingLabel =
+    dateStr === daysBefore(todayStr, 1)
+      ? 'Yesterday'
+      : dateStr === daysAfter(todayStr, 1)
+        ? 'Tomorrow'
+        : format(parseISO(dateStr), 'EEE, MMM d');
   const carry = useMemo(() => carryOverFrom(yesterday), [yesterday]);
   const [carryError, setCarryError] = useState(false);
 
@@ -739,6 +747,7 @@ export function DailyPlanView({
           day={day}
           patch={patchDay}
           startHour={settings.dayStartHour}
+          timeFormat={settings.timeFormat}
           endHour={settings.dayEndHour}
           suggestionsFor={suggestionsForHour}
           todos={dayTodos}
@@ -785,6 +794,7 @@ export function DailyPlanView({
           historyFor={historyFor}
           prayerTimes={prayerTimes}
           prayerActive={prayerActive}
+          timeFormat={settings.timeFormat}
         />
       ),
     },
@@ -986,7 +996,20 @@ export function DailyPlanView({
         subtitle={settings.subtitle}
         onSelectDay={onSelectDay}
         energy={mastheadEnergy}
+        todayStr={todayStr}
       />
+
+      {!isToday && onSelectDay && (
+        <div className={`${styles.hiddenBar} ${styles.viewingBar}`} role="status">
+          <span className={styles.hiddenBarLabel}>Viewing</span>
+          <span style={{ fontSize: 'calc(12px * var(--plan-scale, 1))' }}>
+            {viewingLabel} — not today
+          </span>
+          <button type="button" className={styles.hiddenChip} onClick={() => onSelectDay(todayStr)}>
+            Go to today →
+          </button>
+        </div>
+      )}
 
       {weekError && !weekReady && (
         <div className={styles.hiddenBar} role="alert">
@@ -1202,12 +1225,24 @@ export function DailyPlanView({
         onMove={moveTask}
         habits={settings.habits}
         onLinkHabit={(todo, habitId) => updateTodo.mutate({ id: todo.id, patch: { habitId } })}
+        timeFormat={settings.timeFormat}
       />
 
       {toast && (
         <div className={styles.planToast} role="status" aria-live="polite">
           {toast}
         </div>
+      )}
+
+      {!isToday && onSelectDay && (
+        <button
+          type="button"
+          className={styles.todayFab}
+          aria-label={`Go to today (viewing ${viewingLabel})`}
+          onClick={() => onSelectDay(todayStr)}
+        >
+          ↩ Today
+        </button>
       )}
 
       <JumpSheet sections={jumpSections} onReorder={reorderVisible} />

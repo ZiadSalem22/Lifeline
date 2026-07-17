@@ -21,6 +21,7 @@ import {
   toWeightDisplay,
 } from './lib/units';
 import { PRAYER_HABIT_IDS, type DayPrayers, type PrayerKey } from './lib/prayer-times';
+import { formatClock, type TimeFormat } from './lib/time-format';
 import styles from './DailyPlan.module.css';
 
 /**
@@ -226,12 +227,15 @@ export interface ScheduleBodyProps {
   onToggleSubtask?: SubtaskToggle | undefined;
   /** Viewing TODAY: the current hour gets a live band and the list opens on it. */
   isToday?: boolean;
+  /** 24h vs 12h clock display (times are stored 24h regardless). */
+  timeFormat?: TimeFormat;
 }
 
 function SchedChip(props: {
   todo: Todo;
   /** Always show the time (off-hours chips) vs only off-hour minutes. */
   alwaysTime?: boolean;
+  timeFormat: TimeFormat;
   onToggle: () => void;
   onOpen: (todo: Todo) => void;
   onToggleSubtask?: SubtaskToggle | undefined;
@@ -271,7 +275,9 @@ function SchedChip(props: {
             onToggleExpand={() => setExpanded((v) => !v)}
           />
         )}
-        {showTime && <span className={styles.chipTime}>{todo.dueTime}</span>}
+        {showTime && todo.dueTime && (
+          <span className={styles.chipTime}>{formatClock(todo.dueTime, props.timeFormat)}</span>
+        )}
         <TagCluster tags={todo.tags} />
       </div>
       {expandable && expanded && props.onToggleSubtask && (
@@ -295,6 +301,7 @@ export function ScheduleBody({
   onAddTaskAt,
   onToggleSubtask,
   isToday = false,
+  timeFormat = '24h',
 }: ScheduleBodyProps) {
   const hours = scheduleHours(startHour, endHour);
   const byTime = (a: Todo, b: Todo) => (a.dueTime ?? '').localeCompare(b.dueTime ?? '');
@@ -348,13 +355,13 @@ export function ScheduleBody({
                   .join(' ')}
                 {...(isNow ? { 'data-now': '' } : {})}
               >
-                <span className={styles.schedTime}>{time}</span>
+                <span className={styles.schedTime}>{formatClock(time, timeFormat)}</span>
                 <input
                   dir="auto"
                   className={styles.inputBare}
                   maxLength={500}
                   value={day.schedule[time] ?? ''}
-                  aria-label={`Schedule ${time}`}
+                  aria-label={`Schedule ${formatClock(time, timeFormat)}`}
                   list={suggestions.length > 0 ? `plan-sched-sug-${time}` : undefined}
                   onChange={(e) => patch({ schedule: { ...day.schedule, [time]: e.target.value } })}
                 />
@@ -368,7 +375,7 @@ export function ScheduleBody({
                 <button
                   type="button"
                   className={styles.rowAddBtn}
-                  aria-label={`Add task at ${time}`}
+                  aria-label={`Add task at ${formatClock(time, timeFormat)}`}
                   onClick={() => onAddTaskAt(time)}
                 >
                   +
@@ -378,6 +385,7 @@ export function ScheduleBody({
                 <SchedChip
                   key={todo.id}
                   todo={todo}
+                  timeFormat={timeFormat}
                   onToggle={() => onToggleTodo(todo.id)}
                   onOpen={onOpenTask}
                   onToggleSubtask={onToggleSubtask}
@@ -396,6 +404,7 @@ export function ScheduleBody({
                 key={todo.id}
                 todo={todo}
                 alwaysTime
+                timeFormat={timeFormat}
                 onToggle={() => onToggleTodo(todo.id)}
                 onOpen={onOpenTask}
                 onToggleSubtask={onToggleSubtask}
@@ -643,6 +652,8 @@ export interface HabitsBodyProps {
   prayerTimes?: DayPrayers | null;
   /** Prayer feature is on (a city is set) — gates the empty-city hint. */
   prayerActive?: boolean;
+  /** 24h vs 12h clock display for the prayer-time badges. */
+  timeFormat?: TimeFormat;
 }
 
 /** Fixed prayer-habit ids, for a quick "is this a timed salah" membership test. */
@@ -941,8 +952,13 @@ export function HabitsBody(props: HabitsBodyProps) {
                 streak={props.streaks[habit.id] ?? 0}
                 historyFor={props.historyFor}
                 timeBadge={
-                  habit.salah && PRAYER_ID_SET.has(habit.id)
-                    ? (props.prayerTimes?.[habit.id as PrayerKey] ?? null)
+                  habit.salah &&
+                  PRAYER_ID_SET.has(habit.id) &&
+                  props.prayerTimes?.[habit.id as PrayerKey]
+                    ? formatClock(
+                        props.prayerTimes[habit.id as PrayerKey],
+                        props.timeFormat ?? '24h',
+                      )
                     : null
                 }
               />

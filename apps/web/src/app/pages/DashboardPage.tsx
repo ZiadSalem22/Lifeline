@@ -28,6 +28,7 @@ import { formatDuration } from '../../features/todos/lib/format';
 import { DailyPlanView } from '../../features/daily-plan/DailyPlanView';
 import { usePlanSettings } from '../../features/daily-plan/data/hooks';
 import { useHomeViewMode } from '../../features/daily-plan/data/view-mode';
+import { dayRouteToken } from '../../features/search/search-lib';
 import { ApiError } from '../../shared/api/client';
 import { SparklesIcon } from '../../shared/ui/icons';
 import { Spinner } from '../../shared/ui/Spinner';
@@ -255,7 +256,12 @@ export default function DashboardPage() {
   );
 
   const handleSelectPlanDay = useCallback(
-    (date: string) => void navigate(`/day/${date}`),
+    (date: string) => {
+      // Collapse today → the canonical '/' route (so "Go to today" lands on the
+      // home URL, not /day/<today's date>); other days keep their dated route.
+      const token = dayRouteToken(date);
+      void navigate(token === 'today' ? '/' : `/day/${date}`);
+    },
     [navigate],
   );
 

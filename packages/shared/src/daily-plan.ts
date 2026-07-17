@@ -360,6 +360,9 @@ export const dailyPlanSettingsSchema = z.object({
   /** Content text scale inside the plan cards — 's' is the original desktop
       density; 'm' (default) and 'l' step fonts/controls up for phones. */
   textScale: z.enum(['s', 'm', 'l']).default('m'),
+  /** Clock display across the plan — 24-hour (default, e.g. 17:30) or 12-hour
+      AM/PM (5:30 PM). Times are stored 24h; this only affects rendering. */
+  timeFormat: z.enum(['24h', '12h']).default('24h'),
   secOrder: z.array(planKey).max(32).default([]),
   secWide: boundedRecord(z.boolean(), 32).default({}),
   hidden: boundedRecord(z.boolean(), 32).default({}),
