@@ -591,12 +591,14 @@ button.weekChipToday:hover:not(:disabled) {
   }
 }
 
-/* Persistent "return to today" pill — bottom-left so it clears the
-   bottom-center JumpSheet pill; only shown while viewing another day. */
+/* Persistent "return to today" pill — bottom-left, and lifted to sit ABOVE
+   the bottom-center JumpSheet pill so the two never share the bottom band on
+   narrow phones (the pill owns that row plus its hold-to-glide gesture
+   surface). Only shown while viewing another day. */
 .todayFab {
   position: fixed;
   left: calc(14px + env(safe-area-inset-left, 0px));
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
   z-index: 901;
   display: inline-flex;
   align-items: center;
@@ -618,10 +620,12 @@ button.weekChipToday:hover:not(:disabled) {
   filter: brightness(1.06);
 }
 
-/* Clear the sidebar on desktop, matching the JumpSheet pill's offset. */
+/* On desktop the sidebar pushes the centered JumpSheet pill clear of the
+   far-left fab, so it can return to the bottom edge, left of the content. */
 @media (min-width: 769px) {
   .todayFab {
     left: calc(var(--sidebar-width) + 14px);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 }
 
